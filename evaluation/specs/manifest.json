@@ -1,0 +1,32 @@
+[
+  {
+    "spec_id": "dev_01_collect",
+    "split": "development",
+    "path": "evaluation/specs/dev_01_collect.md"
+  },
+  {
+    "spec_id": "dev_02_dodge",
+    "split": "development",
+    "path": "evaluation/specs/dev_02_dodge.md"
+  },
+  {
+    "spec_id": "dev_03_memory",
+    "split": "development",
+    "path": "evaluation/specs/dev_03_memory.md"
+  },
+  {
+    "spec_id": "dev_04_maze",
+    "split": "development",
+    "path": "evaluation/specs/dev_04_maze.md"
+  },
+  {
+    "spec_id": "holdout_01_switches",
+    "split": "reserved",
+    "path": "evaluation/specs/holdout_01_switches.md"
+  },
+  {
+    "spec_id": "holdout_02_turns",
+    "split": "reserved",
+    "path": "evaluation/specs/holdout_02_turns.md"
+  }
+]
