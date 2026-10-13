@@ -7,7 +7,10 @@ name = "pe6203-member1-agent"
 version = "1.0.0"
 description = "Provider-independent finite-state coding-agent harness"
 requires-python = ">=3.11"
-dependencies = []
+dependencies = [
+    "litellm-core",
+    "pydantic>=2,<3",
+]
 
-[tool.setuptools]
-packages = ["agent"]
+[tool.setuptools.packages.find]
+include = ["agent*"]
