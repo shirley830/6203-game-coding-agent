@@ -8,6 +8,8 @@ from agent.state import (
 )
 
 from .llm_client import LLMClient
+from .parser import parse_decision, parse_plan
+from .prompts import build_decision_prompt, build_plan_prompt
 
 
 class LLMPlanner:
@@ -24,7 +26,20 @@ class LLMPlanner:
                 "Acceptance suite must exist before planning"
             )
 
-        raise NotImplementedError
+        model_response = await self.client.generate(
+            system_prompt=(
+                "You are the planning component of an autonomous "
+                "game coding agent. Follow the supplied contract and "
+                "return JSON only. Do not execute tools or hide retries."
+            ),
+            user_prompt=build_plan_prompt(view),
+            timeout_seconds=limits.timeout_seconds,
+        )
+
+        return parse_plan(
+            model_response=model_response,
+            suite=view.suite,
+        )
 
     async def next_decision(
         self,
@@ -32,6 +47,21 @@ class LLMPlanner:
         limits: CallLimits,
     ) -> ToolAction | RequestVerification | RevisePlan:
         if view.plan is None:
-            return RevisePlan(reason="No development plan exists")
+            return RevisePlan(
+                reason="No development plan exists"
+            )
 
-        raise NotImplementedError
+        model_response = await self.client.generate(
+            system_prompt=(
+                "You are the decision component of an autonomous "
+                "game coding agent. Select exactly one next action "
+                "and return JSON only. Do not execute tools, change "
+                "controller state, or hide retries."
+            ),
+            user_prompt=build_decision_prompt(view),
+            timeout_seconds=limits.timeout_seconds,
+        )
+
+        return parse_decision(
+            model_response=model_response,
+        )
