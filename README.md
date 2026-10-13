@@ -8,7 +8,7 @@
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Controller implemented](https://img.shields.io/badge/Controller-implemented-137C66?style=flat-square)
-![43 mock tests passed](https://img.shields.io/badge/Mock_tests-43_passed-137C66?style=flat-square)
+![65 local tests passed](https://img.shields.io/badge/Local_tests-65_passed-137C66?style=flat-square)
 ![Team integration pending](https://img.shields.io/badge/Team_integration-pending-B7791F?style=flat-square)
 
 [Quick start](#quick-start) &nbsp; / &nbsp; [Architecture](#architecture) &nbsp; / &nbsp; [Team contracts](INTERFACES.md) &nbsp; / &nbsp; [Test report](TEST_REPORT.md)
@@ -16,7 +16,7 @@
 </div>
 
 > [!IMPORTANT]
-> **Current milestone: Member 1 harness implemented.** The entry point, controller, state models, configuration, and mock-based tests are available. Production modules from Members 2-6 still need to be connected. The repository does not yet generate a real playable game.
+> **Current milestone: Member 1 harness implemented.** The entry point, controller, state models, configuration, and mock-based tests are available. Member 3 runtime is locally integrated with verified process-group cleanup fixes. Other production ports still need to be connected. The repository does not yet generate a real playable game.
 
 ## Project at a glance
 
@@ -62,7 +62,7 @@ python -m unittest discover -v
 python -m agent --help
 ```
 
-**Current result: 43 tests passed using test doubles.** These tests validate harness behavior, not real LLM output or game playability. See the [verification record](TEST_REPORT.md) for coverage and limits.
+**Current local integration result: all 65 tests passed.** The original 43 tests use test doubles; Member 3 adds 15 runtime tests. This does not establish real LLM output or game playability. Seven additional cleanup/result tests pass, including a strict macOS sandbox check. See [the cleanup fix report](MEMBER3_CLEANUP_FIX_REPORT.md). See the [verification record](TEST_REPORT.md) for coverage and limits.
 
 ### 3. Connect the production modules
 
@@ -93,7 +93,7 @@ flowchart TB
     CFG["Validated configuration"] --> C
     STATE["Shared state and immutable views"] --- C
     C -. "planning calls" .-> P["Member 2<br/>PlannerPort"]
-    C -->|"authorized tools"| RT["Member 3<br/>RuntimePort"]
+    C -->|"authorized tools"| RT["Member 3<br/>RuntimePort<br/>Locally integrated"]
     C -. "acceptance checks" .-> V["Member 4<br/>VerifierPort"]
     C -. "recovery advice" .-> R["Member 5<br/>RecoveryPort"]
     C -. "durable events" .-> T["Member 6<br/>TracePort"]
@@ -104,11 +104,12 @@ flowchart TB
     classDef pending fill:#fff8eb,stroke:#b7791f,color:#604419,stroke-dasharray:5 4;
     classDef artifact fill:#eef3fa,stroke:#5278a6,color:#233e60;
     class CLI,C,CFG,STATE ready;
-    class P,RT,V,R,T pending;
+    class P,V,R,T pending;
+    class RT implemented;
     class G,LOG artifact;
 ```
 
-**Green:** implemented framework. **Dashed amber:** production modules awaiting integration. Outputs shown are the intended integrated-system artifacts.
+**Green:** implemented framework and locally integrated runtime. **Dashed amber:** production ports awaiting integration. Outputs shown are the intended integrated-system artifacts.
 
 The controller decides **whether** an action can run. Member 3 determines **how** it runs and must enforce OS/process isolation. A working-directory setting alone is not a sandbox.
 
@@ -224,13 +225,16 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── __main__.py          # CLI and dependency-factory loading
 │   ├── controller.py        # Protocols, state machine, and tool gateway
 │   ├── state.py             # Shared data contracts and immutable views
-│   └── config.py            # Validated limits and paths
+│   ├── config.py            # Validated limits and paths
+│   └── tools/               # Member 3 local runtime (under review)
 ├── assets/
 │   └── readme-banner.svg    # Documentation artwork
 ├── tests/
 │   ├── __init__.py
 │   ├── test_controller.py   # Behavioral tests with injected fakes
-│   └── test_config_cli.py   # Configuration and entry-point tests
+│   ├── test_config_cli.py   # Configuration and entry-point tests
+│   ├── test_runtime.py      # Member 3 real runtime tests
+│   └── test_runtime_process_cleanup.py # Process cleanup and uncertainty regressions
 ├── INTERFACES.md            # Team contract v1
 ├── TEST_REPORT.md           # Verified behavior and test limitations
 ├── README.md
@@ -245,6 +249,7 @@ run-root/
 ├── agent/                  # Submitted Agent
 ├── game_design_prompt.md   # Unchanged input
 ├── game/                   # Generated source and launch documentation
+├── .agent-runtime/         # Isolated dependency environments and default raw output
 └── traces/
     └── <run-id>/           # Durable record for this run
 ```
@@ -252,7 +257,13 @@ run-root/
 `run_root` defaults to the launch directory. With `--run-root`, relative specification paths are relative to that directory. Absolute specification paths are read-only input; tool file paths are relative to game/. An existing non-empty game/ is never overwritten.
 
 > [!NOTE]
-> game/ and traces/ are ignored during development, but they must be preserved and submitted after the assessed run. Git ignore rules are not permission to delete them. No game source or template is prewritten in this repository.
+> game/ and traces/ are ignored during development, but they must be preserved and submitted after the assessed run. Preserve referenced raw output and the managed environment under .agent-runtime/ too, or arrange trace-owned raw output and a documented reproducible dependency setup. Git ignore rules are not permission to delete them. No game source or template is prewritten in this repository.
+
+## Member 3 integration wiring
+
+The integration factory can import `LocalRuntime` from `agent.tools` and assign it to `Dependencies.runtime`. Create a fresh runtime for every run. No production dependency factory is added here because the remaining ports are not available.
+
+Use the default `LocalRuntime()` for strict OS sandboxing. Member 6 may inject `output_directory_factory=lambda context: context.trace_dir / "raw"` to preserve full stdout/stderr with traces. Member 2 must use argument arrays for commands and `INSTALL_DEPENDENCIES` for installation. Member 4 must use bounded verification commands; process-group cleanup is verified on macOS, while detached-session containment and final-machine rehearsal remain separate requirements.
 
 ## Team implementation map
 
@@ -260,7 +271,7 @@ run-root/
 |---|---|---|---|
 | **1** | Entry point, controller, state, configuration, and integration | Dependencies / Controller | Framework implemented |
 | **2** | LLM, planning, prompts, and content generation | PlannerPort | Production implementation pending |
-| **3** | Files, commands, dependencies, and runtime isolation | RuntimePort | Production implementation pending |
+| **3** | Files, commands, dependencies, and runtime isolation | RuntimePort | Locally integrated; cleanup fixes verified |
 | **4** | Game verification and acceptance testing | VerifierPort | Production implementation pending |
 | **5** | Error recovery and evaluation | RecoveryPort | Production implementation pending |
 | **6** | Tracing, logging, and delivery | TracePort | Production implementation pending |
@@ -288,7 +299,9 @@ Mocks exist only under tests/. They do not install dependencies, execute game co
 - [x] Implement the Member 1 finite-state controller and configurable budgets.
 - [x] Enforce current-revision verification before success.
 - [x] Validate the framework with 43 mock-based tests.
-- [ ] Implement and connect production modules from Members 2-6.
+- [x] Integrate Member 3 files, tests, and packaging locally for review.
+- [x] Fix Member 3 process-group cleanup and pass all 65 integration tests.
+- [ ] Implement and connect remaining production ports.
 - [ ] Rehearse autonomous development against varied unseen specifications.
 - [ ] Verify real game launch, interactions, failure recovery, and submission artifacts.
 
