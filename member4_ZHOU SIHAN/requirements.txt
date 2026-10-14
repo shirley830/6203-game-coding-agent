@@ -1,0 +1,3 @@
+# Optional runtime dependency for the Playwright harness script.
+# The VerifierPort module itself only needs the team's agent.state types.
+playwright>=1.40.0
