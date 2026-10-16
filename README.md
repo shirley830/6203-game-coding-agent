@@ -260,7 +260,7 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── INTERFACES.md        # Team contract v1
 │   ├── INTEGRATION_REVIEW_CN.md  # Integration review and remaining work
 │   ├── members/             # Each member's delivery notes and decisions
-│   └── testing/             # Historical test records
+│   └── testing/             # Test records, incl. LIVE_MODEL_TESTS.md (real-model runs)
 ├── README.md
 ├── pyproject.toml
 └── .gitignore
@@ -312,6 +312,8 @@ The [Member 1 verification record](docs/testing/MEMBER1_TEST_REPORT.md) covers t
 - Path traversal, symlink escape, verifier writes, and undeclared-argument rejection.
 - Existing-artifact protection, cancellation, trace failure, and delivery failure.
 - The required module entry point with an explicitly selected test factory.
+
+Live runs against real models (21 runs, 3 models, 4 rounds) are documented in [docs/testing/LIVE_MODEL_TESTS.md](docs/testing/LIVE_MODEL_TESTS.md).
 
 Mocks exist only under tests/. They do not install dependencies, execute game code, or replace missing production adapters. Real LLM calls, OS isolation, game interaction, and durable production logging remain integration checks.
 
