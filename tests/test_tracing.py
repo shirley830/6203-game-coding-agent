@@ -1,13 +1,17 @@
 """Member 6 tests: durable traces, delivery, and missing-terminal detection."""
 
 import asyncio
+from dataclasses import replace
 import json
 from pathlib import Path
 import tempfile
 import unittest
 
 from agent.delivery import audit_delivery
-from agent.state import ExecutionContext, Phase, RunSummary, TraceEvent
+from agent.state import (
+    CheckStatus, CriterionResult, ExecutionContext, Phase, RunSummary,
+    TraceEvent, VerificationReport,
+)
 from agent.tracing.recorder import FileTraceRecorder
 
 
@@ -143,6 +147,76 @@ class TestFileTraceRecorder(unittest.IsolatedAsyncioTestCase):
         with self.assertRaises(ValueError):
             await self.tracer.append_event(self.event(1, "action_result"))
         self.assertEqual((self.context.trace_dir / "events.jsonl").read_text(), "")
+
+    async def test_missing_referenced_screenshot_is_not_marked_complete(self):
+        # Harness claims it captured a screenshot but produced no actual file.
+        await self.tracer.append_event(self.event(1, "action_result", {
+            "result": {"observation": 'HARNESS_JSON={"checks":{"launch":{"evidence_refs":["screenshot:after_load.png"]}}}'},
+        }))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("Missing archived screenshot" in p for p in report["problems"]))
+
+    async def test_referenced_screenshot_archived_in_same_event_passes(self):
+        proof = self.context.game_dir / ".verification-evidence"
+        proof.mkdir(parents=True)
+        (proof / "after_load.png").write_bytes(b"actual screenshot bytes")
+        await self.tracer.append_event(self.event(1, "action_result", {
+            "result": {"data": {"stdout": 'HARNESS_JSON={"checks":{"launch":{"evidence_refs":["screenshot:after_load.png"]}}}'}},
+        }))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        report = audit_delivery(self.context.trace_dir)
+        self.assertTrue(report["complete"], report["problems"])
+
+    async def test_second_verification_cannot_use_first_screenshot_archive(self):
+        proof = self.context.game_dir / ".verification-evidence"
+        proof.mkdir(parents=True)
+        screenshot = proof / "after_load.png"
+        screenshot.write_bytes(b"old evidence")
+        result = {"result": {"observation": "screenshot:after_load.png"}}
+        await self.tracer.append_event(self.event(1, "action_result", result))
+        screenshot.unlink()
+        await self.tracer.append_event(self.event(2, "action_result", result))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(3, "transition", {"to": "succeeded"}))
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("event 2" in p for p in report["problems"]))
+
+    async def test_missing_screenshot_in_final_verification_report_is_detected(self):
+        report = VerificationReport("digest", "rev", "v1", (
+            CriterionResult("launch", CheckStatus.PASS, ("screenshot:after_load.png",)),
+        ))
+        await self.tracer.append_event(self.event(1, "run_start"))
+        await self.tracer.finalize(replace(self.summary(), verification=report))
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        audit = audit_delivery(self.context.trace_dir)
+        self.assertFalse(audit["complete"])
+        self.assertTrue(any("Missing final verification screenshot" in p for p in audit["problems"]))
+
+    async def test_missing_screenshot_in_verifier_result_is_detected(self):
+        await self.tracer.append_event(self.event(1, "module_result", {
+            "operation": "verifier.next_check",
+            "result": {"results": [{"evidence_refs": ["screenshot:after_input.png"]}]},
+        }))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("Missing verifier screenshot" in p for p in report["problems"]))
+
+    async def test_planner_text_does_not_invent_screenshot_requirements(self):
+        await self.tracer.append_event(self.event(1, "module_result", {
+            "operation": "planner.next_decision",
+            "result": {"rationale": "We might eventually need screenshot:after_load.png"},
+        }))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        report = audit_delivery(self.context.trace_dir)
+        self.assertTrue(report["complete"], report["problems"])
 
     async def test_existing_run_is_not_overwritten(self):
         another = FileTraceRecorder()
