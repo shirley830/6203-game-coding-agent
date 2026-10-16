@@ -14,46 +14,16 @@
 
 <p>
 <a href="#quick-start"><b>Quick start</b></a> &nbsp;·&nbsp;
-<a href="#architecture"><b>Architecture</b></a> &nbsp;·&nbsp;
+<a href="#games"><b>Games</b></a> &nbsp;·&nbsp;
+<a href="#how-it-works"><b>How it works</b></a> &nbsp;·&nbsp;
+<a href="#verification"><b>Verification</b></a> &nbsp;·&nbsp;
 <a href="docs/testing/LIVE_MODEL_TESTS.md"><b>Live model tests</b></a> &nbsp;·&nbsp;
-<a href="docs/INTERFACES.md"><b>Team contracts</b></a> &nbsp;·&nbsp;
-<a href="docs/INTEGRATION_REVIEW_CN.md"><b>Integration review</b></a>
+<a href="docs/INTERFACES.md"><b>Team contracts</b></a>
 </p>
 
 </div>
 
-## At a glance
-
-<table>
-<tr>
-<td width="33%" valign="top">
-
-**📄 In**
-
-One unseen `game_design_prompt.md`, nothing else.
-
-```bash
-python -m agent game_design_prompt.md
-```
-
-</td>
-<td width="33%" valign="top">
-
-**⚙️ Process**
-
-Freeze executable acceptance tests from the spec, plan, write code in a sandbox, test the game in a real browser, repair or replan on failure, all within time, step and retry budgets.
-
-</td>
-<td width="33%" valign="top">
-
-**📦 Out**
-
-`game/`: a playable game with a documented launch command.<br>
-`traces/<run_id>/`: every action, decision, failure and recovery, with screenshots and a readable `run_report.md`.
-
-</td>
-</tr>
-</table>
+<img src="assets/glance.svg" width="100%" alt="At a glance. In: one unseen spec. Process: freeze tests, plan, write code, play it in a browser, repair. Out: a playable game and a complete trace.">
 
 <table>
 <tr><td><b>Status</b></td><td>All six modules integrated · 199 tests passing · 23 live runs on 3 models (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
@@ -62,7 +32,10 @@ Freeze executable acceptance tests from the spec, plan, write code in a sandbox,
 <tr><td><b>Still to do</b></td><td>Rehearse with the course-provided model · write <code>report.pdf</code></td></tr>
 </table>
 
-## Quick start
+<br>
+
+<a name="quick-start"></a>
+<img src="assets/sections/01-quick-start.svg" width="100%" alt="01 · Quick start">
 
 <table>
 <tr>
@@ -133,29 +106,26 @@ The exact command is always in `game/README.md`; `traces/<run_id>/run_report.md`
 > No API key yet? Rehearse the whole pipeline with a scripted model (real sandbox, browser, recovery and tracing):
 > `PYTHONPATH=<repo> python -m agent game_design_prompt.md --factory tests.rehearsal_factory:create_dependencies`
 
-## How it works
+<a name="games"></a>
+<img src="assets/sections/02-games.svg" width="100%" alt="02 · Games it built, live">
 
-One sequential **controller** owns every decision about *whether* something may happen. Six modules propose, execute, check and record; none of them can change controller state or declare success.
+<table>
+<tr>
+<td width="50%"><img src="assets/gallery/collect.svg" width="100%" alt="Collection game generated live: Claude Sonnet 5.5, 8 spec scenarios, 14 of 14 criteria, 215 seconds"></td>
+<td width="50%"><img src="assets/gallery/memory.svg" width="100%" alt="Memory cards game generated live: mouse only, 8 spec scenarios, 14 of 14 on the first try, 125 seconds"></td>
+</tr>
+<tr>
+<td width="50%"><img src="assets/gallery/turns.svg" width="100%" alt="Turn-based key collection game generated live: 9 spec scenarios, 15 of 15, 199 seconds"></td>
+<td width="50%"><img src="assets/gallery/hangman.svg" width="100%" alt="Terminal hangman generated live in Python: process mode, 4 of 4, 77 seconds"></td>
+</tr>
+</table>
 
-```mermaid
-flowchart LR
-    SPEC(["game_design_prompt.md"]) --> C
-    C["Controller<br/>state machine · budgets · success gate"]
-    C -. "plan / next step" .-> P["Planner<br/>Member 2"]
-    C == "authorised tools" ==> RT["Runtime + sandbox<br/>Member 3"]
-    C -. "acceptance + checks" .-> V["Verifier + browser harness<br/>Member 4"]
-    C -. "on failure" .-> R["Recovery<br/>Member 5"]
-    C -. "every event" .-> T["Tracing<br/>Member 6"]
-    RT --> G[("game/")]
-    T --> L[("traces/")]
+<p align="center"><sub>Screenshots and a terminal transcript of games the agent generated from <code>evaluation/specs/</code>; every number comes from that run's trace.</sub></p>
 
-    classDef ctrl fill:#0f2a33,stroke:#6ff0cf,stroke-width:2px,color:#f2f8f9;
-    classDef mod fill:#e6f7f2,stroke:#1f9d7a,color:#0f2a33;
-    classDef out fill:#e8f1fa,stroke:#2b7bb9,color:#0f2a33;
-    class C ctrl;
-    class P,RT,V,R,T mod;
-    class SPEC,G,L out;
-```
+<a name="how-it-works"></a>
+<img src="assets/sections/03-how-it-works.svg" width="100%" alt="03 · How it works">
+
+<img src="assets/architecture.svg" width="100%" alt="Architecture: a finite-state controller decides; planner, verifier and recovery propose and check; the sandboxed runtime and tracing act and record, producing game/ and traces/.">
 
 <table>
 <tr>
@@ -183,35 +153,10 @@ Success needs passing, evidenced checks for the **current** code and spec, a lau
 </tr>
 </table>
 
-## How a game is verified
+<a name="verification"></a>
+<img src="assets/sections/04-verification.svg" width="100%" alt="04 · How a game is verified">
 
-The verifier writes the tests **before** any code exists, from the specification alone, then runs them against the real game in headless Chromium.
-
-<table>
-<tr>
-<td width="33%" valign="top">
-
-**① Freeze acceptance**
-
-Before planning, one model call turns the spec into a *state contract* (`window.__gameState`, setup hooks) and 3-10 executable scenarios. Invalid or unpassable scenarios are dropped; the rest are frozen.
-
-</td>
-<td width="33%" valign="top">
-
-**② Play the game**
-
-The harness starts the documented launch command, presses real keys, clicks real cells and buttons, and checks the state after each step, with a screenshot per scenario.
-
-</td>
-<td width="33%" valign="top">
-
-**③ Gate or repair**
-
-All mandatory criteria pass → success. Otherwise the failing step and the state after it go back to the planner, which must fix the real defect, never bend the game to the check.
-
-</td>
-</tr>
-</table>
+<img src="assets/verification.svg" width="100%" alt="Verification: the spec becomes frozen scenarios before any code exists, the harness plays the game in Chromium, a failed check is repaired, and success needs every mandatory criterion to pass.">
 
 | A scenario from a real run | Result |
 |---|---|
@@ -240,30 +185,10 @@ Games are built for the browser unless the specification explicitly asks otherwi
 
 </details>
 
-## Inside a run
+<a name="inside-a-run"></a>
+<img src="assets/sections/05-inside-a-run.svg" width="100%" alt="05 · Inside a run">
 
-```mermaid
-flowchart LR
-    I["INITIALIZING<br/>spec · frozen acceptance"] --> P["PLANNING"] --> D["DECIDING"]
-    D <-- "tool · observation" --> E["EXECUTING"]
-    D -- "request verification" --> V["VERIFYING"]
-    V -- "all mandatory pass" --> F["FINALIZING"]
-    F --> OUT(["SUCCEEDED · FAILED<br/>EXHAUSTED · CANCELLED"])
-    E -. "error" .-> R["RECOVERING"]
-    V -. "failed check" .-> R
-    R -- "repair" --> D
-    R -- "replan" --> P
-    R -- "abort" --> F
-
-    classDef work fill:#e6f7f2,stroke:#1f9d7a,color:#0f2a33;
-    classDef gate fill:#0f2a33,stroke:#6ff0cf,stroke-width:2px,color:#f2f8f9;
-    classDef warn fill:#fff4e5,stroke:#d99a2b,color:#5a3b06;
-    class I,P,D,E work;
-    class V,F,OUT gate;
-    class R warn;
-```
-
-Verification checks also run through EXECUTING, and errors while planning or deciding also go to RECOVERING. Budget exhaustion or cancellation goes straight to FINALIZING from any phase.
+<img src="assets/state-machine.svg" width="100%" alt="State machine: initializing, planning, deciding, executing, verifying; a failed check goes to recovering, which repairs or replans; passing verification finalizes the run as succeeded.">
 
 <details>
 <summary><b>One tool action through the system</b></summary>
@@ -289,34 +214,18 @@ A rejected proposal costs a step but never reaches the runtime. A timeout or unc
 
 </details>
 
-## What a run leaves behind
+<a name="run-output"></a>
+<img src="assets/sections/06-run-output.svg" width="100%" alt="06 · What a run leaves behind">
 
-```text
-run/
-├── game_design_prompt.md   input, never modified
-├── agent.env               model settings (never submitted)
-├── game/                   the generated game + README.md with the launch command
-├── traces/<run_id>/        the record of this run (below)
-└── .agent-runtime/         isolated dependencies and raw command output
-```
-
-Existing `game/` or `traces/` content is never overwritten or deleted, whatever the outcome.
-
-| `traces/<run_id>/` | Contents |
-|---|---|
-| `run_report.md` | Readable timeline with each action's rationale, frozen criteria, plans, verification cycles, model usage |
-| `events.jsonl` | Every event in order, durable on write |
-| `evidence/` | Screenshots from each verification, with a sha256 index |
-| `verification/` | Every verification report |
-| `model_usage.jsonl` | Tokens, latency and cost per model call |
-| `checkpoints.jsonl` · `summary.json` | State history and the final outcome |
+<img src="assets/run-output.svg" width="100%" alt="Run output: the run directory with game/ and traces/<run_id>/, and the trace files run_report.md, events.jsonl, evidence/, verification/, model_usage.jsonl and summary.json.">
 
 > [!NOTE]
 > `python -m agent.delivery traces/<run_id>` audits a finished trace: contiguous events, a terminal event, and every referenced screenshot present with a matching hash.
 
-## Budgets and outcomes
+<a name="budgets"></a>
+<img src="assets/sections/07-budgets.svg" width="100%" alt="07 · Budgets and outcomes">
 
-Defaults suit a 30-minute run; set `AGENT_MAX_RUNTIME` in `agent.env` to fit the presentation slot.
+<img src="assets/budgets.svg" width="100%" alt="Budgets: 1800 s runtime, 200 steps, 80 commands, 20 recoveries, 5 retries with backoff. Outcomes and exit codes: succeeded 0, failed 1, startup error 2, exhausted 3, cancelled 130.">
 
 <details>
 <summary><b>All limits and their options</b></summary>
@@ -339,15 +248,13 @@ Every module call and tool attempt consumes a step, including rejected proposals
 
 </details>
 
-| Outcome | Exit code | Meaning |
-|---|:---:|---|
-| `SUCCEEDED` | 0 | Every mandatory criterion passes on the current code; delivery preserved |
-| `FAILED` | 1 | Unrecoverable failure, invalid evidence or preservation failure |
-| startup error | 2 | Development never started (for example no model configured, preflight failed) |
-| `EXHAUSTED` | 3 | A budget or the no-progress limit stopped development |
-| `CANCELLED` | 130 | External cancellation or Ctrl+C |
+<a name="team"></a>
+<img src="assets/sections/08-team.svg" width="100%" alt="08 · Team">
 
-## Team
+<img src="assets/team.svg" width="100%" alt="Team: six members and the module each owns.">
+
+<details>
+<summary><b>Modules, code and member notes</b></summary>
 
 | Member | Module | Code | Notes |
 |:---:|---|---|---|
@@ -357,6 +264,8 @@ Every module call and tool attempt consumes a step, including rejected proposals
 | **4** | Acceptance, spec scenarios, browser harness | `agent/verification/` | [notes](docs/members/member4-verification/) |
 | **5** | Recovery policy, offline evaluation | `agent/recovery/` · `evaluation/` | [notes](docs/members/member5-recovery/) |
 | **6** | Tracing, run report, delivery audit | `agent/tracing/` · `agent/delivery.py` | |
+
+</details>
 
 <details>
 <summary><b>Repository map</b></summary>
@@ -379,48 +288,24 @@ Every module call and tool attempt consumes a step, including rejected proposals
 ├── evaluation/                 evaluation specs and run-record report
 ├── tests/                      199 tests; fixtures/ holds test-only pages
 ├── docs/                       contracts, integration review, member notes, testing
-├── assets/readme-banner.svg
+├── assets/                    README artwork; regenerate: python3 assets/src/build_readme_art.py
 ├── agent.env.example
 └── pyproject.toml
 ```
 
 </details>
 
-## Testing
+<a name="testing"></a>
+<img src="assets/sections/09-testing.svg" width="100%" alt="09 · Testing">
 
-<table>
-<tr>
-<td width="33%" valign="top">
-
-**199 tests**
-
-Controller, tools, sandbox, planner, verifier, recovery, tracing, and real Playwright runs against fixture games. [By area →](docs/testing/README.md)
-
-</td>
-<td width="33%" valign="top">
-
-**Offline rehearsal**
-
-Real sandbox, browser, recovery and tracing with a scripted model: a broken game fails verification, is repaired, and passes.
-
-</td>
-<td width="33%" valign="top">
-
-**23 live runs**
-
-Three real models, four rounds of fixes driven by the traces, plus a terminal game. [Results →](docs/testing/LIVE_MODEL_TESTS.md)
-
-</td>
-</tr>
-</table>
+<img src="assets/testing.svg" width="100%" alt="Testing: 199 tests, 23 live model runs with 3 models over 4 rounds; succeeded: Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.">
 
 ```bash
 python -m pytest -q
 ```
 
----
+Tests by area: [docs/testing/README.md](docs/testing/README.md) · Live model results and findings: [docs/testing/LIVE_MODEL_TESTS.md](docs/testing/LIVE_MODEL_TESTS.md)
 
-<div align="center">
-<sub><b>PE6203 Generative and Agentic AI · group project</b><br>
-Agent code in <code>agent/</code> · games are generated live, never pre-written</sub>
-</div>
+<br>
+
+<img src="assets/footer.svg" width="100%" alt="Built live, verified in a browser, traced end to end. PE6203 Generative and Agentic AI group project.">

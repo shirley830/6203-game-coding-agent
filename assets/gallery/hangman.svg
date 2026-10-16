@@ -1,0 +1,65 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="500" viewBox="0 0 640 500" role="img" aria-labelledby="t d">
+<title id="t">Terminal hangman, built live</title>
+<desc id="d">A real transcript of the terminal hangman game the agent generated in Python for dev_05_terminal: correct guesses reveal letters, a repeat costs no life, a wrong guess costs one.</desc>
+<defs>
+  <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#0f2a33"/><stop offset="0.55" stop-color="#0a1d24"/><stop offset="1" stop-color="#06141a"/>
+  </linearGradient>
+  <radialGradient id="glow" cx="0.5" cy="0.0" r="0.7">
+    <stop offset="0" stop-color="#2ad1a8" stop-opacity="0.17"/><stop offset="1" stop-color="#2ad1a8" stop-opacity="0"/>
+  </radialGradient>
+  <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#6ff0cf"/><stop offset="1" stop-color="#38b6e8"/>
+  </linearGradient>
+  <linearGradient id="sweep" x1="0" y1="0" x2="1" y2="0">
+    <stop offset="0" stop-color="#6ff0cf" stop-opacity="0"/><stop offset="0.5" stop-color="#6ff0cf" stop-opacity="0.9"/><stop offset="1" stop-color="#38b6e8" stop-opacity="0"/>
+  </linearGradient>
+  <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse"><path d="M32 0H0V32" fill="none" stroke="#fff" stroke-opacity="0.035"/></pattern>
+  <filter id="shadow" x="-10%" y="-10%" width="120%" height="140%"><feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000" flood-opacity="0.45"/></filter>
+  <filter id="soft" x="-50%" y="-50%" width="200%" height="200%"><feGaussianBlur stdDeviation="6"/></filter>
+  <clipPath id="frame"><rect width="640" height="500" rx="16"/></clipPath>
+</defs>
+<style>
+  text { font-family: Segoe UI, -apple-system, BlinkMacSystemFont, Helvetica Neue, Helvetica, Arial, sans-serif; }
+  .mono { font-family: SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace; }
+  .flow { stroke-dasharray: 6 10; animation: dash 1.1s linear infinite; }
+  @keyframes dash { to { stroke-dashoffset: -32; } }
+  .blink { animation: blink 1.1s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .pulse { transform-box: fill-box; transform-origin: center; animation: pulse 2.4s ease-in-out infinite; }
+  @keyframes pulse { 0%,100% { opacity: .25; transform: scale(1); } 50% { opacity: .9; transform: scale(1.05); } }
+  .sweep { animation: sweep 5s ease-in-out infinite; }
+  @keyframes sweep { 0% { transform: translateX(-420px); } 100% { transform: translateX(680px); } }
+  .h{animation-duration:14s;animation-iteration-count:infinite;}
+@keyframes h0{0%{opacity:0}2.00%{opacity:0}2.80%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h1{0%{opacity:0}7.50%{opacity:0}8.30%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h2{0%{opacity:0}13.00%{opacity:0}13.80%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h3{0%{opacity:0}18.50%{opacity:0}19.30%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h4{0%{opacity:0}24.00%{opacity:0}24.80%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h5{0%{opacity:0}29.50%{opacity:0}30.30%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h6{0%{opacity:0}35.00%{opacity:0}35.80%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h7{0%{opacity:0}40.50%{opacity:0}41.30%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h8{0%{opacity:0}46.00%{opacity:0}46.80%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h9{0%{opacity:0}51.50%{opacity:0}52.30%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h10{0%{opacity:0}57.00%{opacity:0}57.80%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h11{0%{opacity:0}62.50%{opacity:0}63.30%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+@keyframes h12{0%{opacity:0}68.00%{opacity:0}68.80%{opacity:1}96.00%{opacity:1}96.80%{opacity:0}100%{opacity:0}}
+  @media (prefers-reduced-motion: reduce) { * { animation: none !important; } }
+</style>
+<g clip-path="url(#frame)">
+  <rect width="640" height="500" fill="url(#bg)"/>
+  <rect width="640" height="500" fill="url(#grid)"/>
+  <rect width="640" height="500" fill="url(#glow)"/>
+<defs><linearGradient id="fade" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#06141a" stop-opacity="0"/><stop offset=".45" stop-color="#06141a" stop-opacity=".92"/><stop offset="1" stop-color="#06141a"/></linearGradient></defs>
+  <path d="M0 0h640v40H0z" fill="#10242c"/>
+  <circle cx="20" cy="20" r="5.5" fill="#ff6b6b" fill-opacity=".85"/><circle cx="39" cy="20" r="5.5" fill="#f5c451" fill-opacity=".85"/><circle cx="58" cy="20" r="5.5" fill="#4fd18b" fill-opacity=".85"/>
+  <rect x="150" y="9" width="340" height="22" rx="11" fill="#08161c"/><text x="320" y="25" font-size="12" fill="#7fa3ad" font-weight="400" text-anchor="middle" class="mono" >python3 main.py</text>
+  <line x1="0" y1="40" x2="640" y2="40" stroke="#2f505a"/>
+  <rect x="0" y="40" width="640" height="460" fill="#08161c"/><text x="28" y="76" font-size="14" class="mono h" fill="#f2f8f9" style="animation-name:h0">=== HANGMAN ===</text><text x="28" y="98" font-size="14" class="mono h" fill="#f2f8f9" style="animation-name:h1">Word:    _ _ _ _ _ _ _ _   Lives: 6</text><text x="28" y="120" font-size="14" class="mono h" fill="#6ff0cf" style="animation-name:h2">&gt; e</text><text x="28" y="142" font-size="14" class="mono h" fill="#f2f8f9" style="animation-name:h3">Word:    _ e _ _ _ _ _ _</text><text x="28" y="164" font-size="14" class="mono h" fill="#4fd18b" style="animation-name:h4">Yes! 'e' is in the word.</text><text x="28" y="186" font-size="14" class="mono h" fill="#6ff0cf" style="animation-name:h5">&gt; a</text><text x="28" y="208" font-size="14" class="mono h" fill="#f2f8f9" style="animation-name:h6">Word:    _ e _ _ _ a _ _</text><text x="28" y="230" font-size="14" class="mono h" fill="#6ff0cf" style="animation-name:h7">&gt; z</text><text x="28" y="252" font-size="14" class="mono h" fill="#ff8a7a" style="animation-name:h8">Sorry, 'z' is not in the word. You lose a life.</text><text x="28" y="274" font-size="14" class="mono h" fill="#6ff0cf" style="animation-name:h9">&gt; e</text><text x="28" y="296" font-size="14" class="mono h" fill="#f5c451" style="animation-name:h10">You already guessed 'e'. No life lost.</text><text x="28" y="318" font-size="14" class="mono h" fill="#6ff0cf" style="animation-name:h11">&gt; r</text><text x="28" y="340" font-size="14" class="mono h" fill="#f2f8f9" style="animation-name:h12">Word:    _ e _ _ _ a r _   Lives: 5</text>
+  <rect x="0" y="360" width="640" height="140" fill="url(#fade)"/>
+  <text x="24" y="412" font-size="24" fill="#f2f8f9" font-weight="800" text-anchor="start" >Terminal hangman</text>
+  <text x="24" y="436" font-size="13" fill="#a9c2c9" font-weight="400" text-anchor="start" >dev_05_terminal · Python · typed guesses · 6 lives</text>
+  <rect x="24" y="452" width="140" height="26" rx="13" fill="#133039" stroke="#33545e"/><text x="93.9" y="469" font-size="12.5" fill="#6ff0cf" font-weight="600" text-anchor="middle" >Claude Sonnet 5.5</text><rect x="171.8" y="452" width="103" height="26" rx="13" fill="#133039" stroke="#33545e"/><text x="223.20000000000002" y="469" font-size="12.5" fill="#a9c2c9" font-weight="600" text-anchor="middle" >process mode</text><rect x="282.6" y="452" width="51" height="26" rx="13" fill="#133039" stroke="#33545e"/><text x="308.1" y="469" font-size="12.5" fill="#4fd18b" font-weight="600" text-anchor="middle" >4 / 4</text><rect x="341.6" y="452" width="44" height="26" rx="13" fill="#133039" stroke="#33545e"/><text x="363.40000000000003" y="469" font-size="12.5" fill="#a9c2c9" font-weight="600" text-anchor="middle" >77 s</text>
+</g>
+<rect x="0.5" y="0.5" width="639" height="499" rx="15.5" fill="none" stroke="#2b4a54"/>
+</svg>
