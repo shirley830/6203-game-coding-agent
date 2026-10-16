@@ -260,13 +260,30 @@ class ProcessRunner:
         return payload.decode("utf-8", errors="replace") + suffix
 
     @staticmethod
+    def _artifact_refs(directory: Path) -> tuple[str, ...]:
+        files = sorted(
+            str(path) for path in directory.rglob("*")
+            if path.is_file() and not path.is_symlink()
+        )
+        if not files:
+            try:
+                directory.rmdir()
+            except OSError:
+                pass
+        return tuple(files)
+
+    @staticmethod
     def _group_exists(group_id: int) -> bool:
         """Check the owned group, even after its original leader has exited."""
         try:
             os.killpg(group_id, 0)
         except ProcessLookupError:
             return False
-        # Permission failures propagate; they cannot establish successful cleanup.
+        except PermissionError:
+            # macOS reports EPERM while the group's only member is an unreaped
+            # zombie. Treat it as "still present" so the bounded wait continues;
+            # it never counts as successful cleanup on its own.
+            return True
         return True
 
     @classmethod
@@ -301,6 +318,8 @@ class ProcessRunner:
                     except asyncio.TimeoutError:
                         return False
                     return True
+                except PermissionError:
+                    pass  # zombie-only group on macOS; the bounded wait decides
                 deadline = time.monotonic() + grace
                 while time.monotonic() < deadline:
                     if not cls._group_exists(group_id) and process.returncode is not None:
@@ -334,6 +353,13 @@ class ProcessRunner:
             raise RuntimeToolError("COMMAND_NOT_FOUND", f"Executable not found: {argv[0]}")
         prefix = self.sandbox.prefix(self.game_dir, self.storage, cwd)
         stdout_path, stderr_path = self.storage.output_paths(action_id, label)
+        # Per-attempt artifact directory (screenshots, reports) outside game/ so
+        # evidence never changes the workspace revision. Member 6 copies these
+        # output_refs into traces/<run_id>/.
+        artifact_dir = stdout_path.with_name(
+            stdout_path.name.removesuffix(".stdout.log") + ".artifacts")
+        artifact_dir.mkdir(mode=0o700, exist_ok=True)
+        environment["AGENT_ARTIFACT_DIR"] = str(artifact_dir)
         started = time.monotonic()
         process: asyncio.subprocess.Process | None = None
         timed_out = False
@@ -380,7 +406,7 @@ class ProcessRunner:
             duration_seconds=duration,
             stdout_preview=self._preview(stdout_path, self.preview_bytes),
             stderr_preview=self._preview(stderr_path, self.preview_bytes),
-            output_refs=(str(stdout_path), str(stderr_path)),
+            output_refs=(str(stdout_path), str(stderr_path), *self._artifact_refs(artifact_dir)),
             timed_out=timed_out,
             cleanup_confirmed=cleanup_confirmed,
         )
