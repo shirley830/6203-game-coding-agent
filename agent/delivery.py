@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 from pathlib import Path
 from typing import Any
@@ -63,6 +64,38 @@ def audit_delivery(trace_dir: str | Path) -> dict[str, Any]:
                 problems.append("Run ID differs between summary and events")
             if last_outcome in TERMINAL_OUTCOMES and summary.get("outcome") != last_outcome:
                 problems.append("Summary outcome differs from final event")
+
+    # Member 4 screenshots are copied into traces/evidence by Member 6.
+    # Check the manifest and the actual files; symbolic screenshot refs alone
+    # do not prove that the screenshot bytes survived delivery.
+    manifest = root / "evidence" / "index.jsonl"
+    if not manifest.is_file() and list((root / "evidence").glob("seq-*")):
+        problems.append("Missing evidence/index.jsonl for archived screenshots")
+    if manifest.is_file():
+        try:
+            for line_num, line in enumerate(manifest.read_text(encoding="utf-8").splitlines(), 1):
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    problems.append(f"Invalid evidence record at line {line_num}")
+                    continue
+                relative = record.get("archived_path")
+                expected_digest = record.get("sha256")
+                if not isinstance(relative, str) or not isinstance(expected_digest, str):
+                    problems.append(f"Invalid evidence reference at line {line_num}")
+                    continue
+                candidate = (root / relative).resolve()
+                evidence_root = (root / "evidence").resolve()
+                if not candidate.is_relative_to(evidence_root) or not candidate.is_file():
+                    problems.append(f"Missing or unsafe evidence file at line {line_num}")
+                    continue
+                if candidate.stat().st_size > 15 * 1024 * 1024:
+                    problems.append(f"Oversized evidence file at line {line_num}")
+                    continue
+                actual_digest = hashlib.sha256(candidate.read_bytes()).hexdigest()
+                if actual_digest != expected_digest:
+                    problems.append(f"Evidence file hash mismatch at line {line_num}")
+        except (OSError, ValueError, TypeError) as exc:
+            problems.append(f"Cannot check evidence index: {exc}")
 
     return {
         "complete": not problems,
