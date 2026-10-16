@@ -11,7 +11,7 @@
 ![137 local tests passed](https://img.shields.io/badge/Local_tests-137_passed-137C66?style=flat-square)
 ![Team modules integrated](https://img.shields.io/badge/Team_modules-integrated-137C66?style=flat-square)
 
-[Quick start](#quick-start) &nbsp; / &nbsp; [Architecture](#architecture) &nbsp; / &nbsp; [Team contracts](INTERFACES.md) &nbsp; / &nbsp; [Test report](TEST_REPORT.md)
+[Quick start](#quick-start) &nbsp; / &nbsp; [Architecture](#architecture) &nbsp; / &nbsp; [Team contracts](docs/INTERFACES.md) &nbsp; / &nbsp; [Integration review](docs/INTEGRATION_REVIEW_CN.md)
 
 </div>
 
@@ -251,9 +251,11 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── test_verifier_member4.py
 │   ├── test_integration_tasks.py   # Cross-member checklist + end-to-end rehearsal
 │   └── rehearsal_factory.py        # Scripted-model factory (tests only)
-├── member4_ZHOU SIHAN/      # Member 4 delivery notes + source of truth copy
-├── INTERFACES.md            # Team contract v1
-├── TEST_REPORT.md           # Verified behavior and test limitations
+├── docs/
+│   ├── INTERFACES.md        # Team contract v1
+│   ├── INTEGRATION_REVIEW_CN.md  # Integration review and remaining work
+│   ├── members/             # Each member's delivery notes and decisions
+│   └── testing/             # Historical test records
 ├── README.md
 ├── pyproject.toml
 └── .gitignore
@@ -291,13 +293,13 @@ Verification screenshots and logs are written by the harness into a per-command 
 | **5** | Error recovery and evaluation | RecoveryPort | Integrated (`agent/recovery`, `evaluation/`) |
 | **6** | Tracing, logging, and delivery | TracePort | Integrated (`agent/tracing`, `agent/delivery.py`) |
 
-Read [INTERFACES.md](INTERFACES.md) before implementation. Use the shared types in [state.py](agent/state.py) and asynchronous signatures in [controller.py](agent/controller.py). Coordinate shared-contract changes with Member 1.
+Read [docs/INTERFACES.md](docs/INTERFACES.md) before implementation. Use the shared types in [state.py](agent/state.py) and asynchronous signatures in [controller.py](agent/controller.py). Coordinate shared-contract changes with Member 1.
 
 When a module is ready, provide its import path, construction requirements, dependencies, and tests. Member 1 will compose the real objects and run full-system rehearsals. For Members 3 and 6, agree on raw-output storage and references; for Members 3 and 4, agree on workspace revisions and bounded game checks.
 
 ## Testing scope
 
-The [43-test verification record](TEST_REPORT.md) covers:
+The [Member 1 verification record](docs/testing/MEMBER1_TEST_REPORT.md) covers the controller; the full suite is now 158 tests (`python -m pytest -q`). Controller tests cover:
 
 - Current-revision acceptance, rejection of stale or missing evidence, and repair followed by fresh verification.
 - Safe retry accounting and rejection of retries with unknown side effects.

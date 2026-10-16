@@ -77,4 +77,4 @@ python -m evaluation.report traces/RUN_A traces/RUN_B
 
 自动回退未实现：当前契约仅支持 RETRY、REPAIR、REPLAN、ABORT。详细说明见 MEMBER5_HANDOFF.md 和 MEMBER5_TEST_REPORT.md。
 
-最新联调结果与当前待办见 [Member 5 第二阶段联调说明](MEMBER5_INTEGRATION_UPDATE.md)，其中包含验收版本变化问题的复现。
+最新联调结果与当前待办见 [Member 5 第二阶段联调说明](INTEGRATION_UPDATE.md)，其中包含验收版本变化问题的复现。

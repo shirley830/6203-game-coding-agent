@@ -83,7 +83,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         dependencies = load_dependencies(args.factory, config)
     except Exception as exc:
         print(f"Agent startup failed: {type(exc).__name__}: {exc}\n"
-              "Connect the team modules according to INTERFACES.md before the live run. No mocks are enabled; development has not started.",
+              "Connect the team modules according to docs/INTERFACES.md before the live run. No mocks are enabled; development has not started.",
               file=sys.stderr)
         return 2
     try:

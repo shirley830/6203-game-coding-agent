@@ -35,7 +35,7 @@
 ### P0 —— 演示前必须完成
 
 1. **用课程指定模型做真实彩排（至少 5 次）**。模型/API 公布后立即：`export AGENT_MODEL=... AGENT_API_BASE=...`，用 `evaluation/specs/` 中的 6 个规格各跑一次，再用 `python -m evaluation.report traces/*` 统计成功率、耗时、恢复次数。重点观察：单文件过大导致输出截断（调 `AGENT_MAX_TOKENS`）、调用超时（`--model-timeout`）、重复修复不收敛。
-2. **合并到 main**。当前 4 个 PR 均未合并，`integration` 分支包含全部改动；请各成员 review 自己模块对应的那一个 commit 后合并。
+2. ✅ **合并到 main**（2026-10-16 已完成）：各成员确认后，`integration` 分支已整体合并进 main。
 3. **演示机预检**：Python 3.11、`pip install -e .`、`python -m playwright install chromium-headless-shell`、8000 端口空闲、能访问模型 API、`sandbox-exec`（macOS）或 `bwrap`（Linux）可用。建议新增 `python -m agent.preflight` 一键检查（约半天）。
 4. **确认演示时长并设置预算**：默认 `--max-runtime 1800`（30 分钟）。若展示时段更短，提前设定，并保证最终化预留足够。
 
@@ -52,7 +52,7 @@
 ### P2 —— 提交物与仓库整洁度
 
 9. **提交结构**：要求 `submission/agent/`（含 README）、`game/`、`traces/`、`report.pdf`。建议把本仓库整体放入 `submission/agent/`，README 中写清 `pip install -e .` 后在 submission/ 目录运行。注意 `traces/` 中 `outputs/index.jsonl` 引用的原始路径在 `.agent-runtime/`，复制品已在 traces 内，无需提交 `.agent-runtime/`。
-10. **仓库冗余**：`DAI MINFEI_Member3/`、`member4_ZHOU SIHAN/` 是旧的代码副本，根目录还有多份 `MEMBER*_*.md` 和 `INTEGRATION_TEST_OUTPUT.txt`。建议移到 `docs/members/`，删除重复代码，避免评分者误以为是两套实现；`TEST_REPORT.md` 仍写“65 tests”，需更新。
+10. ✅ **仓库冗余**（已完成：旧代码副本已删除，成员文档移至 `docs/members/`，测试记录移至 `docs/testing/`）：`DAI MINFEI_Member3/`、`member4_ZHOU SIHAN/` 是旧的代码副本，根目录还有多份 `MEMBER*_*.md` 和 `INTEGRATION_TEST_OUTPUT.txt`。建议移到 `docs/members/`，删除重复代码，避免评分者误以为是两套实现；`TEST_REPORT.md` 仍写“65 tests”，需更新。
 11. **report.pdf 尚未开始**。必须包含：架构与取舍理由（FSM 控制器 vs 多 Agent）、规划与验证方式、失败恢复、当前局限、下一步改进、AI 使用声明、每位成员贡献。建议以本文件第三部分作为“局限与改进”章节素材。
 12. **演示材料**：选择“一个技术实现深入讲解”（推荐：harness 交互验证或沙箱进程组清理），并用 `traces/<run_id>/run_report.md` 的时间线讲解开发过程。
 

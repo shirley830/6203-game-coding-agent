@@ -113,4 +113,4 @@ used to adjust prompts, replace them with new unseen tests before claiming a bli
 evaluation. A recommended first experiment compares abort-on-failure with this
 policy using otherwise identical modules. Never prewrite games for these specs.
 
-Latest Member 5 verifier integration findings: [MEMBER5_INTEGRATION_UPDATE.md](MEMBER5_INTEGRATION_UPDATE.md).
+Latest Member 5 verifier integration findings: [MEMBER5_INTEGRATION_UPDATE.md](INTEGRATION_UPDATE.md).
