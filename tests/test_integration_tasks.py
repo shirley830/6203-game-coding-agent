@@ -58,7 +58,7 @@ VERIFY = json.dumps({"decision": "request_verification",
 class FactoryTests(unittest.TestCase):
     def test_factory_injects_production_game_verifier(self):
         with tempfile.TemporaryDirectory() as directory, \
-                patch.dict(os.environ, {"AGENT_MODEL": "anthropic/test-model"}):
+                patch.dict(os.environ, {"AGENT_MODEL": "anthropic/test-model", "AGENT_SKIP_PREFLIGHT": "1"}):
             from agent.integrations import create_dependencies
             deps = create_dependencies(AgentConfig(run_root=Path(directory)))
         self.assertIsInstance(deps.verifier, GameVerifier)

@@ -1,6 +1,11 @@
 from typing import Protocol
 
+import litellm
 from litellm import acompletion
+
+# LiteLLM prints a feedback banner to stdout on every error, which would corrupt
+# the CLI's JSON RunSummary on stdout. Errors still reach the controller.
+litellm.suppress_debug_info = True
 
 
 class LLMClient(Protocol):

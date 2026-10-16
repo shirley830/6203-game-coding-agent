@@ -30,8 +30,10 @@ class LLMPlanner:
     it back into every decision prompt. Memory never changes controller state.
     """
 
-    def __init__(self, client: LLMClient) -> None:
+    def __init__(self, client: LLMClient, *, environment_notes: list[str] | None = None) -> None:
         self.client = client
+        # Facts about this machine from the startup self-check (e.g. no node).
+        self.environment_notes = list(environment_notes or [])
         self._sequence = 0
         self._pending: dict[str, ToolAction] = {}
         self._files: dict[str, int] = {}
@@ -87,6 +89,7 @@ class LLMPlanner:
             user_prompt=build_decision_prompt(
                 view, files=self._files, history=list(self._history),
                 notes=list(self._notes),
+                environment=self.environment_notes,
             ),
             timeout_seconds=limits.timeout_seconds,
         )

@@ -58,23 +58,28 @@ pip install -e ".[test]"
 python -m playwright install chromium-headless-shell
 ```
 
-### 2. Configure the model
+### 2. Configure the model (`agent.env`)
 
-```bash
-export AGENT_MODEL=anthropic/claude-sonnet-5-5   # any LiteLLM model name
-export ANTHROPIC_API_KEY=...                       # the provider's own key variable
-# optional: export AGENT_API_BASE=https://...      # course-provided endpoint
+Put an `agent.env` file in the run directory, next to `game_design_prompt.md` (template: [agent.env.example](agent.env.example)):
+
+```text
+AGENT_MODEL=openai/course-model-name      # any LiteLLM model name
+AGENT_API_BASE=https://course-endpoint/v1 # optional custom endpoint
+OPENAI_API_KEY=...                        # the provider's own key variable
 ```
 
-Credentials are read only by the LiteLLM client; commands run with a filtered environment and keys never enter state, prompts or traces.
+Shell variables override the file, and `--env-file PATH` selects another file. Only key names are printed, never values. Generated code cannot read `agent.env`: the command sandbox blocks it. **Never commit or submit `agent.env`.**
 
-### 3. Run
-
-From an empty directory containing only the specification:
+### 3. Check the machine, then run
 
 ```bash
+python -m agent.preflight        # READY / NOT READY, run on the demo machine beforehand
 python -m agent game_design_prompt.md
 ```
+
+The agent runs the same self-check at startup. If something that makes success impossible is missing (Playwright Chromium, the command sandbox, a free port 8000, python3), it stops **before** creating `game/` and says why. Other findings, such as "node is not installed", are passed to the planner so it never plans commands that cannot run.
+
+Model calls that fail transiently (connection errors, rate limits, 5xx) are retried up to 5 times, waiting 5s, 15s, 45s, then 60s before each retry, always within the total time budget. Each wait is recorded as a `retry_backoff` event in the trace.
 
 The agent creates `game/` (with `README.md` and the launch command), `traces/<run_id>/` and `.agent-runtime/`. Start the generated game with the command in `game/README.md`, normally `cd game && python3 -m http.server 8000 --bind 127.0.0.1`, then open http://127.0.0.1:8000/.
 

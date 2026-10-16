@@ -510,6 +510,7 @@ class Controller:
             if used >= self.config.max_retries_per_operation:
                 raise BudgetExhausted("Per-operation retry budget exhausted")
             s.retry_counts[failure.operation_key] = used + 1
+            await self._retry_backoff(used + 1, failure.operation_key)
             if failure.action and failure.phase != Phase.INITIALIZING:
                 await self._schedule(failure.action, failure.phase, retry=True)
             else:
@@ -524,6 +525,21 @@ class Controller:
             s.verification_report = None
             s.pending_action = None
             await self._transition(Phase.PLANNING)
+
+    async def _retry_backoff(self, attempt: int, operation_key: str) -> None:
+        """Wait before a retry so a brief API outage or rate limit can clear.
+
+        Bounded by the remaining work time; the wait itself is traced.
+        """
+        base = self.config.retry_backoff_seconds
+        if base <= 0:
+            return
+        delay = min(base * 3 ** (attempt - 1), 60.0, max(self._remaining() - 1.0, 0.0))
+        if delay <= 0:
+            return
+        await self._event("retry_backoff", {"operation": operation_key, "attempt": attempt,
+                                            "delay_seconds": round(delay, 3)})
+        await asyncio.sleep(delay)
 
     async def _finish_request(self, outcome: Phase, reason: str) -> None:
         self._state.pending_outcome = outcome

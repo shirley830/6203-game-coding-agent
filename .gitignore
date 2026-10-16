@@ -225,3 +225,6 @@ traces/
 
 # Member 3 isolated runtime environments and raw output
 .agent-runtime/
+
+# Model credentials for live runs (see agent.env.example)
+agent.env

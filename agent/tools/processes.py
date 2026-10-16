@@ -16,6 +16,9 @@ from typing import Mapping, Sequence
 from .errors import RuntimeToolError
 
 
+# Settings file with model credentials in the run directory (see agent/envfile.py).
+SECRETS_FILE_NAME = "agent.env"
+
 SHELL_EXECUTABLES = frozenset({
     "bash", "cmd", "cmd.exe", "dash", "fish", "ksh", "powershell",
     "powershell.exe", "pwsh", "sh", "zsh",
@@ -147,6 +150,7 @@ class OSSandbox:
                 "" if outputs.is_relative_to(runtime)
                 else f'(allow file-write* (subpath "{self._profile_path(outputs)}"))\n'
             )
+            secrets = storage.run_root / SECRETS_FILE_NAME
             profile = (
                 '(version 1)\n'
                 '(allow default)\n'
@@ -154,6 +158,9 @@ class OSSandbox:
                 f'(allow file-write* (subpath "{self._profile_path(game)}"))\n'
                 f'(allow file-write* (subpath "{self._profile_path(runtime)}"))\n'
                 f'{output_rule}'
+                # Model credentials loaded from agent.env stay unreadable to
+                # generated code, so they cannot leak into command output/traces.
+                f'(deny file-read* (literal "{self._profile_path(secrets)}"))\n'
             )
             return ["/usr/bin/sandbox-exec", "-p", profile]
         bwrap = shutil.which("bwrap")
@@ -173,6 +180,9 @@ class OSSandbox:
         ]
         if not outputs.is_relative_to(runtime):
             prefix.extend(["--bind", str(outputs), str(outputs)])
+        secrets = storage.run_root / SECRETS_FILE_NAME
+        if secrets.exists():
+            prefix.extend(["--ro-bind", "/dev/null", str(secrets)])
         return prefix
 
 

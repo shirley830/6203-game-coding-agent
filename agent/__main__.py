@@ -11,6 +11,7 @@ from collections.abc import Sequence
 
 from .config import AgentConfig
 from .controller import Controller, Dependencies
+from .envfile import load_env_file
 from .state import Phase, to_jsonable
 
 
@@ -21,19 +22,23 @@ def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Autonomous coding-agent harness (Member 1)")
     parser.add_argument("spec", type=Path, help="Game specification Markdown file")
     parser.add_argument("--run-root", type=Path, default=Path.cwd(), help="Parent directory of game/ and traces/")
+    parser.add_argument("--env-file", type=Path, default=None,
+                        help="KEY=value settings file (default: <run-root>/agent.env)")
     parser.add_argument("--factory", default=os.environ.get(
         "AGENT_MODULE_FACTORY", "agent.integrations:create_dependencies"),
         help="Team dependency factory in module:function format")
     parser.add_argument("--max-runtime", type=float, default=1800.0)
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--max-commands", type=int, default=80)
-    parser.add_argument("--max-retries", type=int, default=2)
+    parser.add_argument("--max-retries", type=int, default=5)
     parser.add_argument("--max-recovery-attempts", type=int, default=20)
     parser.add_argument("--model-timeout", type=float, default=240.0)
     parser.add_argument("--command-timeout", type=float, default=90.0)
     parser.add_argument("--max-no-progress", type=int, default=5)
     parser.add_argument("--finalization-reserve", type=float, default=20.0)
     parser.add_argument("--infrastructure-timeout", type=float, default=5.0)
+    parser.add_argument("--retry-backoff", type=float, default=5.0,
+                        help="Seconds before the first retry; grows x3 per attempt, max 60")
     return parser
 
 
@@ -69,6 +74,12 @@ def main(argv: Sequence[str] | None = None) -> int:
     parser = build_parser()
     args = parser.parse_args(argv)
     try:
+        env_file = args.env_file or Path(args.run_root) / "agent.env"
+        if args.env_file is not None and not env_file.is_file():
+            raise FileNotFoundError(f"--env-file not found: {env_file}")
+        loaded = load_env_file(env_file)
+        if loaded:
+            print(f"Loaded {', '.join(loaded)} from {env_file}", file=sys.stderr)
         config = AgentConfig(
             run_root=args.run_root, max_runtime_seconds=args.max_runtime,
             max_steps=args.max_steps, max_commands=args.max_commands,
@@ -79,6 +90,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             max_no_progress_cycles=args.max_no_progress,
             finalization_reserve_seconds=args.finalization_reserve,
             infrastructure_timeout_seconds=args.infrastructure_timeout,
+            retry_backoff_seconds=args.retry_backoff,
         )
         dependencies = load_dependencies(args.factory, config)
     except Exception as exc:

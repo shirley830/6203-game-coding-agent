@@ -115,6 +115,7 @@ def build_decision_prompt(
     files: Mapping[str, int] | None = None,
     history: Sequence[str] = (),
     notes: Sequence[str] = (),
+    environment: Sequence[str] = (),
 ) -> str:
     plan_json = json.dumps(to_jsonable(view.plan), ensure_ascii=False, indent=2)
     suite_json = json.dumps(to_jsonable(view.suite), ensure_ascii=False, indent=2)
@@ -124,6 +125,7 @@ def build_decision_prompt(
                    f"operation {view.last_failure.operation_key}:\n"
                    f"{view.last_failure.message[:4000]}")
     notes_text = "\n".join(f"- {note}" for note in notes) or "(none)"
+    environment_text = "\n".join(f"- {item}" for item in environment) or "(not checked)"
     history_text = "\n".join(history) or "(no actions yet)"
 
     return f"""
@@ -142,6 +144,9 @@ CURRENT PLAN (version {view.plan_version}):
 {plan_json}
 
 {TECHNICAL_GUIDANCE}
+
+MACHINE ENVIRONMENT (from the startup self-check; only plan commands that exist):
+{environment_text}
 
 FILES CURRENTLY IN game/:
 {_format_files(files or {})}
@@ -192,7 +197,8 @@ Allowed tool kinds and arguments:
 - read_file: {{"path": "..."}}
 - write_file: {{"path": "...", "content": "..."}}  (complete file content)
 - patch_file: {{"path": "...", "patch": "unified diff"}}
-- run_command: {{"argv": ["node", "--check", "game.js"], "cwd": "."}}
+- run_command: {{"argv": ["python3", "-m", "py_compile", "tool.py"], "cwd": "."}}
+  (optional; the verifier already loads the page and reports JavaScript errors)
 - install_dependencies: {{"packages": ["..."]}}
 
 Rules:

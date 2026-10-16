@@ -11,6 +11,9 @@ Environment variables (read here, never stored in state, prompts or traces):
 - ``AGENT_API_BASE``    optional custom endpoint for the course-provided API.
 - ``AGENT_MAX_TOKENS``  optional output limit per model call (default 16000).
 - ``AGENT_STRICT_SANDBOX``  ``0`` disables the OS command sandbox (not recommended).
+- ``AGENT_SKIP_PREFLIGHT``  ``1`` skips the startup self-check (not recommended).
+
+Values may also come from ``agent.env`` in the run directory (see ``agent/envfile.py``).
 """
 
 from __future__ import annotations
@@ -18,10 +21,12 @@ from __future__ import annotations
 import os
 from pathlib import Path
 import platform
+import sys
 
 from .config import AgentConfig
 from .controller import Dependencies
 from .planning import LiteLLMClient, LLMPlanner
+from .preflight import run_preflight
 from .recovery import RuleBasedRecovery
 from .tools import LocalRuntime, RuntimeSettings
 from .tracing.recorder import FileTraceRecorder
@@ -50,17 +55,27 @@ def create_dependencies(config: AgentConfig) -> Dependencies:
             "AGENT_MODEL is not set. Example: export AGENT_MODEL=anthropic/claude-sonnet-5-5 "
             "and the provider key (e.g. ANTHROPIC_API_KEY) before starting the agent."
         )
+    strict = os.environ.get("AGENT_STRICT_SANDBOX", "1") != "0"
+    browser_environment = _playwright_environment()
+    notes: list[str] = []
+    if os.environ.get("AGENT_SKIP_PREFLIGHT") != "1":
+        report = run_preflight(strict_sandbox=strict, browser_environment=browser_environment)
+        print(report.render(), file=sys.stderr)
+        if not report.ok:
+            # Stop before game/ exists: this run could never pass verification.
+            raise RuntimeError("Startup self-check failed: " + "; ".join(report.blocking))
+        notes = report.notes
     client = LiteLLMClient(
         model=model,
         api_base=os.environ.get("AGENT_API_BASE") or None,
         max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "16000")),
     )
     runtime = LocalRuntime(RuntimeSettings(
-        strict_os_sandbox=os.environ.get("AGENT_STRICT_SANDBOX", "1") != "0",
-        injected_environment=_playwright_environment(),
+        strict_os_sandbox=strict,
+        injected_environment=browser_environment,
     ))
     return Dependencies(
-        planner=LLMPlanner(client),
+        planner=LLMPlanner(client, environment_notes=notes),
         runtime=runtime,
         verifier=GameVerifier(),
         recovery=RuleBasedRecovery(),

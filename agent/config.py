@@ -18,6 +18,9 @@ class AgentConfig:
     max_no_progress_cycles: int = 5
     finalization_reserve_seconds: float = 10.0
     infrastructure_timeout_seconds: float = 5.0
+    # Wait before a RETRY: base * 3**(attempt-1), capped at 60s and at the
+    # remaining work time. 0 disables waiting (unit tests); the CLI uses 5s.
+    retry_backoff_seconds: float = 0.0
 
     def __post_init__(self) -> None:
         root = Path(self.run_root).expanduser().resolve()
@@ -40,6 +43,10 @@ class AgentConfig:
                 raise ValueError(f"{name} must be a finite positive number")
             if not math.isfinite(value) or value <= 0:
                 raise ValueError(f"{name} must be a finite positive number")
+        backoff = self.retry_backoff_seconds
+        if (isinstance(backoff, bool) or not isinstance(backoff, (int, float))
+                or not math.isfinite(backoff) or backoff < 0):
+            raise ValueError("retry_backoff_seconds must be a finite non-negative number")
         if self.finalization_reserve_seconds >= self.max_runtime_seconds:
             raise ValueError("The finalization reserve must be smaller than the total runtime")
 

@@ -66,3 +66,12 @@
 | 4 | `Member 4 verifier: integrate with real runtime and fix harness checks` |
 | 5 | `Member 5 recovery: regenerate malformed model output instead of aborting` |
 | 6 | `Member 6 tracing: copy output_refs, persist verification and checkpoints` |
+
+## 五、P0 加固（已完成）
+
+| 事项 | 实现 | 验证 |
+|---|---|---|
+| 模型重试退避 | 重试前依次等待 5s/15s/45s/60s（不超过剩余时间），重试上限 5 次；`--retry-backoff` 可调；trace 记录 `retry_backoff` 事件 | 模拟 API 连续返回两次 503，Agent 等待 5s、15s 后继续并最终成功 |
+| 启动自检 | `agent/preflight.py`：Python、python3、8000 端口、沙箱、Playwright Chromium 不满足时在创建 game/ 前停止；node/npm 是否存在等写入 planner 提示词 | `python -m agent.preflight` 可在演示机上单独运行 |
+| `agent.env` 配置 | 运行目录下的 `agent.env` 自动加载（shell 变量优先，只打印变量名）；沙箱禁止生成的代码读取该文件 | 只用 `python -m agent game_design_prompt.md` 一条命令完成运行；traces 中无 key |
+| 附带修复 | LiteLLM 出错时向 stdout 打印横幅，破坏 CLI 输出的 JSON；已关闭 | 回归测试 |
