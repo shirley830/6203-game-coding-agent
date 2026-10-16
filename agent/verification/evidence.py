@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -63,13 +64,13 @@ class EvidenceLedger:
 
         if kind == ToolKind.READ_FILE:
             path = ""
-            if isinstance(result.data, dict):
+            if isinstance(result.data, Mapping):
                 # Runtime may echo path; otherwise use observation snippet.
                 maybe = result.data.get("path")
                 if isinstance(maybe, str):
                     path = maybe
             text = ""
-            if isinstance(result.data, dict) and isinstance(result.data.get("text"), str):
+            if isinstance(result.data, Mapping) and isinstance(result.data.get("text"), str):
                 text = result.data["text"]
             elif result.observation:
                 text = result.observation
@@ -99,14 +100,16 @@ class EvidenceLedger:
 
 def _extract_paths(result: ToolResult) -> list[str]:
     paths: list[str] = []
-    data = result.data if isinstance(result.data, dict) else {}
+    data = result.data if isinstance(result.data, Mapping) else {}
     for key in ("files", "paths", "entries", "listing"):
         value = data.get(key)
         if isinstance(value, (list, tuple)):
             for item in value:
                 if isinstance(item, str):
                     paths.append(item)
-                elif isinstance(item, dict):
+                elif isinstance(item, Mapping):
+                    if item.get("type") not in (None, "file"):
+                        continue  # directories/symlinks cannot be read as files
                     name = item.get("path") or item.get("name")
                     if isinstance(name, str):
                         paths.append(name)
@@ -117,7 +120,7 @@ def _extract_paths(result: ToolResult) -> list[str]:
 
 
 def _parse_harness_json(observation: str, data: Any) -> dict[str, Any] | None:
-    if isinstance(data, dict):
+    if isinstance(data, Mapping):
         nested = data.get("harness") or data.get("verification") or data.get("json")
         if isinstance(nested, dict):
             return dict(nested)
@@ -233,7 +236,7 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
                 criterion_id=criterion.criterion_id,
                 status=status,
                 evidence_refs=tuple(refs) if refs else (f"missing:{criterion.criterion_id}",),
-                detail="; ".join(p for p in detail_parts if p)[:800],
+                detail="; ".join(dict.fromkeys(p for p in detail_parts if p))[:800],
             )
         )
     return tuple(results)

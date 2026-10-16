@@ -59,14 +59,11 @@ class GameVerifier:
         """Create a verifier.
 
         harness_path:
-            Absolute or member-local path to playwright_game_check.py.
-            Defaults to member4_ZHOU SIHAN/harness/playwright_game_check.py
-            relative to this file.
+            Path to playwright_game_check.py. Defaults to the copy shipped
+            inside this package so the submitted agent/ is self-contained.
         """
         if harness_path is None:
-            harness_path = (
-                Path(__file__).resolve().parents[2] / "harness" / "playwright_game_check.py"
-            )
+            harness_path = Path(__file__).resolve().with_name("playwright_game_check.py")
         self._harness_path = Path(harness_path).resolve()
         self._action_seq = 0
         self._reset_cycle()
@@ -145,8 +142,7 @@ class GameVerifier:
         if result is None or self._last_kind is None or self._last_action_id is None:
             # Missing observation: advance carefully without inventing PASS evidence.
             if self._step == _Step.INSPECT:
-                self._pending_reads = list(_CANDIDATE_FILES[:3])
-                self._step = _Step.READ
+                self._step = _Step.HARNESS
             elif self._step == _Step.READ:
                 self._step = _Step.HARNESS
             elif self._step == _Step.HARNESS:
@@ -154,7 +150,11 @@ class GameVerifier:
             return
 
         if result.action_id != self._last_action_id:
-            # Stale / unrelated result; do not treat as evidence for this step.
+            # The previous cycle was interrupted (failure -> recovery -> repair).
+            # Start a fresh cycle instead of mixing old evidence into this one.
+            key = self._cycle_key
+            self._reset_cycle()
+            self._cycle_key = key
             return
 
         self._ledger.ingest_result(result, self._last_kind, self._last_action_id)
@@ -169,24 +169,18 @@ class GameVerifier:
             self._step = _Step.REPORT
 
     def _select_reads(self, result: ToolResult) -> list[str]:
-        known = set(self._ledger.files_seen)
-        observation = (result.observation or "").lower()
-        data_blob = str(result.data).lower() if result.data else ""
-        combined = observation + "\n" + data_blob
-        selected: list[str] = []
-        for candidate in _CANDIDATE_FILES:
-            if candidate in self._reads_done:
-                continue
-            basename = candidate.split("/")[-1].lower()
-            if candidate in known or basename in combined or candidate.lower() in combined:
-                selected.append(candidate)
-        # Always try a small default set so static evidence exists even if inspect is sparse.
-        for fallback in ("README.md", "index.html", "main.js"):
-            if fallback not in selected and fallback not in self._reads_done:
-                selected.append(fallback)
-            if len(selected) >= 3:
+        """Read only files the inspection actually listed; a missing file would
+        otherwise become a tool failure and abort the verification cycle."""
+        listed = [p for p in self._ledger.files_seen if isinstance(p, str)]
+        listed_set = set(listed)
+        selected = [c for c in _CANDIDATE_FILES if c in listed_set and c not in self._reads_done]
+        # Fall back to any top-level HTML/JS sources when names are unconventional.
+        for path in listed:
+            if len(selected) >= 4:
                 break
-        return selected[:3]
+            if path.endswith((".html", ".js")) and path not in selected and path not in self._reads_done:
+                selected.append(path)
+        return selected[:4]
 
     def _next_read_path(self) -> str | None:
         while self._pending_reads:
@@ -210,8 +204,6 @@ class GameVerifier:
             str(self._harness_path),
             "--timeout-seconds",
             str(timeout),
-            "--evidence-dir",
-            ".verification-evidence",
         ]
         if launch:
             argv.append("--launch")
