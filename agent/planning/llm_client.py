@@ -28,6 +28,7 @@ class LiteLLMClient:
         api_base: str | None = None,
         max_tokens: int | None = None,
         temperature: float | None = None,
+        json_mode: bool = True,
     ) -> None:
         if not model.strip():
             raise ValueError("Model name must not be empty")
@@ -36,6 +37,9 @@ class LiteLLMClient:
         self.api_base = api_base
         self.max_tokens = max_tokens
         self.temperature = temperature
+        # Every caller expects one JSON object; JSON mode makes providers that
+        # support it emit syntactically valid JSON. Unsupported -> dropped.
+        self.json_mode = json_mode
 
     async def generate(
         self,
@@ -68,6 +72,9 @@ class LiteLLMClient:
             request["max_tokens"] = self.max_tokens
         if self.temperature is not None:
             request["temperature"] = self.temperature
+        if self.json_mode:
+            request["response_format"] = {"type": "json_object"}
+            request["drop_params"] = True
 
         response = await acompletion(**request)
         content = response.choices[0].message.content

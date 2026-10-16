@@ -175,7 +175,8 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float,
             page.add_init_script(_KEY_HOOK_JS)
             page.on("pageerror", lambda exc: page_errors.append(str(exc)[:300]))
             page.on("console", lambda msg: page_errors.append(
-                "console.error: " + msg.text[:300]) if msg.type == "error" else None)
+                "console.error: " + msg.text[:300])
+                if msg.type == "error" and not _is_favicon(msg) else None)
             page.set_default_timeout(action_timeout_ms)
             response = page.goto(url, wait_until="domcontentloaded", timeout=nav_timeout_ms)
             status = response.status if response is not None else 0
@@ -346,6 +347,14 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float,
         "checks": checks,
         "requirements": requirement_blocks,
     }
+
+
+def _is_favicon(msg: Any) -> bool:
+    """Browsers request /favicon.ico on their own; its 404 is not a game error."""
+    try:
+        return "favicon" in str((msg.location or {}).get("url", "")).lower()
+    except Exception:
+        return False
 
 
 _CLICKABLE = ("[data-cell]", "[data-index]", ".cell", ".card", ".tile", "td",

@@ -182,6 +182,16 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
     harness = ledger.harness
     checks = harness.get("checks") if isinstance(harness.get("checks"), dict) else harness
 
+    requirement_blocks = harness.get("requirements") if isinstance(harness.get("requirements"), Mapping) else {}
+    # Real input proven by a spec scenario is stronger evidence than the generic
+    # probe clicks/keys, which can miss small targets.
+    spec_input_proven = [
+        c.criterion_id for c in criteria
+        if c.criterion_id.startswith("REQ-") and c.category == "interaction"
+        and isinstance(requirement_blocks.get(c.criterion_id), Mapping)
+        and str(requirement_blocks[c.criterion_id].get("status", "")).lower() == "pass"
+    ]
+
     results: list[CriterionResult] = []
     for criterion in criteria:
         refs = list(ledger.refs_by_criterion.get(criterion.criterion_id, []))
@@ -235,7 +245,12 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
             status = CheckStatus.FAIL
             detail_parts.append("PASS claimed without evidence_refs")
 
-        if status == CheckStatus.PASS and criterion.category == "interaction" and not spec_criterion:
+        if (criterion.category == "interaction" and not spec_criterion
+                and status != CheckStatus.PASS and spec_input_proven):
+            status = CheckStatus.PASS
+            refs.extend(f"scenario:{cid}" for cid in spec_input_proven)
+            detail_parts.append("player input proven by spec scenario(s) " + ", ".join(spec_input_proven))
+        elif status == CheckStatus.PASS and criterion.category == "interaction" and not spec_criterion:
             if not _interaction_proven(ledger, refs):
                 status = CheckStatus.FAIL
                 detail_parts.append(

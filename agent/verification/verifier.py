@@ -18,6 +18,7 @@ from typing import Any
 
 from agent.state import (
     AcceptanceSuite,
+    Criterion,
     AgentView,
     CallLimits,
     ToolAction,
@@ -112,17 +113,25 @@ class GameVerifier:
                 system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(view.spec_text),
                 timeout_seconds=limits.timeout_seconds,
             )
-            acceptance = parse_spec_acceptance(reply)
+            acceptance = parse_spec_acceptance(reply, view.spec_text)
         except Exception as exc:  # noqa: BLE001 - one attempt, then a safe fallback
             # Verification must not depend on this call; keep the generic suite.
-            self.acceptance_note = f"generic criteria (spec derivation failed: {type(exc).__name__}: {str(exc)[:200]})"
-            return generic
+            self.acceptance_note = f"generic criteria (spec derivation failed: {type(exc).__name__}: {str(exc)[:300]})"
+            return AcceptanceSuite(generic.version, generic.criteria + (self._note_criterion(),))
         self._spec_acceptance = acceptance
-        self.acceptance_note = f"{len(acceptance.requirements)} spec-derived requirements"
+        self.acceptance_note = (f"{len(acceptance.requirements)} spec-derived requirements"
+                                + (f"; {'; '.join(acceptance.notes)}" if acceptance.notes else ""))
         return AcceptanceSuite(
             version=generic.version + "-spec",
-            criteria=generic.criteria + criteria_from(acceptance),
+            criteria=generic.criteria + criteria_from(acceptance) + (self._note_criterion(),),
         )
+
+    def _note_criterion(self) -> Criterion:
+        # Informational and non-mandatory: records in the trace how the suite
+        # was built (or why it fell back). Nothing to implement.
+        return Criterion("C-ACCEPTANCE-INFO",
+                         ("Informational only, nothing to implement: " + self.acceptance_note)[:900],
+                         "technical", mandatory=False)
 
     async def next_check(
         self, view: AgentView, limits: CallLimits,

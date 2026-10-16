@@ -94,6 +94,14 @@ class Contract(_Strict):
     state_fields: dict[str, str] = Field(min_length=1, max_length=20)
     test_hooks: dict[str, str] = Field(default_factory=dict, max_length=8)
 
+    @field_validator("state_fields", "test_hooks", mode="before")
+    @classmethod
+    def _describe_as_text(cls, value: Any) -> Any:
+        # Models often describe a field as a nested object; keep it as text.
+        if isinstance(value, dict):
+            return {k: v if isinstance(v, str) else json.dumps(v) for k, v in value.items()}
+        return value
+
     @model_validator(mode="after")
     def _names(self) -> "Contract":
         for name in [*self.state_fields, *self.test_hooks]:
@@ -102,9 +110,14 @@ class Contract(_Strict):
         return self
 
 
+MIN_REQUIREMENTS = 3
+_MOUSE_WORDS = re.compile(r"\b(mouse|click|clicks|clicking|tap|taps|pointer|touch|drag)\b", re.I)
+
+
 class SpecAcceptance(_Strict):
     state_contract: Contract
-    requirements: list[Requirement] = Field(min_length=3, max_length=10)
+    requirements: list[Requirement] = Field(min_length=MIN_REQUIREMENTS, max_length=10)
+    notes: list[str] = Field(default_factory=list)  # filled by the parser, not the model
 
     @model_validator(mode="after")
     def _consistent(self) -> "SpecAcceptance":
@@ -116,8 +129,6 @@ class SpecAcceptance(_Strict):
             for step in requirement.steps:
                 if step.call and step.call not in hooks:
                     raise ValueError(f"{requirement.id} calls undeclared hook {step.call}")
-        if not any(r.category == "interaction" for r in self.requirements):
-            raise ValueError("at least one requirement must test real player input")
         return self
 
 
@@ -164,7 +175,7 @@ Scenario steps (exactly one action per step):
 - {{"click": "#restart"}}                   click a DOM element by CSS selector (buttons by id or text)
 - {{"click_cell": [col, row]}}              click a grid cell on the canvas (needs state.grid)
 - {{"click_at": [0.5, 0.5]}}                click a point of the canvas as fractions of its size
-- {{"call": "setScore", "args": [9]}}       call a declared test hook
+- {{"call": "setScore", "args": [9]}}       call a declared test hook (always this exact form)
 - {{"wait": 300}}                          wait milliseconds (timers, delays)
 - {{"save": "x0", "expr": "s.player.x"}}     remember a value as saved.x0
 - {{"expect": "s.score === 0"}}             JavaScript boolean over s (= window.__gameState) and saved
@@ -180,6 +191,15 @@ Rules:
 - At least one requirement has category "interaction"; the rest "functional".
 - Prefer selectors the specification implies (for example a restart button):
   name the element id you require in the description, e.g. "#restart".
+- A correct implementation of the specification must pass every scenario.
+  Never rely on chance: random spawns, positions or timers that a scenario
+  depends on are set up with a declared hook first (for example
+  "placeCollectibleRightOfPlayer()"), then real input triggers the behaviour.
+- Keyboard games are driven by keys only; use click/click_cell/click_at only
+  when the specification describes mouse or touch input (buttons such as
+  "#restart" may always be clicked).
+- state_fields and test_hooks map names to one-line text descriptions.
+- Use only the step keys listed above; nothing else is accepted.
 """.strip()
 
 
@@ -211,10 +231,64 @@ def contract_description(contract: Contract) -> str:
             "preconditions and must use the real game logic; they never fake results.")
 
 
-def parse_spec_acceptance(reply: str) -> SpecAcceptance:
+def _normalize_hook_calls(raw: Any, hooks: set[str]) -> Any:
+    """Accept the shorthand {"placePlayer": [1, 1]} for a declared hook."""
+    if not isinstance(raw, dict) or not isinstance(raw.get("steps"), list):
+        return raw
+    steps = []
+    for step in raw["steps"]:
+        if isinstance(step, dict) and len(step) == 1:
+            (name, value), = step.items()
+            if name in hooks:
+                step = {"call": name, "args": value if isinstance(value, list) else
+                        ([] if value is None else [value])}
+        steps.append(step)
+    return {**raw, "steps": steps}
+
+
+def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAcceptance:
+    """Validate each requirement on its own and keep the valid ones.
+
+    One malformed requirement must not discard the whole suite. A requirement is
+    dropped (with a recorded reason) when it is invalid, calls an undeclared
+    hook, or uses canvas clicks although the specification never mentions a
+    mouse: a test a correct game cannot pass would make the agent loop.
+    """
     from agent.planning.parser import extract_json_object
 
-    return SpecAcceptance.model_validate_json(extract_json_object(reply))
+    document = json.loads(extract_json_object(reply))
+    if not isinstance(document, dict):
+        raise ValueError("acceptance document must be a JSON object")
+    contract = Contract.model_validate(document.get("state_contract"))
+    hooks = set(contract.test_hooks)
+    mouse_game = spec_text is None or bool(_MOUSE_WORDS.search(spec_text))
+    kept: list[Requirement] = []
+    notes: list[str] = []
+    seen: set[str] = set()
+    for index, raw in enumerate(document.get("requirements") or []):
+        label = raw.get("id", f"#{index + 1}") if isinstance(raw, dict) else f"#{index + 1}"
+        try:
+            requirement = Requirement.model_validate(_normalize_hook_calls(raw, hooks))
+        except Exception as exc:  # noqa: BLE001 - drop just this requirement
+            notes.append(f"dropped {label}: invalid ({str(exc).splitlines()[0][:120]})")
+            continue
+        undeclared = {step.call for step in requirement.steps if step.call and step.call not in hooks}
+        if undeclared:
+            notes.append(f"dropped {label}: undeclared hooks {sorted(undeclared)}")
+            continue
+        if not mouse_game and any(step.click_at or step.click_cell for step in requirement.steps):
+            notes.append(f"dropped {label}: canvas clicks in a specification without mouse input")
+            continue
+        if requirement.id in seen:
+            notes.append(f"dropped {label}: duplicate id")
+            continue
+        seen.add(requirement.id)
+        kept.append(requirement)
+        if len(kept) == 10:
+            break
+    if len(kept) < MIN_REQUIREMENTS:
+        raise ValueError(f"only {len(kept)} valid requirements; " + "; ".join(notes)[:400])
+    return SpecAcceptance(state_contract=contract, requirements=kept, notes=notes)
 
 
 def criteria_from(acceptance: SpecAcceptance) -> tuple[Criterion, ...]:

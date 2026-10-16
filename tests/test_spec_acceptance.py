@@ -155,16 +155,47 @@ class ParsingTests(unittest.TestCase):
         self.assertIn("window.__gameState", criteria[0].description)
         self.assertIn("[test:", criteria[3].description)
 
-    def test_invalid_documents_are_rejected(self):
+    def test_invalid_requirements_are_dropped_individually(self):
         bad_hook = json.loads(json.dumps(COLLECT_SPEC))
         bad_hook["requirements"][1]["steps"][0]["call"] = "cheat"
-        no_assert = json.loads(json.dumps(COLLECT_SPEC))
-        no_assert["requirements"][0]["steps"] = [{"key": "ArrowRight"}]
-        two_actions = json.loads(json.dumps(COLLECT_SPEC))
-        two_actions["requirements"][0]["steps"][1] = {"key": "ArrowRight", "wait": 10}
-        for document in (bad_hook, no_assert, two_actions):
-            with self.assertRaises(Exception):
-                parse_spec_acceptance(json.dumps(document))
+        bad_hook["requirements"][0]["steps"][1] = {"key": "ArrowRight", "wait": 10}
+        bad_hook["requirements"][2]["steps"].insert(0, {"resetGame": None})
+        with self.assertRaises(ValueError):  # only one valid requirement left
+            parse_spec_acceptance(json.dumps(bad_hook))
+        one_bad = json.loads(json.dumps(COLLECT_SPEC))
+        one_bad["requirements"][1]["steps"][0]["call"] = "cheat"
+        one_bad["requirements"].append({"id": "R5", "category": "functional",
+                                        "description": "no assertion", "steps": [{"key": "Space"}]})
+        acceptance = parse_spec_acceptance(json.dumps(one_bad))
+        self.assertEqual([r.id for r in acceptance.requirements], ["R1", "R3", "R4"])
+        self.assertTrue(any("R2" in n and "undeclared" in n for n in acceptance.notes))
+        self.assertTrue(any("R5" in n and "invalid" in n for n in acceptance.notes))
+
+    def test_nested_field_descriptions_are_accepted(self):
+        document = json.loads(json.dumps(COLLECT_SPEC))
+        document["state_contract"]["state_fields"]["player"] = {"x": "number", "y": "number"}
+        acceptance = parse_spec_acceptance(json.dumps(document) + "\nThanks! {\"extra\": 1}")
+        self.assertIn('"x"', acceptance.state_contract.state_fields["player"])
+
+    def test_hook_call_shorthand_is_accepted(self):
+        document = json.loads(json.dumps(COLLECT_SPEC))
+        document["requirements"][2]["steps"][0] = {"setScore": [9]}
+        document["requirements"][1]["steps"][0] = {"coinRightOfPlayer": None}
+        acceptance = parse_spec_acceptance(json.dumps(document))
+        self.assertEqual(len(acceptance.requirements), 4, acceptance.notes)
+        self.assertEqual(acceptance.requirements[2].steps[0].call, "setScore")
+        self.assertEqual(acceptance.requirements[2].steps[0].args, [9])
+
+    def test_canvas_clicks_dropped_for_keyboard_specs(self):
+        document = json.loads(json.dumps(COLLECT_SPEC))
+        document["requirements"].append({"id": "R9", "category": "functional",
+            "description": "Pickup by clicking", "steps": [{"click_at": [0.3, 0.3]},
+                                                            {"expect": "s.score === 1"}]})
+        keyboard = parse_spec_acceptance(json.dumps(document), "Move with arrow keys. Restart button.")
+        self.assertNotIn("R9", [r.id for r in keyboard.requirements])
+        self.assertTrue(any("R9" in n and "mouse" in n for n in keyboard.notes))
+        mouse = parse_spec_acceptance(json.dumps(document), "A mouse-controlled memory game.")
+        self.assertIn("R9", [r.id for r in mouse.requirements])
 
 
 class Client:
@@ -193,6 +224,9 @@ class VerifierWiringTests(unittest.IsolatedAsyncioTestCase):
         suite = await verifier.prepare_acceptance(view(phase=Phase.INITIALIZING), LIMITS)
         self.assertFalse(any(c.criterion_id.startswith("REQ-") for c in suite.criteria))
         self.assertIn("failed", verifier.acceptance_note)
+        info = next(c for c in suite.criteria if c.criterion_id == "C-ACCEPTANCE-INFO")
+        self.assertFalse(info.mandatory)
+        self.assertIn("failed", info.description)
 
     def test_unexecuted_scenario_fails_its_criterion(self):
         ledger = EvidenceLedger()
@@ -201,6 +235,28 @@ class VerifierWiringTests(unittest.IsolatedAsyncioTestCase):
         results = evaluate_criteria((Criterion("REQ-R1", "x", "interaction"),), ledger)
         self.assertEqual(results[0].status, CheckStatus.FAIL)
         self.assertIn("not executed", results[0].detail)
+
+    def test_generic_interaction_accepts_spec_scenario_proof(self):
+        ledger = EvidenceLedger()
+        ledger.harness = {"checks": {"interaction": {"status": "fail", "detail": "probe missed"}},
+                          "requirements": {"REQ-L1": {"status": "pass", "evidence_refs": ["s.png"]}}}
+        ledger.tool_ops.append("tool:run_command:x")
+        results = evaluate_criteria((Criterion("C-INTERACTION", "x", "interaction"),
+                                     Criterion("REQ-L1", "click", "interaction")), ledger)
+        self.assertEqual([r.status for r in results], [CheckStatus.PASS, CheckStatus.PASS])
+        self.assertIn("REQ-L1", results[0].detail)
+
+    def test_decision_format_slips_are_repaired(self):
+        from agent.planning.parser import parse_decision
+        from agent.state import RequestVerification, ToolAction
+        action = parse_decision('{"decision": "read_file", "path": "game.js"}')
+        self.assertIsInstance(action, ToolAction)
+        self.assertEqual((action.kind, dict(action.arguments)), (ToolKind.READ_FILE, {"path": "game.js"}))
+        verify = parse_decision('{"decision": "request_verification", "launch_command": ["a"], '
+                                '"rationale": "done"}\n{"second": true}')
+        self.assertIsInstance(verify, RequestVerification)
+        with self.assertRaises(Exception):
+            parse_decision('{"decision": "delete_everything"}')
 
     def test_planner_prompt_forbids_gaming_the_verifier(self):
         prompt = build_decision_prompt(view())
@@ -216,6 +272,8 @@ class HarnessScenarioTests(unittest.TestCase):
         statuses = {k: v["status"] for k, v in result["requirements"].items()}
         self.assertEqual(statuses, {"REQ-R1": "pass", "REQ-R2": "pass", "REQ-R3": "pass", "REQ-R4": "pass"},
                          result["requirements"])
+        # The browser's own /favicon.ico 404 is not a game error.
+        self.assertEqual(result["checks"]["functional"]["status"], "pass", result["page_errors"])
 
     def test_rule_violation_fails_with_the_failing_step(self):
         result = run_harness(COLLECT_GAME.replace("FREEZE", "false"), COLLECT_SPEC)

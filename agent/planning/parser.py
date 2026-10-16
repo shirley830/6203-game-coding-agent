@@ -1,3 +1,5 @@
+import json
+
 from pydantic import TypeAdapter
 
 from agent.state import (
@@ -20,10 +22,11 @@ from .schemas import (
 
 
 def extract_json_object(model_response: str) -> str:
-    """Return the JSON object in a model reply.
+    """Return the first complete JSON object in a model reply.
 
-    Models often wrap JSON in Markdown fences or add a sentence around it; the
-    contract is still one JSON object, so only that object is validated.
+    Models often wrap JSON in Markdown fences, add a sentence around it, or
+    append a second object; the contract is one JSON object, so only the first
+    complete object is used.
     """
     text = model_response.strip()
     if text.startswith("```"):
@@ -31,17 +34,84 @@ def extract_json_object(model_response: str) -> str:
         text = text[first_newline + 1:] if first_newline != -1 else ""
         if text.rstrip().endswith("```"):
             text = text.rstrip()[:-3]
-    start, end = text.find("{"), text.rfind("}")
-    if start == -1 or end < start:
+    start = text.find("{")
+    if start == -1:
         raise ValueError("Model reply contains no JSON object")
-    return text[start:end + 1]
+    try:
+        _, end = json.JSONDecoder().raw_decode(text, start)
+        return text[start:end]
+    except json.JSONDecodeError:
+        end = text.rfind("}")
+        if end < start:
+            raise ValueError("Model reply contains no JSON object")
+        return text[start:end + 1]
+
+
+_TOOL_KINDS = {"inspect_workspace", "read_file", "write_file", "patch_file",
+               "run_command", "install_dependencies"}
+_ARGUMENT_KEYS = {"path", "content", "patch", "argv", "cwd", "packages"}
+_DECISION_ALIASES = {
+    "tool": "tool_action", "action": "tool_action", "tool_call": "tool_action",
+    "verify": "request_verification", "verification": "request_verification",
+    "revise": "revise_plan", "replan": "revise_plan",
+}
+_DECISION_FIELDS = {
+    "tool_action": {"decision", "action_id", "kind", "arguments", "rationale"},
+    "request_verification": {"decision", "launch_command"},
+    "revise_plan": {"decision", "reason"},
+}
+
+
+def normalize_decision(payload: object) -> object:
+    """Repair common, unambiguous format slips before strict validation.
+
+    For example {"decision": "read_file", "path": "x"} becomes a tool_action of
+    kind read_file. Anything ambiguous is left for validation to reject.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    data = dict(payload)
+    decision = data.get("decision")
+    if decision in _TOOL_KINDS:
+        data.setdefault("kind", decision)
+        decision = "tool_action"
+    elif isinstance(decision, str) and decision in _DECISION_ALIASES:
+        decision = _DECISION_ALIASES[decision]
+    elif decision is None:
+        if data.get("kind") in _TOOL_KINDS:
+            decision = "tool_action"
+        elif "launch_command" in data:
+            decision = "request_verification"
+        elif "reason" in data:
+            decision = "revise_plan"
+    if decision not in _DECISION_FIELDS:
+        return payload
+    data["decision"] = decision
+    if decision == "tool_action":
+        arguments = dict(data.get("arguments") or {})
+        for key in _ARGUMENT_KEYS & set(data):
+            arguments.setdefault(key, data.pop(key))
+        data["arguments"] = arguments
+        data.setdefault("action_id", "auto")
+    return {key: value for key, value in data.items() if key in _DECISION_FIELDS[decision]}
+
+
+def _strip_plan(payload: object) -> object:
+    if not isinstance(payload, dict):
+        return payload
+    tasks = payload.get("tasks")
+    if isinstance(tasks, list):
+        allowed = {"task_id", "description", "requirement_ids", "depends_on"}
+        tasks = [{k: v for k, v in t.items() if k in allowed} if isinstance(t, dict) else t
+                 for t in tasks]
+    return {"plan_id": payload.get("plan_id", "plan"), "tasks": tasks}
 
 
 def parse_plan(
     model_response: str,
     suite: AcceptanceSuite,
 ) -> Plan:
-    payload = PlanOutput.model_validate_json(extract_json_object(model_response))
+    payload = PlanOutput.model_validate(_strip_plan(json.loads(extract_json_object(model_response))))
 
     criterion_ids = {
         criterion.criterion_id
@@ -115,7 +185,7 @@ def parse_decision(
     model_response: str,
 ) -> ToolAction | RequestVerification | RevisePlan:
     adapter = TypeAdapter(DecisionOutput)
-    payload = adapter.validate_json(extract_json_object(model_response))
+    payload = adapter.validate_python(normalize_decision(json.loads(extract_json_object(model_response))))
 
     if isinstance(payload, ToolActionOutput):
         return ToolAction(
