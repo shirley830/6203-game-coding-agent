@@ -58,29 +58,21 @@ def _wait_port(host: str, port: int, timeout: float) -> bool:
 
 
 def _terminate(proc: subprocess.Popen[Any] | None) -> None:
+    # The game server shares the harness process group, so the runtime's
+    # process-group cleanup still reaps it if this harness is killed.
     if proc is None or proc.poll() is not None:
         return
     try:
-        if os.name == "nt":
-            proc.terminate()
-        else:
-            os.killpg(proc.pid, signal.SIGTERM)
-    except OSError:
-        pass
-    try:
+        proc.terminate()
         proc.wait(timeout=3)
     except subprocess.TimeoutExpired:
-        try:
-            if os.name == "nt":
-                proc.kill()
-            else:
-                os.killpg(proc.pid, signal.SIGKILL)
-        except OSError:
-            pass
+        proc.kill()
         try:
             proc.wait(timeout=2)
         except subprocess.TimeoutExpired:
             pass
+    except OSError:
+        pass
 
 
 def _guess_url_from_argv(argv: list[str], default_port: int) -> str:
@@ -100,7 +92,7 @@ def _guess_url_from_argv(argv: list[str], default_port: int) -> str:
     return f"http://127.0.0.1:{default_port}/"
 
 
-def _start_launch(launch: list[str], cwd: Path, timeout: float) -> tuple[subprocess.Popen[Any] | None, str, str]:
+def _start_launch(launch: list[str], cwd: Path, timeout: float, log_path: Path | None = None) -> tuple[subprocess.Popen[Any] | None, str, str]:
     """Start the game process; return (proc, url, note)."""
     if not launch:
         # Static fallback: serve the current game directory.
@@ -117,20 +109,27 @@ def _start_launch(launch: list[str], cwd: Path, timeout: float) -> tuple[subproc
         url = _guess_url_from_argv(argv, port)
         note = "started provided launch_command"
 
+    log_stream: Any = subprocess.DEVNULL
+    if log_path is not None:
+        log_path.parent.mkdir(parents=True, exist_ok=True)
+        log_stream = log_path.open("wb")
     popen_kwargs: dict[str, Any] = {
         "cwd": str(cwd),
-        "stdout": subprocess.DEVNULL,
-        "stderr": subprocess.DEVNULL,
+        "stdout": log_stream,
+        "stderr": subprocess.STDOUT if log_path is not None else subprocess.DEVNULL,
     }
-    if os.name != "nt":
-        popen_kwargs["start_new_session"] = True
-    else:
-        popen_kwargs["creationflags"] = subprocess.CREATE_NEW_PROCESS_GROUP  # type: ignore[attr-defined]
+    # Deliberately no start_new_session: a detached session would escape the
+    # runtime's process-group cleanup after a harness timeout.
 
-    proc = subprocess.Popen(argv, **popen_kwargs)
     parsed = urlparse(url)
     host = parsed.hostname or "127.0.0.1"
     port_num = parsed.port or (443 if parsed.scheme == "https" else 80)
+    if _wait_port(host, port_num, 0.3):
+        # Another process already serves this port: checking it would verify
+        # the wrong program, so fail the launch criterion explicitly.
+        raise RuntimeError(f"port {port_num} is already in use before launch; "
+                           "stop the other server or choose another port")
+    proc = subprocess.Popen(argv, **popen_kwargs)
     ready = _wait_port(host, port_num, min(timeout * 0.4, 15.0))
     if not ready and proc.poll() is not None:
         return None, url, note + "; process exited before port was ready"
@@ -164,10 +163,15 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
     interaction_block = _check("fail", "not started", state_changed=False)
     technical_block = _check("fail", "not started")
 
+    page_errors: list[str] = []
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
             page = browser.new_page()
+            page.add_init_script(_KEY_HOOK_JS)
+            page.on("pageerror", lambda exc: page_errors.append(str(exc)[:300]))
+            page.on("console", lambda msg: page_errors.append(
+                "console.error: " + msg.text[:300]) if msg.type == "error" else None)
             page.set_default_timeout(action_timeout_ms)
             response = page.goto(url, wait_until="domcontentloaded", timeout=nav_timeout_ms)
             status = response.status if response is not None else 0
@@ -237,78 +241,56 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
                     evidence_refs=[f"screenshot:{screenshot.name}"],
                 )
 
-            # Interaction: attempt input and require an observable state change.
-            before_text = body_text
-            before_score = _extract_score(before_text)
-            before_pixels = None
-            if canvas_count > 0:
-                before_pixels = page.evaluate(
-                    """() => {
-                        const c = document.querySelector('canvas');
-                        if (!c) return null;
-                        const ctx = c.getContext('2d');
-                        if (!ctx) return null;
-                        const {width, height} = c;
-                        const data = ctx.getImageData(0, 0, Math.min(width, 64), Math.min(height, 64)).data;
-                        let sum = 0;
-                        for (let i = 0; i < data.length; i++) sum += data[i];
-                        return sum;
-                    }"""
-                )
+            # Interaction: snapshot after EACH input. Comparing only before/after a
+            # whole sequence misses games where opposite moves cancel out.
+            def snapshot() -> dict[str, Any]:
+                return page.evaluate(_SNAPSHOT_JS)
 
-            page.keyboard.press("ArrowRight")
-            page.keyboard.press("ArrowLeft")
-            page.keyboard.press("ArrowUp")
-            page.keyboard.press("ArrowDown")
-            page.keyboard.press("Space")
-            page.keyboard.press("KeyP")
-            # Click restart-like controls if present.
-            for selector in (
-                "button:has-text('Restart')",
-                "button:has-text('Start')",
-                "text=Restart",
-                "text=Start",
-            ):
+            idle_a = snapshot()
+            page.wait_for_timeout(300)
+            idle_b = snapshot()
+            canvas_animated = idle_a["canvas"] != idle_b["canvas"]
+            text_animated = idle_a["text"] != idle_b["text"]
+            reasons: list[str] = []
+            previous = idle_b
+            for key in ("ArrowRight", "ArrowDown", "ArrowLeft", "ArrowUp",
+                        "KeyD", "KeyS", "Space", "Enter"):
+                page.keyboard.down(key)
+                page.wait_for_timeout(120)
+                page.keyboard.up(key)
+                page.wait_for_timeout(150)
+                current = snapshot()
+                if not canvas_animated and current["canvas"] != previous["canvas"]:
+                    reasons.append(f"canvas_changed_after_{key}")
+                if not text_animated and current["text"] != previous["text"]:
+                    reasons.append(f"dom_text_changed_after_{key}")
+                before_score = _extract_score(previous["text"])
+                after_score = _extract_score(current["text"])
+                if before_score is not None and after_score is not None and before_score != after_score:
+                    reasons.append(f"score {before_score}->{after_score} after {key}")
+                previous = current
+            handled = page.evaluate("() => window.__agentKeyEvents || 0")
+            if canvas_animated and handled:
+                # Animated scenes change anyway; require the game's own key
+                # handlers to have run while the frame kept updating.
+                reasons.append(f"animated_canvas_and_{handled}_key_handler_calls")
+            page.wait_for_timeout(200)
+            page.screenshot(path=str(after_input), full_page=True)
+            # Pointer and restart-like controls are exercised after the key checks.
+            for selector in ("button:has-text('Restart')", "button:has-text('Start')"):
                 locator = page.locator(selector)
                 if locator.count():
                     try:
+                        before_click = snapshot()
                         locator.first.click(timeout=1000)
+                        page.wait_for_timeout(200)
+                        if snapshot() != before_click:
+                            reasons.append("state_changed_after_button_click")
                     except Exception:
                         pass
                     break
-            page.mouse.click(120, 120)
-            page.wait_for_timeout(500)
-            page.screenshot(path=str(after_input), full_page=True)
-
-            after_text = page.locator("body").inner_text(timeout=action_timeout_ms)[:2000]
-            after_score = _extract_score(after_text)
-            after_pixels = None
-            if canvas_count > 0:
-                after_pixels = page.evaluate(
-                    """() => {
-                        const c = document.querySelector('canvas');
-                        if (!c) return null;
-                        const ctx = c.getContext('2d');
-                        if (!ctx) return null;
-                        const {width, height} = c;
-                        const data = ctx.getImageData(0, 0, Math.min(width, 64), Math.min(height, 64)).data;
-                        let sum = 0;
-                        for (let i = 0; i < data.length; i++) sum += data[i];
-                        return sum;
-                    }"""
-                )
-
-            state_changed = False
-            reasons: list[str] = []
-            if before_text != after_text:
-                state_changed = True
-                reasons.append("dom_text_changed")
-            if before_score is not None and after_score is not None and before_score != after_score:
-                state_changed = True
-                reasons.append(f"score {before_score}->{after_score}")
-            if before_pixels is not None and after_pixels is not None and before_pixels != after_pixels:
-                state_changed = True
-                reasons.append("canvas_pixels_changed")
+            state_changed = bool(reasons)
+            reasons = list(dict.fromkeys(reasons))[:12]
 
             if state_changed:
                 interaction_block = _check(
@@ -331,7 +313,13 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
         finally:
             browser.close()
 
+    if page_errors and functional_block["status"] == "pass":
+        functional_block = _check(
+            "fail", "JavaScript errors at runtime: " + " | ".join(page_errors[:5]),
+            evidence_refs=list(functional_block.get("evidence_refs", [])),
+        )
     return {
+        "page_errors": page_errors[:20],
         "ok": all(
             block["status"] == "pass"
             for block in (launch_block, functional_block, interaction_block)
@@ -343,6 +331,38 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
             "technical": technical_block,
         },
     }
+
+
+# Counts calls into the game's own keyboard handlers (registered via
+# addEventListener or on* properties) without changing their behaviour.
+_KEY_HOOK_JS = """
+(() => {
+  window.__agentKeyEvents = 0;
+  const KEYS = new Set(['keydown', 'keyup', 'keypress']);
+  const original = EventTarget.prototype.addEventListener;
+  EventTarget.prototype.addEventListener = function (type, listener, options) {
+    if (KEYS.has(type) && typeof listener === 'function') {
+      const wrapped = function (...args) { window.__agentKeyEvents++; return listener.apply(this, args); };
+      return original.call(this, type, wrapped, options);
+    }
+    return original.call(this, type, listener, options);
+  };
+  for (const target of [window, document]) {
+    original.call(target, 'keydown', () => {
+      if (target.onkeydown) window.__agentKeyEvents++;
+    }, true);
+  }
+})();
+"""
+
+# Text plus a cheap hash of every canvas (full surface, not a corner).
+_SNAPSHOT_JS = """() => {
+  const hash = (s) => { let h = 0; for (let i = 0; i < s.length; i += 7) h = (h * 31 + s.charCodeAt(i)) | 0; return h; };
+  const canvases = [...document.querySelectorAll('canvas')].map((c) => {
+    try { return hash(c.toDataURL()); } catch (e) { return 'unreadable'; }
+  });
+  return {text: (document.body ? document.body.innerText : '').slice(0, 2000), canvas: canvases.join(',')};
+}"""
 
 
 def _extract_score(text: str) -> int | None:
@@ -358,7 +378,10 @@ def _extract_score(text: str) -> int | None:
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Bounded Playwright game verification harness")
     parser.add_argument("--timeout-seconds", type=float, default=40.0)
-    parser.add_argument("--evidence-dir", type=str, default=".verification-evidence")
+    parser.add_argument(
+        "--evidence-dir", type=str, default=os.environ.get("AGENT_ARTIFACT_DIR", ""),
+        help="Screenshot directory; defaults to the runtime-provided AGENT_ARTIFACT_DIR",
+    )
     parser.add_argument("--url", type=str, default="")
     parser.add_argument(
         "--launch",
@@ -370,7 +393,12 @@ def main(argv: list[str] | None = None) -> int:
 
     deadline = time.monotonic() + max(5.0, args.timeout_seconds)
     cwd = Path.cwd()
-    evidence_dir = cwd / args.evidence_dir
+    if args.evidence_dir:
+        evidence_dir = Path(args.evidence_dir)
+    else:
+        # Never write evidence into game/: it would change the workspace revision.
+        import tempfile
+        evidence_dir = Path(tempfile.mkdtemp(prefix="harness-evidence-"))
     launch = [part for part in (args.launch or []) if part != "--"]
 
     proc: subprocess.Popen[Any] | None = None
@@ -379,7 +407,7 @@ def main(argv: list[str] | None = None) -> int:
     try:
         remaining = deadline - time.monotonic()
         if not url:
-            proc, url, note = _start_launch(launch, cwd, remaining)
+            proc, url, note = _start_launch(launch, cwd, remaining, evidence_dir / "game_server.log")
         else:
             note = "using provided --url"
 
@@ -403,6 +431,7 @@ def main(argv: list[str] | None = None) -> int:
         result["note"] = note
         result["url"] = url
         result["launch_argv"] = launch
+        result["artifacts"] = sorted(str(path) for path in evidence_dir.iterdir() if path.is_file())
         _print_json(result)
         return 0 if result.get("ok") else 0  # checks encoded in JSON; controller reads evidence
     except Exception as exc:  # noqa: BLE001 - harness must always emit JSON

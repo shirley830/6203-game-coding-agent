@@ -221,7 +221,7 @@ class VerifierFlowTests(unittest.IsolatedAsyncioTestCase):
 
 class HarnessScriptSmokeTests(unittest.TestCase):
     def test_integrated_harness_file_exists(self):
-        path = _REPO_ROOT / "harness" / "playwright_game_check.py"
+        path = _REPO_ROOT / "agent" / "verification" / "playwright_game_check.py"
         self.assertTrue(path.is_file())
 
 
