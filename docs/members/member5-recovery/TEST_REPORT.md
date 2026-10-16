@@ -1,3 +1,5 @@
+> **Historical record.** Written before team integration; counts and paths are out of date. Current status: [docs/testing/README.md](../../testing/README.md).
+
 # Member 5 Test Report
 
 Tested on 2026-10-13 against main b2aa330, using bundled Python.

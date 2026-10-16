@@ -18,6 +18,7 @@ import shutil
 import tempfile
 from typing import Any, Mapping
 
+from agent.tracing.usage import UsageMeter
 from agent.state import (
     DeliveryReport,
     ExecutionContext,
@@ -43,15 +44,19 @@ class FileTraceRecorder:
         evidence/             verification screenshots per action seq + index.jsonl
         outputs/index.jsonl   original ref -> copied file, with sha256
         verification/         one JSON file per VerificationReport
+        model_usage.jsonl     one line per model call: role, tokens, latency, cost
         summary.json          RunSummary written by finalize()
         run_report.md         human-readable timeline written by finalize()
     """
 
-    def __init__(self) -> None:
+    def __init__(self, usage: "UsageMeter | None" = None) -> None:
         self._context: ExecutionContext | None = None
         self._next_seq = 1
         self._lock = asyncio.Lock()
         self._copied: list[Path] = []
+        # Model-call accounting filled by the LLM clients (tokens, latency, cost).
+        self._usage = usage
+        self._usage_written = 0
 
     def _trace_dir(self) -> Path:
         if self._context is None:
@@ -238,6 +243,16 @@ class FileTraceRecorder:
             await asyncio.to_thread(self._append_line, self._trace_dir() / "events.jsonl", line)
             self._next_seq += 1
             await asyncio.to_thread(self._persist_side_files, record)
+            await asyncio.to_thread(self._flush_usage)
+
+    def _flush_usage(self) -> None:
+        if self._usage is None:
+            return
+        new = self._usage.since(self._usage_written)
+        for call in new:
+            self._append_line_create(self._trace_dir() / "model_usage.jsonl",
+                                     json.dumps(call.to_json(), ensure_ascii=False))
+        self._usage_written += len(new)
 
     def _persist_side_files(self, record: dict[str, Any]) -> None:
         """Copy referenced outputs and verification reports into traces/<run_id>/."""
@@ -322,6 +337,7 @@ class FileTraceRecorder:
                 self._trace_dir() / "summary.json",
                 summary,
             )
+            await asyncio.to_thread(self._flush_usage)
             await asyncio.to_thread(self._write_run_report, summary)
             problems = await asyncio.to_thread(self._verify_preserved, summary)
             if problems:
@@ -362,7 +378,10 @@ class FileTraceRecorder:
         events_path = self._trace_dir() / "events.jsonl"
         events = [json.loads(line) for line in
                   events_path.read_text(encoding="utf-8").splitlines() if line.strip()]
-        text = render_run_report(events, to_jsonable(summary))
+        usage_path = self._trace_dir() / "model_usage.jsonl"
+        usage = ([json.loads(line) for line in usage_path.read_text(encoding="utf-8").splitlines()
+                  if line.strip()] if usage_path.is_file() else [])
+        text = render_run_report(events, to_jsonable(summary), usage)
         temporary = self._trace_dir() / ".run_report.md.tmp"
         temporary.write_text(text, encoding="utf-8")
         os.replace(temporary, self._trace_dir() / "run_report.md")

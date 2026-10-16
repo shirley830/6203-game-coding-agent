@@ -18,6 +18,7 @@ from agent.verification.spec_criteria import (
 )
 from tests.test_integration_tasks import LIMITS, view
 
+FIXTURES = Path(__file__).resolve().parent / "fixtures" / "games"
 HARNESS = Path(__file__).resolve().parents[1] / "agent" / "verification" / "playwright_game_check.py"
 
 COLLECT_SPEC = {
@@ -44,35 +45,7 @@ COLLECT_SPEC = {
     ],
 }
 
-COLLECT_GAME = """<!doctype html><html><body>
-<p id="score">Score: 0</p><button id="restart">Restart</button>
-<canvas id="c" width="300" height="200"></canvas>
-<script>
-const st = {score: 0, status: 'playing', player: {x: 20, y: 100}, coin: {x: 200, y: 100}};
-window.__gameState = st;
-const ctx = document.getElementById('c').getContext('2d');
-function draw() { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 300, 200);
-  ctx.fillStyle = '#ff0'; ctx.fillRect(st.coin.x, st.coin.y, 10, 10);
-  ctx.fillStyle = '#0f0'; ctx.fillRect(st.player.x, st.player.y, 10, 10);
-  document.getElementById('score').textContent = 'Score: ' + st.score; }
-window.__gameTest = {
-  setScore(n) { st.score = n; draw(); },
-  coinRightOfPlayer() { st.coin = {x: st.player.x + 20, y: st.player.y}; draw(); },
-};
-addEventListener('keydown', (e) => {
-  if (FREEZE && st.status !== 'playing') return;
-  if (e.key === 'ArrowRight') st.player.x += 20;
-  if (e.key === 'ArrowLeft') st.player.x -= 20;
-  if (Math.abs(st.player.x - st.coin.x) < 10 && st.player.y === st.coin.y) {
-    st.score += 1; st.coin = {x: 250, y: 30};
-    if (st.score >= 10) st.status = 'won';
-  }
-  draw();
-});
-document.getElementById('restart').onclick = () => {
-  st.score = 0; st.status = 'playing'; st.player = {x: 20, y: 100}; draw(); };
-draw();
-</script></body></html>"""
+COLLECT_GAME = (FIXTURES / "contract_collect.html").read_text(encoding="utf-8")
 
 LIGHTS_SPEC = {
     "state_contract": {"state_fields": {"grid": "{cols, rows}", "lights": "16 booleans",
@@ -89,27 +62,7 @@ LIGHTS_SPEC = {
     ],
 }
 
-LIGHTS_GAME = """<!doctype html><html><body><p id="moves">Moves: 0</p>
-<canvas id="c" width="200" height="200"></canvas>
-<script>
-const st = {grid: {cols: 4, rows: 4}, lights: Array(16).fill(false), moves: 0};
-window.__gameState = st;
-const c = document.getElementById('c'), ctx = c.getContext('2d');
-function draw() { for (let i = 0; i < 16; i++) { ctx.fillStyle = st.lights[i] ? '#ff0' : '#333';
-  ctx.fillRect((i % 4) * 50 + 2, Math.floor(i / 4) * 50 + 2, 46, 46); }
-  document.getElementById('moves').textContent = 'Moves: ' + st.moves; }
-c.addEventListener('click', (e) => {
-  const r = c.getBoundingClientRect();
-  const col = Math.floor((e.clientX - r.left) / (r.width / 4));
-  const row = Math.floor((e.clientY - r.top) / (r.height / 4));
-  for (const [dc, dr] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]) {
-    const cc = col + dc, rr = row + dr;
-    if (cc >= 0 && cc < 4 && rr >= 0 && rr < 4) st.lights[rr * 4 + cc] = !st.lights[rr * 4 + cc];
-  }
-  st.moves += 1; draw();
-});
-draw();
-</script></body></html>"""
+LIGHTS_GAME = (FIXTURES / "contract_lights_out.html").read_text(encoding="utf-8")
 
 
 def _free_port():

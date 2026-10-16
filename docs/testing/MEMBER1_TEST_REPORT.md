@@ -1,3 +1,5 @@
+> **Historical record.** Written before team integration; counts and paths are out of date. Current status: [docs/testing/README.md](README.md).
+
 # Member 1 Verification Record
 
 Verification date: 2026-10-11, Asia/Singapore.

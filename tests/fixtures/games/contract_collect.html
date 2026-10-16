@@ -1,0 +1,29 @@
+<!doctype html><html><body>
+<p id="score">Score: 0</p><button id="restart">Restart</button>
+<canvas id="c" width="300" height="200"></canvas>
+<script>
+const st = {score: 0, status: 'playing', player: {x: 20, y: 100}, coin: {x: 200, y: 100}};
+window.__gameState = st;
+const ctx = document.getElementById('c').getContext('2d');
+function draw() { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, 300, 200);
+  ctx.fillStyle = '#ff0'; ctx.fillRect(st.coin.x, st.coin.y, 10, 10);
+  ctx.fillStyle = '#0f0'; ctx.fillRect(st.player.x, st.player.y, 10, 10);
+  document.getElementById('score').textContent = 'Score: ' + st.score; }
+window.__gameTest = {
+  setScore(n) { st.score = n; draw(); },
+  coinRightOfPlayer() { st.coin = {x: st.player.x + 20, y: st.player.y}; draw(); },
+};
+addEventListener('keydown', (e) => {
+  if (FREEZE && st.status !== 'playing') return;
+  if (e.key === 'ArrowRight') st.player.x += 20;
+  if (e.key === 'ArrowLeft') st.player.x -= 20;
+  if (Math.abs(st.player.x - st.coin.x) < 10 && st.player.y === st.coin.y) {
+    st.score += 1; st.coin = {x: 250, y: 30};
+    if (st.score >= 10) st.status = 'won';
+  }
+  draw();
+});
+document.getElementById('restart').onclick = () => {
+  st.score = 0; st.status = 'playing'; st.player = {x: 20, y: 100}; draw(); };
+draw();
+</script></body></html>

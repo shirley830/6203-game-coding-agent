@@ -14,6 +14,7 @@ fails on interaction, recovery chooses REPAIR, and a fixed game then passes.
 from __future__ import annotations
 
 import json
+from pathlib import Path
 import re
 
 from agent.config import AgentConfig
@@ -27,49 +28,14 @@ from agent.verification import GameVerifier
 from agent.integrations import _playwright_environment
 
 
-_PAGE = """<!doctype html>
-<html><head><meta charset="utf-8"><title>Collector</title></head>
-<body>
-<p id="score">Score: 0</p>
-<p>Controls: arrow keys move. <button id="restart">Restart</button></p>
-<canvas id="board" width="320" height="240"></canvas>
-<script src="game.js"></script>
-</body></html>
-"""
+# Hand-written fixture games for the offline rehearsal only; the agent never
+# reads tests/. See tests/fixtures/README.md.
+_FIXTURES = Path(__file__).resolve().parent / "fixtures" / "games"
+_PAGE = (_FIXTURES / "rehearsal_index.html").read_text(encoding="utf-8")
 
-_BROKEN_JS = """const ctx = document.getElementById('board').getContext('2d');
-let player = {x: 20, y: 20};
-function draw() {
-  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, 320, 240);
-  ctx.fillStyle = '#3c6'; ctx.fillRect(player.x, player.y, 16, 16);
-}
-draw();
-"""
+_BROKEN_JS = (_FIXTURES / "rehearsal_broken_game.js").read_text(encoding="utf-8")
 
-_FIXED_JS = """const ctx = document.getElementById('board').getContext('2d');
-const scoreEl = document.getElementById('score');
-let player, coin, score;
-function reset() { player = {x: 20, y: 20}; coin = {x: 60, y: 20}; score = 0; render(); }
-function render() {
-  ctx.fillStyle = '#111'; ctx.fillRect(0, 0, 320, 240);
-  ctx.fillStyle = '#fc3'; ctx.fillRect(coin.x, coin.y, 12, 12);
-  ctx.fillStyle = '#3c6'; ctx.fillRect(player.x, player.y, 16, 16);
-  scoreEl.textContent = 'Score: ' + score;
-}
-const moves = {ArrowRight: [20, 0], ArrowLeft: [-20, 0], ArrowUp: [0, -20], ArrowDown: [0, 20]};
-window.addEventListener('keydown', (event) => {
-  const step = moves[event.key];
-  if (!step) return;
-  player.x = Math.max(0, Math.min(304, player.x + step[0]));
-  player.y = Math.max(0, Math.min(224, player.y + step[1]));
-  if (Math.abs(player.x - coin.x) < 16 && Math.abs(player.y - coin.y) < 16) {
-    score += 1; coin = {x: (coin.x + 100) % 300, y: (coin.y + 60) % 220};
-  }
-  render();
-});
-document.getElementById('restart').addEventListener('click', reset);
-reset();
-"""
+_FIXED_JS = (_FIXTURES / "rehearsal_fixed_game.js").read_text(encoding="utf-8")
 
 
 def _write(path: str, content: str) -> str:

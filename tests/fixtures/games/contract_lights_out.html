@@ -1,0 +1,21 @@
+<!doctype html><html><body><p id="moves">Moves: 0</p>
+<canvas id="c" width="200" height="200"></canvas>
+<script>
+const st = {grid: {cols: 4, rows: 4}, lights: Array(16).fill(false), moves: 0};
+window.__gameState = st;
+const c = document.getElementById('c'), ctx = c.getContext('2d');
+function draw() { for (let i = 0; i < 16; i++) { ctx.fillStyle = st.lights[i] ? '#ff0' : '#333';
+  ctx.fillRect((i % 4) * 50 + 2, Math.floor(i / 4) * 50 + 2, 46, 46); }
+  document.getElementById('moves').textContent = 'Moves: ' + st.moves; }
+c.addEventListener('click', (e) => {
+  const r = c.getBoundingClientRect();
+  const col = Math.floor((e.clientX - r.left) / (r.width / 4));
+  const row = Math.floor((e.clientY - r.top) / (r.height / 4));
+  for (const [dc, dr] of [[0,0],[1,0],[-1,0],[0,1],[0,-1]]) {
+    const cc = col + dc, rr = row + dr;
+    if (cc >= 0 && cc < 4 && rr >= 0 && rr < 4) st.lights[rr * 4 + cc] = !st.lights[rr * 4 + cc];
+  }
+  st.moves += 1; draw();
+});
+draw();
+</script></body></html>

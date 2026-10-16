@@ -1,3 +1,5 @@
+> **Historical record.** Written before team integration; counts and paths are out of date. Current status: [docs/testing/README.md](../../testing/README.md).
+
 # Member 3 Runtime Test Report
 
 Verification date: 2026-10-13, Asia/Singapore.

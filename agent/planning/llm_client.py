@@ -1,4 +1,5 @@
-from typing import Protocol
+import time
+from typing import Any, Protocol
 
 import litellm
 from litellm import acompletion
@@ -6,6 +7,8 @@ from litellm import acompletion
 # LiteLLM prints a feedback banner to stdout on every error, which would corrupt
 # the CLI's JSON RunSummary on stdout. Errors still reach the controller.
 litellm.suppress_debug_info = True
+
+from agent.tracing.usage import UsageMeter  # noqa: E402
 
 
 class LLMClient(Protocol):
@@ -29,6 +32,8 @@ class LiteLLMClient:
         max_tokens: int | None = None,
         temperature: float | None = None,
         json_mode: bool = True,
+        role: str = "model",
+        usage: "UsageMeter | None" = None,
     ) -> None:
         if not model.strip():
             raise ValueError("Model name must not be empty")
@@ -40,6 +45,9 @@ class LiteLLMClient:
         # Every caller expects one JSON object; JSON mode makes providers that
         # support it emit syntactically valid JSON. Unsupported -> dropped.
         self.json_mode = json_mode
+        # Accounting only (tokens, latency, cost); never prompt text or keys.
+        self.role = role
+        self.usage = usage
 
     async def generate(
         self,
@@ -76,10 +84,38 @@ class LiteLLMClient:
             request["response_format"] = {"type": "json_object"}
             request["drop_params"] = True
 
-        response = await acompletion(**request)
+        started = time.monotonic()
+        try:
+            response = await acompletion(**request)
+        except BaseException as exc:
+            self._record(started, ok=False, error=type(exc).__name__)
+            raise
+        self._record(started, ok=True, response=response)
         content = response.choices[0].message.content
 
         if not isinstance(content, str) or not content.strip():
             raise ValueError("Model returned empty text content")
 
         return content
+
+    def _record(self, started: float, *, ok: bool, response: Any = None,
+                error: str | None = None) -> None:
+        if self.usage is None:
+            return
+        prompt_tokens = completion_tokens = None
+        cost = None
+        usage = getattr(response, "usage", None)
+        if usage is not None:
+            prompt_tokens = getattr(usage, "prompt_tokens", None)
+            completion_tokens = getattr(usage, "completion_tokens", None)
+        if response is not None:
+            try:
+                cost = float(litellm.completion_cost(completion_response=response))
+            except Exception:  # noqa: BLE001 - pricing unknown for some models
+                cost = None
+            if cost == 0.0 and (prompt_tokens or completion_tokens):
+                cost = None  # LiteLLM returns 0 for models it has no price for
+        self.usage.record(role=self.role, model=self.model, ok=ok,
+                          latency_seconds=round(time.monotonic() - started, 3),
+                          prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
+                          cost_usd=cost, error=error)

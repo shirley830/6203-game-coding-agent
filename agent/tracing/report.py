@@ -30,7 +30,8 @@ def _describe_action(action: dict[str, Any]) -> str:
     return str(kind)
 
 
-def render_run_report(events: list[dict[str, Any]], summary: dict[str, Any]) -> str:
+def render_run_report(events: list[dict[str, Any]], summary: dict[str, Any],
+                      usage: list[dict[str, Any]] | None = None) -> str:
     lines = [
         f"# Run report `{summary.get('run_id')}`",
         "",
@@ -82,6 +83,18 @@ def render_run_report(events: list[dict[str, Any]], summary: dict[str, Any]) -> 
                              f"{_cell(row.get('detail'), 200)} |")
         lines.append("")
 
+    if usage:
+        from agent.tracing.usage import summarise
+
+        lines += ["## Model usage", "",
+                  "| Role | Calls | Failed | Prompt tokens | Completion tokens | Model time | Est. cost |",
+                  "|---|---|---|---|---|---|---|"]
+        for role, row in summarise(usage).items():
+            cost = f"${row['cost_usd']:.4f}" if row["cost_known"] else "unknown"
+            lines.append(f"| {role} | {row['calls']} | {row['failed']} | {row['prompt_tokens']} | "
+                         f"{row['completion_tokens']} | {row['seconds']:.0f}s | {cost} |")
+        lines.append("")
+
     lines += ["## Timeline", "", "| Seq | Phase | Event | Detail |", "|---|---|---|---|"]
     for event in events:
         payload = event.get("payload") or {}
@@ -90,9 +103,12 @@ def render_run_report(events: list[dict[str, Any]], summary: dict[str, Any]) -> 
         if kind == "transition":
             detail = f"{payload.get('from')} → {payload.get('to')}"
         elif kind == "action_start":
-            detail = _describe_action(payload.get("action") or {})
+            action = payload.get("action") or {}
+            detail = _describe_action(action)
             if payload.get("retry"):
                 detail += " (retry)"
+            if action.get("rationale"):
+                detail += f" — *why:* {_short(action['rationale'], 150)}"
         elif kind == "action_result":
             result = payload.get("result") or {}
             detail = f"{result.get('status')}: {_short(result.get('observation'), 140)}"
@@ -118,5 +134,5 @@ def render_run_report(events: list[dict[str, Any]], summary: dict[str, Any]) -> 
         lines.append(f"| {event.get('seq')} | {event.get('phase')} | {kind} | {_cell(detail, 240)} |")
     lines.append("")
     lines.append("Raw data: `events.jsonl` (all events), `checkpoints.jsonl`, `outputs/index.jsonl`, "
-                 "`verification/`, `summary.json`.")
+                 "`evidence/`, `verification/`, `model_usage.jsonl`, `summary.json`.")
     return "\n".join(lines) + "\n"

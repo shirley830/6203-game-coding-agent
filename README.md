@@ -8,7 +8,7 @@
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Controller implemented](https://img.shields.io/badge/Controller-implemented-137C66?style=flat-square)
-![137 local tests passed](https://img.shields.io/badge/Local_tests-137_passed-137C66?style=flat-square)
+![191 local tests passed](https://img.shields.io/badge/Local_tests-191_passed-137C66?style=flat-square)
 ![Team modules integrated](https://img.shields.io/badge/Team_modules-integrated-137C66?style=flat-square)
 
 [Quick start](#quick-start) &nbsp; / &nbsp; [Architecture](#architecture) &nbsp; / &nbsp; [Team contracts](docs/INTERFACES.md) &nbsp; / &nbsp; [Integration review](docs/INTEGRATION_REVIEW_CN.md)
@@ -86,7 +86,7 @@ The agent creates `game/` (with `README.md` and the launch command), `traces/<ru
 ### 4. Checks and offline rehearsal
 
 ```bash
-python -m pytest -q                                   # 137 tests incl. end-to-end
+python -m pytest -q                                   # 191 tests incl. end-to-end
 PYTHONPATH=<repo> python -m agent game_design_prompt.md \
     --factory tests.rehearsal_factory:create_dependencies   # no API key needed
 python -m agent.delivery traces/<run_id>              # audit a finished trace
@@ -260,7 +260,7 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── INTERFACES.md        # Team contract v1
 │   ├── INTEGRATION_REVIEW_CN.md  # Integration review and remaining work
 │   ├── members/             # Each member's delivery notes and decisions
-│   └── testing/             # Test records, incl. LIVE_MODEL_TESTS.md (real-model runs)
+│   └── testing/             # Test overview (README.md), LIVE_MODEL_TESTS.md, historical records
 ├── README.md
 ├── pyproject.toml
 └── .gitignore
@@ -304,7 +304,7 @@ When a module is ready, provide its import path, construction requirements, depe
 
 ## Testing scope
 
-The [Member 1 verification record](docs/testing/MEMBER1_TEST_REPORT.md) covers the controller; the full suite is now 158 tests (`python -m pytest -q`). Controller tests cover:
+The [Member 1 verification record](docs/testing/MEMBER1_TEST_REPORT.md) covers the controller; the full suite is 191 tests, listed by area in [docs/testing/README.md](docs/testing/README.md). Controller tests cover:
 
 - Current-revision acceptance, rejection of stale or missing evidence, and repair followed by fresh verification.
 - Safe retry accounting and rejection of retries with unknown side effects.

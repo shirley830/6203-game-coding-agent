@@ -30,6 +30,7 @@ from .preflight import run_preflight
 from .recovery import RuleBasedRecovery
 from .tools import LocalRuntime, RuntimeSettings
 from .tracing.recorder import FileTraceRecorder
+from .tracing.usage import UsageMeter
 from .verification import GameVerifier
 
 
@@ -65,11 +66,12 @@ def create_dependencies(config: AgentConfig) -> Dependencies:
             # Stop before game/ exists: this run could never pass verification.
             raise RuntimeError("Startup self-check failed: " + "; ".join(report.blocking))
         notes = report.notes
-    client = LiteLLMClient(
-        model=model,
-        api_base=os.environ.get("AGENT_API_BASE") or None,
-        max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "16000")),
-    )
+    usage = UsageMeter()
+    settings = dict(model=model, api_base=os.environ.get("AGENT_API_BASE") or None,
+                    max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "16000")), usage=usage)
+    # Same model, two roles, accounted separately in traces/<run_id>/model_usage.jsonl.
+    client = LiteLLMClient(role="planner", **settings)
+    acceptance_client = LiteLLMClient(role="acceptance", **settings)
     runtime = LocalRuntime(RuntimeSettings(
         strict_os_sandbox=strict,
         injected_environment=browser_environment,
@@ -80,7 +82,7 @@ def create_dependencies(config: AgentConfig) -> Dependencies:
         planner=LLMPlanner(client, environment_notes=notes),
         runtime=runtime,
         # Same model, separate role: derives spec scenarios before planning.
-        verifier=GameVerifier(client=client),
+        verifier=GameVerifier(client=acceptance_client),
         recovery=RuleBasedRecovery(),
-        tracer=FileTraceRecorder(),
+        tracer=FileTraceRecorder(usage=usage),
     )
