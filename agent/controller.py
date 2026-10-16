@@ -464,7 +464,13 @@ class Controller:
         elif isinstance(result, VerificationReport):
             self._state.verification_report = result
             if not self._report_passes(result):
-                raise self._failure("verifier.next_check", "Verification failed, evidence is missing, or the report is stale",
+                # Tell the planner which criteria failed and why, so REPAIR is targeted.
+                failed = "; ".join(
+                    f"{r.criterion_id}={getattr(r.status, 'value', r.status)}: {str(r.detail)[:400]}"
+                    for r in result.results
+                    if isinstance(r, CriterionResult) and r.status != CheckStatus.PASS)
+                raise self._failure("verifier.next_check", "Verification failed, evidence is missing, or the report is stale"
+                                    + (f". Failed criteria: {failed}" if failed else ""),
                                     category="verification")
             await self._finish_request(Phase.SUCCEEDED, "Current game passed mandatory acceptance checks")
         else:

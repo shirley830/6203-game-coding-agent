@@ -24,15 +24,15 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--factory", default=os.environ.get(
         "AGENT_MODULE_FACTORY", "agent.integrations:create_dependencies"),
         help="Team dependency factory in module:function format")
-    parser.add_argument("--max-runtime", type=float, default=900.0)
+    parser.add_argument("--max-runtime", type=float, default=1800.0)
     parser.add_argument("--max-steps", type=int, default=200)
-    parser.add_argument("--max-commands", type=int, default=60)
+    parser.add_argument("--max-commands", type=int, default=80)
     parser.add_argument("--max-retries", type=int, default=2)
-    parser.add_argument("--max-recovery-attempts", type=int, default=8)
-    parser.add_argument("--model-timeout", type=float, default=60.0)
-    parser.add_argument("--command-timeout", type=float, default=60.0)
+    parser.add_argument("--max-recovery-attempts", type=int, default=20)
+    parser.add_argument("--model-timeout", type=float, default=240.0)
+    parser.add_argument("--command-timeout", type=float, default=90.0)
     parser.add_argument("--max-no-progress", type=int, default=5)
-    parser.add_argument("--finalization-reserve", type=float, default=10.0)
+    parser.add_argument("--finalization-reserve", type=float, default=20.0)
     parser.add_argument("--infrastructure-timeout", type=float, default=5.0)
     return parser
 
