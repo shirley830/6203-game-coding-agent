@@ -119,6 +119,26 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
         self.assertTrue(decision.launch_command)
 
 
+class EditLoopGuardTests(unittest.IsolatedAsyncioTestCase):
+    async def test_forces_verification_after_many_edits(self):
+        from agent.planning.planner import MAX_EDITS_BEFORE_VERIFICATION
+        replies = [write("README.md", "Run: python3 -m http.server 8000")]
+        replies += [write("index.html", f"<canvas>{i}") for i in range(20)]
+        client = Client(*replies)
+        planner = LLMPlanner(client)
+        launch = ("python3", "-m", "http.server", "8000")
+        last, edits = None, 0
+        while True:
+            decision = await planner.next_decision(view(last_result=last, launch=launch), LIMITS)
+            if isinstance(decision, RequestVerification):
+                break
+            edits += 1
+            last = ToolResult(decision.action_id, ToolStatus.OK, "Wrote", "r")
+        self.assertEqual(edits, MAX_EDITS_BEFORE_VERIFICATION)
+        self.assertEqual(decision.launch_command, launch)
+        self.assertEqual(len(client.prompts), MAX_EDITS_BEFORE_VERIFICATION)  # no model call spent
+
+
 class RuntimeArtifactTests(unittest.IsolatedAsyncioTestCase):
     async def test_artifacts_are_output_refs_and_do_not_touch_game(self):
         with tempfile.TemporaryDirectory() as directory:

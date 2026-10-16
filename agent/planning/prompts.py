@@ -236,4 +236,6 @@ Rules:
   defect in the game logic, then request verification again. Never add
   behaviour the specification does not ask for to satisfy a check.
 - Never return success, completed, or direct controller state changes.
+- After each substantial fix, request verification again to get fresh evidence
+  instead of rewriting the same file repeatedly.
 """.strip()

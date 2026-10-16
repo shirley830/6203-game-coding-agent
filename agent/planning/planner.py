@@ -19,6 +19,11 @@ from .prompts import build_decision_prompt, build_plan_prompt
 
 
 HISTORY_LIMIT = 25
+# After the first verification, this many consecutive edits without asking for
+# verification triggers one: live runs showed weaker models rewriting the same
+# file dozens of times without fresh feedback until the budget ran out.
+MAX_EDITS_BEFORE_VERIFICATION = 8
+_EDIT_KINDS = {ToolKind.WRITE_FILE, ToolKind.PATCH_FILE, ToolKind.INSTALL_DEPENDENCIES}
 _SOURCE_SUFFIXES = (".html", ".htm", ".js", ".mjs", ".py", ".css")
 
 
@@ -41,6 +46,7 @@ class LLMPlanner:
         self._history: deque[str] = deque(maxlen=HISTORY_LIMIT)
         self._notes: deque[str] = deque(maxlen=5)
         self._seen_result: str | None = None
+        self._edits_since_verification = 0
         self._seen_failure: object | None = None
 
     async def create_plan(
@@ -79,6 +85,12 @@ class LLMPlanner:
             )
 
         self._observe(view)
+        if (view.launch_command
+                and self._edits_since_verification >= MAX_EDITS_BEFORE_VERIFICATION):
+            self._history.append(
+                f"planner: {self._edits_since_verification} edits since the last verification; "
+                "requesting verification for fresh feedback")
+            return self._guard_verification(RequestVerification(view.launch_command))
         model_response = await self.client.generate(
             system_prompt=(
                 "You are the decision component of an autonomous "
@@ -132,6 +144,8 @@ class LLMPlanner:
                 self._refresh_files(entries)
             return
 
+        if result.status == ToolStatus.OK and action.kind in _EDIT_KINDS:
+            self._edits_since_verification += 1
         label = self._describe(action)
         self._history.append(f"{action.action_id} {label} -> {result.status.value}: {summary}")
         if result.status != ToolStatus.OK:
@@ -228,6 +242,7 @@ class LLMPlanner:
                 {"path": "README.md", "content": self._readme(launch, readme)},
                 "Launch documentation must contain the exact launch command",
             ))
+        self._edits_since_verification = 0
         return decision
 
     @staticmethod

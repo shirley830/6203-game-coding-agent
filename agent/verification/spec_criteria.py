@@ -198,6 +198,18 @@ Rules:
 - Keyboard games are driven by keys only; use click/click_cell/click_at only
   when the specification describes mouse or touch input (buttons such as
   "#restart" may always be clicked).
+- Positions in setup must be valid for a correct game: place targets relative
+  to the player's CURRENT position (for example a hook that puts a collectible
+  directly right of the player, then press ArrowRight), and in grid games with
+  walls use hooks that also guarantee the cells involved are open floor.
+- A scenario that expects a pickup, collision or win must first create that
+  exact situation with hooks; never hope that movement reaches a random target.
+- To test a reset of position or state, first change it (move the player,
+  score points), then reset, then assert the initial value.
+- Wins and losses are triggered by real input moving INTO the goal or enemy
+  cell, not by placing the player on it beforehand.
+- Before answering, mentally run every scenario against a correct
+  implementation of the specification; drop or fix any that it would fail.
 - state_fields and test_hooks map names to one-line text descriptions.
 - Use only the step keys listed above; nothing else is accepted.
 """.strip()
