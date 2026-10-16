@@ -125,7 +125,12 @@ Rules:
 - Do not invoke bash, sh, PowerShell, or cmd.
 - Dependency installation uses install_dependencies.
 - Generated file content belongs in write_file or patch_file.
-- Create launch documentation inside the generated game.
+- Before requesting verification, create or update README.md using
+  write_file or patch_file.
+- README.md must contain dependency installation instructions and
+  the exact launch command.
+- launch_command must be a non-empty argv array of non-empty strings.
+- The launch command must start the generated game from game/.
 - Request verification only after implementation and launch
   documentation are ready.
 - Never return success, completed, or direct controller state changes.
