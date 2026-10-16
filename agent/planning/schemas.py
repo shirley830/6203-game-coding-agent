@@ -1,6 +1,6 @@
 from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class StrictModel(BaseModel):
@@ -37,6 +37,19 @@ class ToolActionOutput(StrictModel):
 class RequestVerificationOutput(StrictModel):
     decision: Literal["request_verification"]
     launch_command: list[str] = Field(min_length=1)
+
+    @field_validator("launch_command")
+    @classmethod
+    def validate_launch_command(
+        cls,
+        command: list[str],
+    ) -> list[str]:
+        if any(not argument.strip() for argument in command):
+            raise ValueError(
+                "launch_command arguments must not be empty"
+            )
+
+        return command
 
 
 class RevisePlanOutput(StrictModel):
