@@ -13,6 +13,7 @@ class ErrorClass(str, Enum):
     EXECUTION = "execution"
     VERIFICATION = "verification"
     TRANSIENT_MODULE = "transient_module"
+    MALFORMED_PROPOSAL = "malformed_proposal"
     MODULE = "module"
     UNKNOWN = "unknown"
 
@@ -33,6 +34,18 @@ PROPOSAL_CODES = frozenset({
 EXECUTION_CODES = frozenset({
     "COMMAND_NOT_FOUND", "DEPENDENCY_INSTALL_FAILED", "INVALID_ENCODING",
     "NONZERO_EXIT", "PATH_NOT_FOUND",
+})
+
+
+# Exception type names (litellm/openai/anthropic SDKs and asyncio) that are
+# worth another proposal-only attempt.
+TRANSIENT_MODULE_ERRORS = frozenset({
+    "TimeoutError", "ConnectionError", "RateLimitError", "Timeout",
+    "APIConnectionError", "APITimeoutError", "ServiceUnavailableError",
+    "InternalServerError", "OverloadedError",
+})
+MALFORMED_OUTPUT_ERRORS = frozenset({
+    "ValidationError", "ValueError", "JSONDecodeError", "TypeError", "KeyError",
 })
 
 
@@ -65,7 +78,10 @@ def classify_failure(failure: FailureRecord) -> ErrorClass:
         name = failure.message.partition(":")[0].strip()
         if name in {"PermissionError", "AuthenticationError", "UnauthorizedError"}:
             return ErrorClass.PERMANENT
-        if name in {"TimeoutError", "ConnectionError", "RateLimitError"}:
+        if name in TRANSIENT_MODULE_ERRORS:
             return ErrorClass.TRANSIENT_MODULE
+        if failure.operation_key.startswith("planner.") and name in MALFORMED_OUTPUT_ERRORS:
+            # The model produced unparsable/invalid JSON: regenerate, never abort.
+            return ErrorClass.MALFORMED_PROPOSAL
         return ErrorClass.MODULE
     return ErrorClass.UNKNOWN

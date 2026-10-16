@@ -92,8 +92,32 @@ class RecoveryTests(unittest.IsolatedAsyncioTestCase):
                          RecoveryKind.ABORT)
 
     async def test_unknown_module_error_aborts(self):
-        item = FailureRecord("planner.next_decision", Phase.DECIDING, "module", "ValueError: bug")
+        item = FailureRecord("verifier.next_check", Phase.VERIFYING, "module", "RuntimeError: bug")
         self.assertEqual((await self.decide(item)).kind, RecoveryKind.ABORT)
+
+    async def test_malformed_model_output_is_regenerated_not_aborted(self):
+        item = FailureRecord("planner.next_decision", Phase.DECIDING, "module",
+                             "ValidationError: 1 validation error for DecisionOutput")
+        decision = await self.decide(item)
+        self.assertEqual(decision.kind, RecoveryKind.REPAIR)
+        self.assertFalse(decision.safe_to_retry)
+        plan = FailureRecord("planner.create_plan", Phase.PLANNING, "module",
+                             "ValueError: Plan does not cover mandatory criteria")
+        self.assertEqual((await self.decide(plan)).kind, RecoveryKind.REPLAN)
+
+    async def test_litellm_transient_errors_retry_proposals(self):
+        item = FailureRecord("planner.next_decision", Phase.DECIDING, "module",
+                             "APIConnectionError: connection reset")
+        decision = await self.decide(item)
+        self.assertEqual(decision.kind, RecoveryKind.RETRY)
+        self.assertTrue(decision.safe_to_retry)
+
+    async def test_timeout_and_unknown_side_effects_never_retry(self):
+        for code in ("COMMAND_TIMEOUT", "DEPENDENCY_TIMEOUT", "runtime"):
+            with self.subTest(code=code):
+                decision = await self.decide(failure(code))
+                self.assertNotEqual(decision.kind, RecoveryKind.RETRY)
+                self.assertFalse(decision.safe_to_retry)
 
     async def test_known_command_failure_is_repaired_not_replayed(self):
         decision = await self.decide(failure("NONZERO_EXIT"))

@@ -8,6 +8,10 @@ from agent.state import (
 from .classify import ErrorClass, classify_failure
 
 
+# Every Nth recovery during repeated verification failure escalates to REPLAN.
+REPLAN_AFTER_RECOVERIES = 6
+
+
 class RuleBasedRecovery:
     """Stateless asynchronous RecoveryPort implementation.
 
@@ -60,7 +64,17 @@ class RuleBasedRecovery:
                               "controller accounts for each attempt and enforces retry limits.")
             return choose(abort, "Cannot establish safe retry semantics for this module operation.")
 
+        if error == ErrorClass.MALFORMED_PROPOSAL:
+            if failure.operation_key == "planner.create_plan":
+                return choose(RecoveryKind.REPLAN, "Model returned an invalid plan document; "
+                              "regenerate the plan (each attempt is budgeted by the controller).")
+            return choose(RecoveryKind.REPAIR, "Model returned an invalid decision document; "
+                          "request a fresh decision with the parse error visible in last_failure.")
+
         if error == ErrorClass.VERIFICATION:
+            if view.recovery_attempts >= REPLAN_AFTER_RECOVERIES and view.recovery_attempts % REPLAN_AFTER_RECOVERIES == 0:
+                return choose(RecoveryKind.REPLAN, "Acceptance keeps failing after several repairs; "
+                              "rebuild the task plan against the frozen criteria before repairing again.")
             return choose(RecoveryKind.REPAIR, "Acceptance failed or evidence is incomplete/stale; "
                           "inspect the failed criteria, repair as necessary and obtain fresh verification.")
 
