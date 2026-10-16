@@ -8,6 +8,7 @@ from agent.state import (
     Criterion,
     Phase,
     Plan,
+    RequestVerification,
     Task,
     ToolAction,
     ToolKind,
@@ -39,6 +40,12 @@ def make_suite() -> AcceptanceSuite:
                 criterion_id="launch-001",
                 description="The game launches successfully",
                 category="launch",
+                mandatory=True,
+            ),
+            Criterion(
+                criterion_id="functional-001",
+                description="The main game functionality works",
+                category="functional",
                 mandatory=True,
             ),
             Criterion(
@@ -100,7 +107,10 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
                     {
                       "task_id": "task-002",
                       "description": "Implement player movement",
-                      "requirement_ids": ["interaction-001"],
+                      "requirement_ids": [
+                        "functional-001",
+                        "interaction-001"
+                      ],
                       "depends_on": ["task-001"]
                     }
                   ]
@@ -192,6 +202,126 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             decision.reason,
             "No development plan exists",
         )
+        
+    async def test_plan_must_cover_every_mandatory_criterion(
+        self,
+    ) -> None:
+        client = FakeLLMClient(
+            responses=[
+                """
+                {
+                  "plan_id": "incomplete-plan",
+                  "tasks": [
+                    {
+                      "task_id": "task-001",
+                      "description": "Create the game",
+                      "requirement_ids": [
+                        "launch-001",
+                        "interaction-001"
+                      ],
+                      "depends_on": []
+                    }
+                  ]
+                }
+                """
+            ]
+        )
+
+        planner = LLMPlanner(client)
+
+        with self.assertRaises(ValueError):
+            await planner.create_plan(
+                make_view(),
+                make_limits(),
+            )
+
+    async def test_request_verification_with_launch_command(
+        self,
+    ) -> None:
+        existing_plan = Plan(
+            plan_id="plan-001",
+            tasks=(
+                Task(
+                    task_id="task-001",
+                    description="Create the game",
+                    requirement_ids=(
+                        "launch-001",
+                        "functional-001",
+                        "interaction-001",
+                    ),
+                ),
+            ),
+        )
+
+        client = FakeLLMClient(
+            responses=[
+                """
+                {
+                  "decision": "request_verification",
+                  "launch_command": ["python", "main.py"]
+                }
+                """
+            ]
+        )
+
+        planner = LLMPlanner(client)
+        decision = await planner.next_decision(
+            make_view(
+                plan=existing_plan,
+                phase=Phase.DECIDING,
+            ),
+            make_limits(),
+        )
+
+        self.assertIsInstance(
+            decision,
+            RequestVerification,
+        )
+        self.assertEqual(
+            decision.launch_command,
+            ("python", "main.py"),
+        )
+
+    async def test_empty_launch_argument_is_rejected(
+        self,
+    ) -> None:
+        existing_plan = Plan(
+            plan_id="plan-001",
+            tasks=(
+                Task(
+                    task_id="task-001",
+                    description="Create the game",
+                    requirement_ids=(
+                        "launch-001",
+                        "functional-001",
+                        "interaction-001",
+                    ),
+                ),
+            ),
+        )
+
+        client = FakeLLMClient(
+            responses=[
+                """
+                {
+                  "decision": "request_verification",
+                  "launch_command": ["python", ""]
+                }
+                """
+            ]
+        )
+
+        planner = LLMPlanner(client)
+
+        with self.assertRaises(ValueError):
+            await planner.next_decision(
+                make_view(
+                    plan=existing_plan,
+                    phase=Phase.DECIDING,
+                ),
+                make_limits(),
+            )
+
 
 
 if __name__ == "__main__":
