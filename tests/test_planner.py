@@ -202,6 +202,7 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             decision.reason,
             "No development plan exists",
         )
+        
     async def test_plan_must_cover_every_mandatory_criterion(
         self,
     ) -> None:
@@ -320,6 +321,8 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
                 ),
                 make_limits(),
             )
+
+
 
 if __name__ == "__main__":
     unittest.main()
