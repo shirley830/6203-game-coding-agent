@@ -73,11 +73,14 @@ def create_dependencies(config: AgentConfig) -> Dependencies:
     runtime = LocalRuntime(RuntimeSettings(
         strict_os_sandbox=strict,
         injected_environment=browser_environment,
+        # Room for the harness JSON with per-scenario results on one stdout line.
+        output_preview_bytes=64 * 1024,
     ))
     return Dependencies(
         planner=LLMPlanner(client, environment_notes=notes),
         runtime=runtime,
-        verifier=GameVerifier(),
+        # Same model, separate role: derives spec scenarios before planning.
+        verifier=GameVerifier(client=client),
         recovery=RuleBasedRecovery(),
         tracer=FileTraceRecorder(),
     )

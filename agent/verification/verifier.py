@@ -11,6 +11,7 @@ Hard constraints honored here:
 from __future__ import annotations
 
 from enum import Enum
+import json
 from pathlib import Path
 import sys
 from typing import Any
@@ -28,6 +29,10 @@ from agent.state import (
 
 from .criteria import build_acceptance_suite
 from .evidence import EvidenceLedger, evaluate_criteria
+from .spec_criteria import (
+    SYSTEM_PROMPT, SpecAcceptance, build_prompt, criteria_from, harness_payload,
+    parse_spec_acceptance,
+)
 
 # Preferred entry files to read after inspect (relative to game/).
 _CANDIDATE_FILES = (
@@ -55,7 +60,7 @@ class _Step(str, Enum):
 class GameVerifier:
     """Asynchronous VerifierPort adapter for browser / local game acceptance."""
 
-    def __init__(self, *, harness_path: str | Path | None = None) -> None:
+    def __init__(self, *, harness_path: str | Path | None = None, client: Any = None) -> None:
         """Create a verifier.
 
         harness_path:
@@ -65,6 +70,11 @@ class GameVerifier:
         if harness_path is None:
             harness_path = Path(__file__).resolve().with_name("playwright_game_check.py")
         self._harness_path = Path(harness_path).resolve()
+        # Optional LLM client (same LLMClient protocol as the planner). With it,
+        # prepare_acceptance derives spec-specific executable scenarios.
+        self._client = client
+        self._spec_acceptance: SpecAcceptance | None = None
+        self.acceptance_note = "generic criteria (no model client)"
         self._action_seq = 0
         self._reset_cycle()
 
@@ -94,8 +104,25 @@ class GameVerifier:
 
     async def prepare_acceptance(self, view: AgentView, limits: CallLimits) -> AcceptanceSuite:
         """Create and freeze acceptance criteria from the specification text."""
-        _ = limits  # Honor CallLimits by returning promptly; no network I/O here.
-        return build_acceptance_suite(view.spec_text)
+        generic = build_acceptance_suite(view.spec_text)
+        if self._client is None:
+            return generic
+        try:
+            reply = await self._client.generate(
+                system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(view.spec_text),
+                timeout_seconds=limits.timeout_seconds,
+            )
+            acceptance = parse_spec_acceptance(reply)
+        except Exception as exc:  # noqa: BLE001 - one attempt, then a safe fallback
+            # Verification must not depend on this call; keep the generic suite.
+            self.acceptance_note = f"generic criteria (spec derivation failed: {type(exc).__name__}: {str(exc)[:200]})"
+            return generic
+        self._spec_acceptance = acceptance
+        self.acceptance_note = f"{len(acceptance.requirements)} spec-derived requirements"
+        return AcceptanceSuite(
+            version=generic.version + "-spec",
+            criteria=generic.criteria + criteria_from(acceptance),
+        )
 
     async def next_check(
         self, view: AgentView, limits: CallLimits,
@@ -198,13 +225,16 @@ class GameVerifier:
         else:
             launch = list(view.launch_command)
 
-        timeout = max(5, int(min(limits.timeout_seconds, 55)) - 2)
+        timeout = max(5, int(min(limits.timeout_seconds, 85)) - 3)
         argv = [
             sys.executable,
             str(self._harness_path),
             "--timeout-seconds",
             str(timeout),
         ]
+        if self._spec_acceptance is not None:
+            argv += ["--scenarios-json", json.dumps(harness_payload(self._spec_acceptance),
+                                                    separators=(",", ":"))]
         if launch:
             argv.append("--launch")
             argv.extend(launch)

@@ -193,7 +193,19 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
         detail_parts = list(ledger.details.get(criterion.criterion_id, []))[-3:]
 
         block = None
-        if isinstance(checks, dict):
+        requirements = harness.get("requirements") if isinstance(harness.get("requirements"), Mapping) else {}
+        spec_criterion = criterion.criterion_id.startswith("REQ-") or criterion.criterion_id == "C-CONTRACT"
+        if spec_criterion:
+            # Spec-derived criteria are judged only by their own scenario (or the
+            # contract check); generic page signals never satisfy them.
+            if criterion.criterion_id == "C-CONTRACT":
+                block = checks.get("contract") if isinstance(checks, Mapping) else None
+            else:
+                block = requirements.get(criterion.criterion_id)
+            if not isinstance(block, Mapping):
+                block = {"status": "fail", "detail": "scenario was not executed by the harness"}
+            refs.extend(r for r in block.get("evidence_refs", []) if isinstance(r, str) and r not in refs)
+        elif isinstance(checks, dict):
             key = {
                 "launch": "launch",
                 "functional": "functional",
@@ -205,7 +217,7 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
             elif criterion.criterion_id in checks and isinstance(checks[criterion.criterion_id], dict):
                 block = checks[criterion.criterion_id]
 
-        if isinstance(block, dict):
+        if isinstance(block, Mapping):
             raw = str(block.get("status", "")).lower()
             if raw in {"pass", "ok", "true", "passed"}:
                 status = CheckStatus.PASS
@@ -213,7 +225,7 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
                 status = CheckStatus.FAIL
             elif raw in {"skip", "skipped"}:
                 status = CheckStatus.SKIP
-            detail_parts.append(str(block.get("detail", block.get("message", "")))[:300])
+            detail_parts.append(str(block.get("detail", block.get("message", "")))[:500])
         else:
             # Heuristic fallback when harness JSON is missing but static evidence exists.
             status = _heuristic_status(criterion, ledger, refs)
@@ -223,7 +235,7 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
             status = CheckStatus.FAIL
             detail_parts.append("PASS claimed without evidence_refs")
 
-        if status == CheckStatus.PASS and criterion.category == "interaction":
+        if status == CheckStatus.PASS and criterion.category == "interaction" and not spec_criterion:
             if not _interaction_proven(ledger, refs):
                 status = CheckStatus.FAIL
                 detail_parts.append(

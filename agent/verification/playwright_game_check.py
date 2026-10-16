@@ -138,7 +138,9 @@ def _start_launch(launch: list[str], cwd: Path, timeout: float, log_path: Path |
     return proc, url, note + "; port ready"
 
 
-def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, Any]:
+def _run_playwright(url: str, evidence_dir: Path, budget: float,
+                    spec: dict[str, Any] | None = None) -> dict[str, Any]:
+    started = time.monotonic()
     try:
         from playwright.sync_api import sync_playwright
     except ImportError:
@@ -164,6 +166,8 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
     technical_block = _check("fail", "not started")
 
     page_errors: list[str] = []
+    contract_block: dict[str, Any] | None = None
+    requirement_blocks: dict[str, Any] = {}
     with sync_playwright() as playwright:
         browser = playwright.chromium.launch(headless=True)
         try:
@@ -276,6 +280,8 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
                 reasons.append(f"animated_canvas_and_{handled}_key_handler_calls")
             page.wait_for_timeout(200)
             page.screenshot(path=str(after_input), full_page=True)
+            # Mouse games: click canvas points and clickable board elements.
+            reasons.extend(_try_pointer_input(page, snapshot))
             # Pointer and restart-like controls are exercised after the key checks.
             for selector in ("button:has-text('Restart')", "button:has-text('Start')"):
                 locator = page.locator(selector)
@@ -310,6 +316,10 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
                     evidence_refs=[f"screenshot:{after_input.name}", "input:attempted"],
                     state_changed=False,
                 )
+            if spec:
+                remaining = budget - (time.monotonic() - started) - 2.0
+                contract_block, requirement_blocks = _run_spec_scenarios(
+                    page, spec, evidence_dir, remaining)
         finally:
             browser.close()
 
@@ -318,19 +328,196 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float) -> dict[str, An
             "fail", "JavaScript errors at runtime: " + " | ".join(page_errors[:5]),
             evidence_refs=list(functional_block.get("evidence_refs", [])),
         )
+    checks = {
+        "launch": launch_block,
+        "functional": functional_block,
+        "interaction": interaction_block,
+        "technical": technical_block,
+    }
+    if contract_block is not None:
+        checks["contract"] = contract_block
     return {
         "page_errors": page_errors[:20],
         "ok": all(
             block["status"] == "pass"
-            for block in (launch_block, functional_block, interaction_block)
+            for block in (launch_block, functional_block, interaction_block,
+                          *requirement_blocks.values())
         ),
-        "checks": {
-            "launch": launch_block,
-            "functional": functional_block,
-            "interaction": interaction_block,
-            "technical": technical_block,
-        },
+        "checks": checks,
+        "requirements": requirement_blocks,
     }
+
+
+_CLICKABLE = ("[data-cell]", "[data-index]", ".cell", ".card", ".tile", "td",
+              "[role=button]", "button:not(:has-text('Restart')):not(:has-text('Reset'))"
+              ":not(:has-text('New'))")
+
+
+def _try_pointer_input(page: Any, snapshot: Any) -> list[str]:
+    """Click canvas points and the first board elements; report state changes."""
+    reasons: list[str] = []
+    targets: list[tuple[str, Any]] = []
+    box = page.locator("canvas").first.bounding_box() if page.locator("canvas").count() else None
+    if box:
+        for fx, fy in ((0.5, 0.5), (0.25, 0.25), (0.75, 0.25), (0.25, 0.75), (0.75, 0.75)):
+            targets.append((f"canvas@{fx},{fy}",
+                            (box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)))
+    for selector in _CLICKABLE:
+        try:
+            locator = page.locator(selector)
+            for index in range(min(locator.count(), 2)):
+                if locator.nth(index).is_visible():
+                    targets.append((f"{selector}#{index}", locator.nth(index)))
+        except Exception:
+            continue
+        if len(targets) >= 9:
+            break
+    for label, target in targets[:9]:
+        try:
+            before = snapshot()
+            if isinstance(target, tuple):
+                page.mouse.click(*target)
+            else:
+                target.click(timeout=800)
+            page.wait_for_timeout(180)
+            if snapshot() != before:
+                reasons.append(f"state_changed_after_click_{label}")
+        except Exception:
+            continue
+    return reasons
+
+
+_STATE_JS = """() => { const g = window.__gameState;
+  const s = typeof g === 'function' ? g() : g;
+  if (s === undefined || s === null) return null;
+  try { return JSON.parse(JSON.stringify(s)); } catch (e) { return {unserializable: String(e)}; } }"""
+
+_EVAL_JS = """([expr, saved]) => { const g = window.__gameState;
+  const s = typeof g === 'function' ? g() : g;
+  return (new Function('s', 'saved', 'return (' + expr + ');'))(s, saved); }"""
+
+_CELL_JS = """([col, row]) => { const g = window.__gameState;
+  const s = typeof g === 'function' ? g() : g;
+  const c = document.querySelector('canvas');
+  if (!c || !s || !s.grid) throw new Error('click_cell needs a canvas and state.grid {cols, rows}');
+  const r = c.getBoundingClientRect();
+  return [r.left + (col + 0.5) * r.width / s.grid.cols, r.top + (row + 0.5) * r.height / s.grid.rows]; }"""
+
+
+def _describe_step(step: dict[str, Any]) -> str:
+    return json.dumps(step, ensure_ascii=False)[:160]
+
+
+def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | None:
+    """Run one scenario step. Returns an error message, or None on success."""
+    if "key" in step:
+        for _ in range(int(step.get("repeat", 1))):
+            page.keyboard.down(step["key"])
+            page.wait_for_timeout(50)
+            page.keyboard.up(step["key"])
+            page.wait_for_timeout(40)
+    elif "hold" in step:
+        page.keyboard.down(step["hold"])
+        page.wait_for_timeout(int(step.get("ms", 300)))
+        page.keyboard.up(step["hold"])
+    elif "click" in step:
+        page.locator(step["click"]).first.click(timeout=1500)
+    elif "click_at" in step:
+        box = page.locator("canvas").first.bounding_box()
+        if not box:
+            return "click_at needs a visible canvas"
+        fx, fy = step["click_at"]
+        page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
+    elif "click_cell" in step:
+        x, y = page.evaluate(_CELL_JS, step["click_cell"])
+        page.mouse.click(x, y)
+    elif "call" in step:
+        exists = page.evaluate("(fn) => !!(window.__gameTest && typeof window.__gameTest[fn] === 'function')",
+                               step["call"])
+        if not exists:
+            return f"window.__gameTest.{step['call']} is not defined (state contract)"
+        page.evaluate("([fn, args]) => window.__gameTest[fn](...args)",
+                      [step["call"], step.get("args", [])])
+    elif "wait" in step:
+        page.wait_for_timeout(int(step["wait"]))
+    elif "save" in step:
+        saved[step["save"]] = page.evaluate(_EVAL_JS, [step["expr"], saved])
+    elif "expect" in step:
+        if not page.evaluate(_EVAL_JS, [step["expect"], saved]):
+            return f"expectation false: {step['expect']}"
+    if any(name in step for name in ("key", "hold", "click", "click_at", "click_cell", "call")):
+        page.wait_for_timeout(120)  # let animation frames apply the input
+    return None
+
+
+def _run_spec_scenarios(page: Any, spec: dict[str, Any], evidence_dir: Path,
+                        budget: float) -> tuple[dict[str, Any], dict[str, Any]]:
+    """Check the state contract, then run each requirement scenario on a fresh load."""
+    deadline = time.monotonic() + max(budget, 0.0)
+    contract = spec.get("contract") or {}
+    try:
+        page.reload(wait_until="domcontentloaded")
+        page.wait_for_timeout(300)
+        state = page.evaluate(_STATE_JS)
+        hooks = page.evaluate("() => Object.keys(window.__gameTest || {}).filter("
+                              "k => typeof window.__gameTest[k] === 'function')")
+    except Exception as exc:  # noqa: BLE001
+        state, hooks = None, []
+        contract_error = f"{type(exc).__name__}: {str(exc).splitlines()[0][:200]}"
+    else:
+        contract_error = ""
+    missing = [f for f in contract.get("state_fields", {}) if not isinstance(state, dict) or f not in state]
+    missing_hooks = [h for h in contract.get("test_hooks", {}) if h not in hooks]
+    if state is None:
+        contract_block = _check("fail", "window.__gameState is not defined; the state contract "
+                                "requires it to expose the real game state " + contract_error)
+    elif missing or missing_hooks:
+        contract_block = _check("fail", f"state contract incomplete: missing fields {missing}, "
+                                f"missing hooks {missing_hooks}")
+    else:
+        contract_block = _check("pass", "window.__gameState and __gameTest match the contract",
+                                evidence_refs=["contract:state_fields", "contract:test_hooks"])
+
+    blocks: dict[str, Any] = {}
+    for scenario in spec.get("scenarios", []):
+        cid = scenario["criterion_id"]
+        if time.monotonic() > deadline:
+            blocks[cid] = _check("fail", "not run: harness time budget exhausted")
+            continue
+        saved: dict[str, Any] = {}
+        failure = None
+        try:
+            page.reload(wait_until="domcontentloaded")
+            page.wait_for_timeout(250)
+            if page.evaluate(_STATE_JS) is None:
+                failure = "window.__gameState is not defined"
+            for number, step in enumerate(scenario.get("steps", []), 1):
+                if failure or time.monotonic() > deadline:
+                    failure = failure or "harness time budget exhausted mid-scenario"
+                    break
+                error = _run_step(page, step, saved)
+                if error:
+                    failure = f"step {number} {_describe_step(step)}: {error}"
+                    break
+        except Exception as exc:  # noqa: BLE001 - a broken scenario is a failed criterion
+            failure = f"{type(exc).__name__}: {str(exc).splitlines()[0][:200]}"
+        shot = evidence_dir / f"req-{re.sub('[^A-Za-z0-9_-]', '_', cid)}.png"
+        try:
+            page.screenshot(path=str(shot))
+        except Exception:
+            pass
+        if failure is None:
+            blocks[cid] = _check("pass", f"scenario passed: {scenario.get('description', '')[:120]}",
+                                 evidence_refs=[f"screenshot:{shot.name}", f"scenario:{cid}"])
+        else:
+            snapshot_text = ""
+            try:
+                snapshot_text = json.dumps(page.evaluate(_STATE_JS))[:300]
+            except Exception:
+                pass
+            blocks[cid] = _check("fail", f"{failure}; state after: {snapshot_text}",
+                                 evidence_refs=[f"screenshot:{shot.name}"])
+    return contract_block, blocks
 
 
 # Counts calls into the game's own keyboard handlers (registered via
@@ -383,6 +570,8 @@ def main(argv: list[str] | None = None) -> int:
         help="Screenshot directory; defaults to the runtime-provided AGENT_ARTIFACT_DIR",
     )
     parser.add_argument("--url", type=str, default="")
+    parser.add_argument("--scenarios-json", type=str, default="",
+                        help="State contract and requirement scenarios from the verifier")
     parser.add_argument(
         "--launch",
         nargs=argparse.REMAINDER,
@@ -427,7 +616,8 @@ def main(argv: list[str] | None = None) -> int:
             _print_json(payload)
             return 1
 
-        result = _run_playwright(url, evidence_dir, remaining)
+        spec = json.loads(args.scenarios_json) if args.scenarios_json else None
+        result = _run_playwright(url, evidence_dir, remaining, spec)
         result["note"] = note
         result["url"] = url
         result["launch_argv"] = launch

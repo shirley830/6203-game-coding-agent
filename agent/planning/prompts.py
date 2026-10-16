@@ -21,6 +21,20 @@ Target platform (unless the specification explicitly demands otherwise):
   (for example "Score: 3"), and offer a visible Restart button when the
   specification mentions restarting.
 - Avoid runtime errors: the verifier records every JavaScript error.
+- If the acceptance suite contains C-CONTRACT, implement that test contract
+  exactly: window.__gameState must reflect the REAL live game state (update it
+  whenever the state changes, or define it as a getter), and window.__gameTest
+  hooks only set preconditions through the real game logic.
+
+Specification fidelity (mandatory):
+- Implement what the specification asks for, with the input methods it names.
+- NEVER add controls, shortcuts, input methods, behaviours or UI that the
+  specification does not ask for in order to make a check pass (for example,
+  keyboard controls in a mouse-only game, or clicks anywhere counting as a move).
+- Never special-case the verifier, fake state, or hard-code expected values.
+- When a check fails, find and fix the real defect in the game logic. If a check
+  seems to demand behaviour outside the specification, keep the game faithful
+  to the specification and say so in your rationale.
 """.strip()
 
 
@@ -77,6 +91,8 @@ Rules:
 - Every task must reference one or more criterion IDs.
 - Cover every mandatory acceptance criterion.
 - Include a task that writes README.md with the launch command.
+- If C-CONTRACT is present, include a task that implements window.__gameState
+  and window.__gameTest exactly as the contract describes.
 - Use unique task IDs.
 - Dependencies must reference existing task IDs.
 - Dependencies must not contain cycles.
@@ -215,7 +231,9 @@ Rules:
 - launch_command must be a non-empty argv array of non-empty strings that
   starts the generated game from game/.
 - Request verification only after every plan task is implemented.
-- After a verification failure, read the failing criteria details and the
-  page errors above, fix the code, then request verification again.
+- After a verification failure, read the failing criteria details (the failed
+  scenario step and the state after it) and the page errors above, fix the real
+  defect in the game logic, then request verification again. Never add
+  behaviour the specification does not ask for to satisfy a check.
 - Never return success, completed, or direct controller state changes.
 """.strip()
