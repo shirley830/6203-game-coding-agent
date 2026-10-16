@@ -227,6 +227,9 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── state.py             # Shared data contracts and immutable views
 │   ├── config.py            # Validated limits and paths
 │   └── tools/               # Member 3 local runtime (under review)
+│   └── verification/        # Member 4 GameVerifier (integration copy)
+├── harness/
+│   └── playwright_game_check.py   # Member 4 bounded browser check
 ├── assets/
 │   └── readme-banner.svg    # Documentation artwork
 ├── tests/
@@ -235,12 +238,16 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── test_config_cli.py   # Configuration and entry-point tests
 │   ├── test_runtime.py      # Member 3 real runtime tests
 │   └── test_runtime_process_cleanup.py # Process cleanup and uncertainty regressions
+│   └── test_verifier_member4.py  # Member 4 unit tests (mocked)
+├── member4_ZHOU SIHAN/      # Member 4 delivery notes + source of truth copy
 ├── INTERFACES.md            # Team contract v1
 ├── TEST_REPORT.md           # Verified behavior and test limitations
 ├── README.md
 ├── pyproject.toml
 └── .gitignore
 ```
+
+**Member 4 integration:** `from agent.verification import GameVerifier`
 
 Runtime outputs are separate from submitted Agent code:
 
@@ -273,6 +280,8 @@ Use the default `LocalRuntime()` for strict OS sandboxing. Member 6 may inject `
 | **2** | LLM, planning, prompts, and content generation | PlannerPort | Production implementation pending |
 | **3** | Files, commands, dependencies, and runtime isolation | RuntimePort | Locally integrated; cleanup fixes verified |
 | **4** | Game verification and acceptance testing | VerifierPort | Production implementation pending |
+| **3** | Files, commands, dependencies, and runtime isolation | RuntimePort | Production implementation pending |
+| **4** | Game verification and acceptance testing | VerifierPort | `agent/verification` ready — inject via `from agent.verification import GameVerifier` |
 | **5** | Error recovery and evaluation | RecoveryPort | Production implementation pending |
 | **6** | Tracing, logging, and delivery | TracePort | Production implementation pending |
 

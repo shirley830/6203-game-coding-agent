@@ -4,7 +4,7 @@ Implements **VerifierPort** for PE6203 game coding agent acceptance testing.
 
 - **Owner:** Member 4 / ZHOU SIHAN  
 - **Entry class:** `GameVerifier`  
-- **Import (after integration):** `agent.verification.GameVerifier`  
+- **集成请用：** `from agent.verification import GameVerifier`（根目录 `agent/verification/` 是给成员1注入用的集成副本；本目录保留作交付说明，请勿删除）  
 - **Does not modify** Member 1 controller/state, Member 3 runtime, or other members' files.
 
 ## What this module does
@@ -44,21 +44,19 @@ member4_ZHOU SIHAN/
 
 ### 1. Place the package
 
-Copy or merge this folder into the team tree so that the package lives at:
+根目录已提供集成副本（本 PR）：
 
 ```text
-agent/verification/
+agent/verification/          # 注入用副本
+harness/playwright_game_check.py
 ```
 
-(same files as `member4_ZHOU SIHAN/agent/verification/`).
+`member4_ZHOU SIHAN/` 保留作交付说明，不删除。也可显式传入：
 
-Keep the harness available at a stable path, for example:
-
-```text
-agent/verification/../harness/playwright_game_check.py
+```python
+GameVerifier(harness_path="...")
 ```
 
-or pass an absolute path into `GameVerifier(harness_path=...)`.
 
 ### 2. Dependency injection
 
@@ -156,4 +154,5 @@ These tests mock tool results and **do not** require a real browser. Live harnes
 - [x] Mandatory launch / functional / interaction coverage
 - [x] Bounded Playwright harness script
 - [x] Local unit tests without browser
+- [x] Root integration copy at `agent/verification/` + `harness/`
 - [ ] Full-system rehearsal after Members 2–3–6 are connected
