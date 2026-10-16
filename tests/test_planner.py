@@ -1,0 +1,198 @@
+import unittest
+
+from agent.planning import LLMPlanner
+from agent.state import (
+    AcceptanceSuite,
+    AgentView,
+    CallLimits,
+    Criterion,
+    Phase,
+    Plan,
+    Task,
+    ToolAction,
+    ToolKind,
+)
+
+
+class FakeLLMClient:
+    def __init__(self, responses: list[str]) -> None:
+        self.responses = list(responses)
+
+    async def generate(
+        self,
+        *,
+        system_prompt: str,
+        user_prompt: str,
+        timeout_seconds: float,
+    ) -> str:
+        if not self.responses:
+            raise RuntimeError("No fake response available")
+
+        return self.responses.pop(0)
+
+
+def make_suite() -> AcceptanceSuite:
+    return AcceptanceSuite(
+        version="test-suite-v1",
+        criteria=(
+            Criterion(
+                criterion_id="launch-001",
+                description="The game launches successfully",
+                category="launch",
+                mandatory=True,
+            ),
+            Criterion(
+                criterion_id="interaction-001",
+                description="The player can move",
+                category="interaction",
+                mandatory=True,
+            ),
+        ),
+    )
+
+
+def make_view(
+    *,
+    plan: Plan | None = None,
+    phase: Phase = Phase.PLANNING,
+) -> AgentView:
+    return AgentView(
+        run_id="test-run",
+        phase=phase,
+        spec_text="Create a game with player movement.",
+        spec_digest="test-digest",
+        workspace_revision="revision-001",
+        suite=make_suite(),
+        plan=plan,
+        plan_version=1 if plan is not None else 0,
+        launch_command=(),
+        last_result=None,
+        last_failure=None,
+        steps_used=0,
+        commands_used=0,
+        recovery_attempts=0,
+        elapsed_seconds=0.0,
+    )
+
+
+def make_limits() -> CallLimits:
+    return CallLimits(
+        timeout_seconds=10.0,
+        steps_remaining=20,
+        commands_remaining=10,
+    )
+
+
+class PlannerTests(unittest.IsolatedAsyncioTestCase):
+    async def test_create_plan(self) -> None:
+        client = FakeLLMClient(
+            responses=[
+                """
+                {
+                  "plan_id": "plan-001",
+                  "tasks": [
+                    {
+                      "task_id": "task-001",
+                      "description": "Create the launch entry point",
+                      "requirement_ids": ["launch-001"],
+                      "depends_on": []
+                    },
+                    {
+                      "task_id": "task-002",
+                      "description": "Implement player movement",
+                      "requirement_ids": ["interaction-001"],
+                      "depends_on": ["task-001"]
+                    }
+                  ]
+                }
+                """
+            ]
+        )
+
+        planner = LLMPlanner(client)
+        plan = await planner.create_plan(
+            make_view(),
+            make_limits(),
+        )
+
+        self.assertEqual(plan.plan_id, "plan-001")
+        self.assertEqual(len(plan.tasks), 2)
+        self.assertEqual(
+            plan.tasks[1].depends_on,
+            ("task-001",),
+        )
+
+    async def test_next_decision_returns_tool_action(
+        self,
+    ) -> None:
+        existing_plan = Plan(
+            plan_id="plan-001",
+            tasks=(
+                Task(
+                    task_id="task-001",
+                    description="Create the game",
+                    requirement_ids=(
+                        "launch-001",
+                        "interaction-001",
+                    ),
+                ),
+            ),
+        )
+
+        client = FakeLLMClient(
+            responses=[
+                """
+                {
+                  "decision": "tool_action",
+                  "action_id": "write-main-001",
+                  "kind": "write_file",
+                  "arguments": {
+                    "path": "main.py",
+                    "content": "print('game')"
+                  },
+                  "rationale": "Create the game entry point"
+                }
+                """
+            ]
+        )
+
+        planner = LLMPlanner(client)
+        decision = await planner.next_decision(
+            make_view(
+                plan=existing_plan,
+                phase=Phase.DECIDING,
+            ),
+            make_limits(),
+        )
+
+        self.assertIsInstance(decision, ToolAction)
+        self.assertEqual(
+            decision.kind,
+            ToolKind.WRITE_FILE,
+        )
+        self.assertEqual(
+            decision.arguments["path"],
+            "main.py",
+        )
+
+    async def test_missing_plan_requests_revision(
+        self,
+    ) -> None:
+        planner = LLMPlanner(FakeLLMClient([]))
+
+        decision = await planner.next_decision(
+            make_view(
+                plan=None,
+                phase=Phase.DECIDING,
+            ),
+            make_limits(),
+        )
+
+        self.assertEqual(
+            decision.reason,
+            "No development plan exists",
+        )
+
+
+if __name__ == "__main__":
+    unittest.main()
