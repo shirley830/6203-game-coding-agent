@@ -418,27 +418,6 @@ Three real models, four rounds of fixes driven by the traces, plus a terminal ga
 python -m pytest -q
 ```
 
-## Roadmap and limits
-
-- [x] Six modules integrated behind one controller
-- [x] Spec-derived acceptance scenarios, mouse-aware browser harness, anti-gaming rules
-- [x] Retry backoff, start-up self-check, `agent.env`, edit-loop guard
-- [x] Model usage and rationales in the trace; non-browser games in process mode
-- [ ] Rehearse with the course-provided model on all evaluation specs
-- [ ] Keep the best verified version if a later repair makes things worse
-- [ ] Write `report.pdf`
-
-<details>
-<summary><b>Known limitations</b></summary>
-
-- **Model-written tests.** Weaker models sometimes write scenarios a correct game cannot pass; invalid patterns are filtered, but not all ([evidence](docs/testing/LIVE_MODEL_TESTS.md)).
-- **Non-browser games** get start-up, crash and input checks only; pygame input is checked statically.
-- **No rollback yet.** If the last repair breaks the game, `game/` keeps that version.
-- **No automatic resume.** Checkpoints record state but a stopped run is not resumed; controller instances are single-use.
-- **Hard interruption** (kill -9, power loss) can prevent the final record from being written; Ctrl+C finalizes on a best-effort basis.
-
-</details>
-
 ---
 
 <div align="center">
