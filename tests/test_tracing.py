@@ -89,6 +89,61 @@ class TestFileTraceRecorder(unittest.IsolatedAsyncioTestCase):
         self.assertFalse(audit["complete"])
         self.assertIn("Summary outcome differs from final event", audit["problems"])
 
+    async def test_verification_screenshots_are_archived_per_action(self):
+        screenshots = self.context.game_dir / ".verification-evidence"
+        screenshots.mkdir(parents=True)
+        (screenshots / "after_load.png").write_bytes(b"png-first")
+        await self.tracer.append_event(self.event(1, "action_result"))
+        (screenshots / "after_load.png").write_bytes(b"png-second")
+        (screenshots / "after_input.png").write_bytes(b"interaction-proof")
+        await self.tracer.append_event(self.event(2, "action_result"))
+        archive = self.context.trace_dir / "evidence"
+        self.assertEqual((archive / "seq-000001/after_load.png").read_bytes(), b"png-first")
+        self.assertEqual((archive / "seq-000002/after_load.png").read_bytes(), b"png-second")
+        self.assertEqual((archive / "seq-000002/after_input.png").read_bytes(), b"interaction-proof")
+        manifest = [json.loads(line) for line in (archive / "index.jsonl").read_text().splitlines()]
+        self.assertEqual(len(manifest), 3)
+        self.assertEqual(manifest[0]["source_ref"], "screenshot:after_load.png")
+        self.assertEqual(len(manifest[0]["sha256"]), 64)
+
+    async def test_audit_detects_tampered_archived_screenshot(self):
+        screenshots = self.context.game_dir / ".verification-evidence"
+        screenshots.mkdir(parents=True)
+        (screenshots / "after_load.png").write_bytes(b"original")
+        await self.tracer.append_event(self.event(1, "action_result"))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        archive = self.context.trace_dir / "evidence" / "seq-000001" / "after_load.png"
+        archive.write_bytes(b"tampered")
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("hash mismatch" in x for x in report["problems"]))
+
+    async def test_audit_detects_missing_evidence_manifest(self):
+        screenshots = self.context.game_dir / ".verification-evidence"
+        screenshots.mkdir(parents=True)
+        (screenshots / "after_load.png").write_bytes(b"picture")
+        await self.tracer.append_event(self.event(1, "action_result"))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        (self.context.trace_dir / "evidence" / "index.jsonl").unlink()
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("evidence/index.jsonl" in p for p in report["problems"]))
+
+    async def test_absent_screenshots_do_not_prevent_events(self):
+        await self.tracer.append_event(self.event(1, "action_result"))
+        self.assertFalse((self.context.trace_dir / "evidence").exists())
+
+    async def test_refuses_verification_symlink(self):
+        destination = self.root / "outside"
+        destination.mkdir()
+        self.context.game_dir.mkdir()
+        (self.context.game_dir / ".verification-evidence").symlink_to(destination, target_is_directory=True)
+        with self.assertRaises(ValueError):
+            await self.tracer.append_event(self.event(1, "action_result"))
+        self.assertEqual((self.context.trace_dir / "events.jsonl").read_text(), "")
+
     async def test_existing_run_is_not_overwritten(self):
         another = FileTraceRecorder()
         with self.assertRaises(FileExistsError):
