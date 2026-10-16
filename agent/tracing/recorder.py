@@ -11,6 +11,8 @@ import errno
 import hashlib
 import json
 import os
+import hashlib
+import stat
 from pathlib import Path
 import shutil
 import tempfile
@@ -26,6 +28,7 @@ from agent.state import (
 
 
 MAX_COPIED_OUTPUT_BYTES = 20 * 1024 * 1024
+SCREENSHOT_SUFFIXES = frozenset({".png", ".jpg", ".jpeg", ".webp"})
 
 
 class FileTraceRecorder:
@@ -36,7 +39,8 @@ class FileTraceRecorder:
         events.jsonl          every controller event, by seq (durable on return)
         checkpoint.json       latest controller snapshot
         checkpoints.jsonl     every checkpoint, appended (development boundaries)
-        outputs/              copies of runtime output_refs (logs, screenshots)
+        outputs/              copies of runtime output_refs (logs)
+        evidence/             verification screenshots per action seq + index.jsonl
         outputs/index.jsonl   original ref -> copied file, with sha256
         verification/         one JSON file per VerificationReport
         summary.json          RunSummary written by finalize()
@@ -117,6 +121,96 @@ class FileTraceRecorder:
             if temporary_path is not None:
                 temporary_path.unlink(missing_ok=True)
 
+    @staticmethod
+    def _screenshot_sources(context: ExecutionContext, record: Mapping[str, Any]) -> list[Path]:
+        """Screenshots belonging to this action result.
+
+        Integrated runtime: the harness writes into the per-command
+        AGENT_ARTIFACT_DIR under .agent-runtime/<run_id>/ and the runtime
+        returns those files as output_refs (game/ stays untouched). The legacy
+        game/.verification-evidence/ directory is still accepted as a fallback.
+        """
+        storage = (context.run_root / ".agent-runtime" / context.run_id).resolve()
+        result = (record.get("payload") or {}).get("result") or {}
+        sources: list[Path] = []
+        for ref in result.get("output_refs") or []:
+            path = Path(str(ref))
+            try:
+                if path.resolve(strict=True).is_relative_to(storage):
+                    sources.append(path)
+            except OSError:
+                continue
+        if sources:
+            return sources
+        legacy = context.game_dir / ".verification-evidence"
+        if legacy.is_symlink():
+            raise ValueError("Verification evidence directory cannot be a symlink")
+        if not legacy.exists():
+            return []
+        if not legacy.is_dir():
+            raise ValueError("Verification evidence path is not a directory")
+        return sorted(legacy.iterdir())
+
+    @staticmethod
+    def _archive_game_screenshots(
+        context: ExecutionContext, seq: int, record: Mapping[str, Any],
+    ) -> None:
+        """Keep per-action copies of real verifier screenshots in traces/.
+
+        Source files are never renamed or altered. Copies are made per action
+        result so a later verification cycle cannot overwrite earlier evidence.
+        """
+        evidence = []
+        # Flat screenshots only; refuse symlinks and ignore other generated
+        # files. Limit file size so logs cannot fill the disk.
+        for path in FileTraceRecorder._screenshot_sources(context, record):
+            if path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                continue
+            if path.is_symlink():
+                raise ValueError("Verification screenshot cannot be a symlink")
+            if not path.is_file():
+                continue
+            source_flags = os.O_RDONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                source_flags |= os.O_NOFOLLOW
+            fd = os.open(path, source_flags)
+            try:
+                info = os.fstat(fd)
+                if not stat.S_ISREG(info.st_mode):
+                    raise ValueError("Verification screenshot is not a regular file")
+                if info.st_size > 15 * 1024 * 1024:
+                    raise ValueError("Verification screenshot exceeds 15 MiB")
+                with os.fdopen(fd, "rb", closefd=False) as reader:
+                    payload = reader.read(15 * 1024 * 1024 + 1)
+                if len(payload) > 15 * 1024 * 1024:
+                    raise ValueError("Verification screenshot exceeds 15 MiB")
+            finally:
+                os.close(fd)
+            evidence.append((path.name, payload))
+
+        if not evidence:
+            return
+        relative_folder = Path("evidence") / f"seq-{seq:06d}"
+        target = context.trace_dir / relative_folder
+        target.mkdir(parents=True, exist_ok=False)
+        index_records = []
+        for filename, data in evidence:
+            destination = target / filename
+            with destination.open("xb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            index_records.append({
+                "event_seq": seq,
+                "source_ref": f"screenshot:{filename}",
+                "archived_path": (relative_folder / filename).as_posix(),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            })
+        index_path = context.trace_dir / "evidence" / "index.jsonl"
+        index_path.touch(exist_ok=True)
+        for record in index_records:
+            FileTraceRecorder._append_line(index_path, json.dumps(record, separators=(",", ":")))
+
     async def open_run(self, context: ExecutionContext) -> None:
         """Create a fresh run directory; never replace an earlier run."""
         async with self._lock:
@@ -137,6 +231,9 @@ class FileTraceRecorder:
             if event.seq != self._next_seq:
                 raise ValueError(f"Expected event seq={self._next_seq}, got {event.seq}")
             record = to_jsonable(event)
+            # Capture screenshots while they still represent this action.
+            if event.kind == "action_result":
+                await asyncio.to_thread(self._archive_game_screenshots, context, event.seq, record)
             line = json.dumps(record, ensure_ascii=False, separators=(",", ":"))
             await asyncio.to_thread(self._append_line, self._trace_dir() / "events.jsonl", line)
             self._next_seq += 1
@@ -173,6 +270,8 @@ class FileTraceRecorder:
                 resolved = source.resolve(strict=True)
                 if not resolved.is_relative_to(allowed) or source.is_symlink() or not resolved.is_file():
                     entry["skipped"] = "outside runtime storage or not a regular file"
+                elif resolved.suffix.lower() in SCREENSHOT_SUFFIXES:
+                    entry["skipped"] = "screenshot archived under evidence/"
                 elif resolved.stat().st_size > MAX_COPIED_OUTPUT_BYTES:
                     entry["skipped"] = "too large"
                 else:

@@ -1,7 +1,11 @@
+import json
+from dataclasses import replace
 import unittest
 
 from agent.planning import LLMPlanner
 from agent.state import (
+    ToolResult,
+    ToolStatus,
     AcceptanceSuite,
     AgentView,
     CallLimits,
@@ -253,24 +257,34 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             ),
         )
 
+        # The planner only forwards a launch command whose files exist in
+        # game/ and whose README.md documents that exact command.
         client = FakeLLMClient(
             responses=[
+                json.dumps({"decision": "tool_action", "action_id": "a", "kind": "write_file",
+                            "arguments": {"path": "main.py", "content": "print('game')"}}),
+                json.dumps({"decision": "tool_action", "action_id": "b", "kind": "write_file",
+                            "arguments": {"path": "README.md",
+                                          "content": "Install: none\nRun: python main.py\n"}}),
                 """
                 {
                   "decision": "request_verification",
                   "launch_command": ["python", "main.py"]
                 }
-                """
+                """,
             ]
         )
 
         planner = LLMPlanner(client)
+        view = make_view(plan=existing_plan, phase=Phase.DECIDING)
+        last_result = None
+        for _ in range(2):
+            action = await planner.next_decision(
+                replace(view, last_result=last_result), make_limits(),
+            )
+            last_result = ToolResult(action.action_id, ToolStatus.OK, "Wrote", "rev")
         decision = await planner.next_decision(
-            make_view(
-                plan=existing_plan,
-                phase=Phase.DECIDING,
-            ),
-            make_limits(),
+            replace(view, last_result=last_result), make_limits(),
         )
 
         self.assertIsInstance(
