@@ -19,11 +19,29 @@ from .schemas import (
 )
 
 
+def extract_json_object(model_response: str) -> str:
+    """Return the JSON object in a model reply.
+
+    Models often wrap JSON in Markdown fences or add a sentence around it; the
+    contract is still one JSON object, so only that object is validated.
+    """
+    text = model_response.strip()
+    if text.startswith("```"):
+        first_newline = text.find("\n")
+        text = text[first_newline + 1:] if first_newline != -1 else ""
+        if text.rstrip().endswith("```"):
+            text = text.rstrip()[:-3]
+    start, end = text.find("{"), text.rfind("}")
+    if start == -1 or end < start:
+        raise ValueError("Model reply contains no JSON object")
+    return text[start:end + 1]
+
+
 def parse_plan(
     model_response: str,
     suite: AcceptanceSuite,
 ) -> Plan:
-    payload = PlanOutput.model_validate_json(model_response)
+    payload = PlanOutput.model_validate_json(extract_json_object(model_response))
 
     criterion_ids = {
         criterion.criterion_id
@@ -97,7 +115,7 @@ def parse_decision(
     model_response: str,
 ) -> ToolAction | RequestVerification | RevisePlan:
     adapter = TypeAdapter(DecisionOutput)
-    payload = adapter.validate_json(model_response)
+    payload = adapter.validate_json(extract_json_object(model_response))
 
     if isinstance(payload, ToolActionOutput):
         return ToolAction(
