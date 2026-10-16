@@ -8,15 +8,15 @@
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Controller implemented](https://img.shields.io/badge/Controller-implemented-137C66?style=flat-square)
-![65 local tests passed](https://img.shields.io/badge/Local_tests-65_passed-137C66?style=flat-square)
-![Team integration pending](https://img.shields.io/badge/Team_integration-pending-B7791F?style=flat-square)
+![137 local tests passed](https://img.shields.io/badge/Local_tests-137_passed-137C66?style=flat-square)
+![Team modules integrated](https://img.shields.io/badge/Team_modules-integrated-137C66?style=flat-square)
 
 [Quick start](#quick-start) &nbsp; / &nbsp; [Architecture](#architecture) &nbsp; / &nbsp; [Team contracts](INTERFACES.md) &nbsp; / &nbsp; [Test report](TEST_REPORT.md)
 
 </div>
 
 > [!IMPORTANT]
-> **Current milestone: Member 1 harness implemented.** The entry point, controller, state models, configuration, and mock-based tests are available. Member 3 runtime is locally integrated with verified process-group cleanup fixes. Other production ports still need to be connected. The repository does not yet generate a real playable game.
+> **Current milestone: all six modules integrated.** `python -m agent game_design_prompt.md` wires the real planner (LiteLLM), sandboxed runtime, Playwright verifier, recovery policy and tracer through `agent/integrations.py`. An offline end-to-end rehearsal (scripted model, everything else real) passes: it builds a game, fails verification on interaction, repairs, and succeeds. A rehearsal with the course-provided model is still required before the presentation.
 
 ## Project at a glance
 
@@ -30,7 +30,7 @@ The agent must start with one documented command and develop autonomously withou
 python -m agent game_design_prompt.md
 ```
 
-This is the required **production command after integration**. Before the real dependency factory exists, it deliberately reports an integration error rather than substituting mocks.
+This is the production command. If `AGENT_MODEL` is not configured it stops before development starts and never substitutes mocks.
 
 ## Why the harness matters
 
@@ -46,42 +46,48 @@ This is the required **production command after integration**. Before the real d
 
 ## Quick start
 
-### 1. Get the framework
+### 1. Install (once, before the presentation)
 
-Use **Python 3.11 or newer**. Member 1 has no third-party runtime dependencies.
+Python **3.11+** on macOS (uses `sandbox-exec`) or Linux with `bwrap` installed.
 
 ```bash
 git clone https://github.com/shirley830/6203-game-coding-agent.git
 cd 6203-game-coding-agent
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e ".[test]"
+python -m playwright install chromium-headless-shell
 ```
 
-### 2. Run the available checks
+### 2. Configure the model
 
 ```bash
-python -m unittest discover -v
-python -m agent --help
+export AGENT_MODEL=anthropic/claude-sonnet-5-5   # any LiteLLM model name
+export ANTHROPIC_API_KEY=...                       # the provider's own key variable
+# optional: export AGENT_API_BASE=https://...      # course-provided endpoint
 ```
 
-**Current local integration result: all 65 tests passed.** The original 43 tests use test doubles; Member 3 adds 15 runtime tests. This does not establish real LLM output or game playability. Seven additional cleanup/result tests pass, including a strict macOS sandbox check. See [the cleanup fix report](MEMBER3_CLEANUP_FIX_REPORT.md). See the [verification record](TEST_REPORT.md) for coverage and limits.
+Credentials are read only by the LiteLLM client; commands run with a filtered environment and keys never enter state, prompts or traces.
 
-### 3. Connect the production modules
+### 3. Run
 
-Member 1 will compose the real implementations through:
-
-```text
-create_dependencies(config) -> Dependencies
-```
-
-The returned object contains `planner`, `runtime`, `verifier`, `recovery`, and `tracer`. The default factory is `agent.integrations:create_dependencies`.
-
-If the factory is in another module, configure it **before** the live run:
+From an empty directory containing only the specification:
 
 ```bash
-export AGENT_MODULE_FACTORY=your_team.integration:create_dependencies
 python -m agent game_design_prompt.md
 ```
 
-`your_team.integration` is a placeholder for the team's actual module. Alternatively, pass `--factory module:function`. The CLI factory option overrides the environment setting; budget flags override defaults. No external budget configuration file is read in this version.
+The agent creates `game/` (with `README.md` and the launch command), `traces/<run_id>/` and `.agent-runtime/`. Start the generated game with the command in `game/README.md`, normally `cd game && python3 -m http.server 8000 --bind 127.0.0.1`, then open http://127.0.0.1:8000/.
+
+### 4. Checks and offline rehearsal
+
+```bash
+python -m pytest -q                                   # 137 tests incl. end-to-end
+PYTHONPATH=<repo> python -m agent game_design_prompt.md \
+    --factory tests.rehearsal_factory:create_dependencies   # no API key needed
+python -m agent.delivery traces/<run_id>              # audit a finished trace
+```
+
+The rehearsal factory lives under `tests/` and uses a scripted model client; it is never the default.
 
 ## Architecture
 
@@ -93,7 +99,7 @@ flowchart TB
     CFG["Validated configuration"] --> C
     STATE["Shared state and immutable views"] --- C
     C -. "planning calls" .-> P["Member 2<br/>PlannerPort"]
-    C -->|"authorized tools"| RT["Member 3<br/>RuntimePort<br/>Locally integrated"]
+    C -->|"authorized tools"| RT["Member 3<br/>RuntimePort"]
     C -. "acceptance checks" .-> V["Member 4<br/>VerifierPort"]
     C -. "recovery advice" .-> R["Member 5<br/>RecoveryPort"]
     C -. "durable events" .-> T["Member 6<br/>TracePort"]
@@ -104,12 +110,11 @@ flowchart TB
     classDef pending fill:#fff8eb,stroke:#b7791f,color:#604419,stroke-dasharray:5 4;
     classDef artifact fill:#eef3fa,stroke:#5278a6,color:#233e60;
     class CLI,C,CFG,STATE ready;
-    class P,V,R,T pending;
-    class RT implemented;
+    class P,V,R,T,RT ready;
     class G,LOG artifact;
 ```
 
-**Green:** implemented framework and locally integrated runtime. **Dashed amber:** production ports awaiting integration. Outputs shown are the intended integrated-system artifacts.
+All ports are wired by `agent/integrations.py:create_dependencies`.
 
 The controller decides **whether** an action can run. Member 3 determines **how** it runs and must enforce OS/process isolation. A working-directory setting alone is not a sandbox.
 
@@ -226,10 +231,14 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── controller.py        # Protocols, state machine, and tool gateway
 │   ├── state.py             # Shared data contracts and immutable views
 │   ├── config.py            # Validated limits and paths
-│   └── tools/               # Member 3 local runtime (under review)
-│   └── verification/        # Member 4 GameVerifier (integration copy)
-├── harness/
-│   └── playwright_game_check.py   # Member 4 bounded browser check
+│   ├── integrations.py      # Production dependency factory (Member 1)
+│   ├── planning/            # Member 2 LLM planner, prompts, parser
+│   ├── tools/               # Member 3 sandboxed runtime
+│   ├── verification/        # Member 4 GameVerifier + playwright_game_check.py
+│   ├── recovery/            # Member 5 recovery policy
+│   ├── tracing/             # Member 6 recorder + run_report.md renderer
+│   └── delivery.py          # Member 6 trace audit
+├── evaluation/              # Member 5 offline evaluation specs and report
 ├── assets/
 │   └── readme-banner.svg    # Documentation artwork
 ├── tests/
@@ -237,8 +246,11 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 │   ├── test_controller.py   # Behavioral tests with injected fakes
 │   ├── test_config_cli.py   # Configuration and entry-point tests
 │   ├── test_runtime.py      # Member 3 real runtime tests
-│   └── test_runtime_process_cleanup.py # Process cleanup and uncertainty regressions
-│   └── test_verifier_member4.py  # Member 4 unit tests (mocked)
+│   ├── test_runtime_process_cleanup.py # Process cleanup and uncertainty regressions
+│   ├── test_planner.py / test_recovery.py / test_tracing.py / test_evaluation.py
+│   ├── test_verifier_member4.py
+│   ├── test_integration_tasks.py   # Cross-member checklist + end-to-end rehearsal
+│   └── rehearsal_factory.py        # Scripted-model factory (tests only)
 ├── member4_ZHOU SIHAN/      # Member 4 delivery notes + source of truth copy
 ├── INTERFACES.md            # Team contract v1
 ├── TEST_REPORT.md           # Verified behavior and test limitations
@@ -246,8 +258,6 @@ Runs return a JSON `RunSummary` with the reason, counters, artifact locations, l
 ├── pyproject.toml
 └── .gitignore
 ```
-
-**Member 4 integration:** `from agent.verification import GameVerifier`
 
 Runtime outputs are separate from submitted Agent code:
 
@@ -266,24 +276,20 @@ run-root/
 > [!NOTE]
 > game/ and traces/ are ignored during development, but they must be preserved and submitted after the assessed run. Preserve referenced raw output and the managed environment under .agent-runtime/ too, or arrange trace-owned raw output and a documented reproducible dependency setup. Git ignore rules are not permission to delete them. No game source or template is prewritten in this repository.
 
-## Member 3 integration wiring
+## Evidence flow
 
-The integration factory can import `LocalRuntime` from `agent.tools` and assign it to `Dependencies.runtime`. Create a fresh runtime for every run. No production dependency factory is added here because the remaining ports are not available.
-
-Use the default `LocalRuntime()` for strict OS sandboxing. Member 6 may inject `output_directory_factory=lambda context: context.trace_dir / "raw"` to preserve full stdout/stderr with traces. Member 2 must use argument arrays for commands and `INSTALL_DEPENDENCIES` for installation. Member 4 must use bounded verification commands; process-group cleanup is verified on macOS, while detached-session containment and final-machine rehearsal remain separate requirements.
+Verification screenshots and logs are written by the harness into a per-command `AGENT_ARTIFACT_DIR` inside `.agent-runtime/` (the sandbox allows writes there, not to `traces/`), returned as `output_refs`, and copied by the tracer into `traces/<run_id>/outputs/` with an index. `game/` never receives evidence, so the workspace revision verified is the revision delivered.
 
 ## Team implementation map
 
 | Member | Ownership | Interface | Current repository status |
 |---|---|---|---|
 | **1** | Entry point, controller, state, configuration, and integration | Dependencies / Controller | Framework implemented |
-| **2** | LLM, planning, prompts, and content generation | PlannerPort | Production implementation pending |
-| **3** | Files, commands, dependencies, and runtime isolation | RuntimePort | Locally integrated; cleanup fixes verified |
-| **4** | Game verification and acceptance testing | VerifierPort | Production implementation pending |
-| **3** | Files, commands, dependencies, and runtime isolation | RuntimePort | Production implementation pending |
-| **4** | Game verification and acceptance testing | VerifierPort | `agent/verification` ready — inject via `from agent.verification import GameVerifier` |
-| **5** | Error recovery and evaluation | RecoveryPort | Production implementation pending |
-| **6** | Tracing, logging, and delivery | TracePort | Production implementation pending |
+| **2** | LLM, planning, prompts, and content generation | PlannerPort | Integrated (`agent/planning`) |
+| **3** | Files, commands, dependencies, and runtime isolation | RuntimePort | Integrated (`agent/tools`) |
+| **4** | Game verification and acceptance testing | VerifierPort | Integrated (`agent/verification`) |
+| **5** | Error recovery and evaluation | RecoveryPort | Integrated (`agent/recovery`, `evaluation/`) |
+| **6** | Tracing, logging, and delivery | TracePort | Integrated (`agent/tracing`, `agent/delivery.py`) |
 
 Read [INTERFACES.md](INTERFACES.md) before implementation. Use the shared types in [state.py](agent/state.py) and asynchronous signatures in [controller.py](agent/controller.py). Coordinate shared-contract changes with Member 1.
 
@@ -310,8 +316,9 @@ Mocks exist only under tests/. They do not install dependencies, execute game co
 - [x] Validate the framework with 43 mock-based tests.
 - [x] Integrate Member 3 files, tests, and packaging locally for review.
 - [x] Fix Member 3 process-group cleanup and pass all 65 integration tests.
-- [ ] Implement and connect remaining production ports.
-- [ ] Rehearse autonomous development against varied unseen specifications.
+- [x] Implement and connect remaining production ports.
+- [x] Offline end-to-end rehearsal (scripted model, real runtime/verifier/recovery/tracing).
+- [ ] Rehearse with the course-provided model against varied unseen specifications.
 - [ ] Verify real game launch, interactions, failure recovery, and submission artifacts.
 
 <details>
