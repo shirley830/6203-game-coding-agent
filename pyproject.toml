@@ -8,9 +8,16 @@ version = "1.0.0"
 description = "Provider-independent finite-state coding-agent harness"
 requires-python = ">=3.11"
 dependencies = [
-    "litellm-core",
+    "litellm>=1.40",
     "pydantic>=2,<3",
+    "playwright>=1.45",
 ]
+
+[project.optional-dependencies]
+test = ["pytest>=7"]
 
 [tool.setuptools.packages.find]
 include = ["agent", "agent.*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]

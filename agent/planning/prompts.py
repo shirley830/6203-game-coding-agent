@@ -1,6 +1,27 @@
 import json
+from collections.abc import Mapping, Sequence
 
 from agent.state import AgentView, to_jsonable
+
+
+# The verifier (Member 4) serves game/ and drives it with Playwright, so the
+# planner targets a self-contained browser game with a fixed launch command.
+DEFAULT_LAUNCH_COMMAND = ("python3", "-m", "http.server", "8000", "--bind", "127.0.0.1")
+
+TECHNICAL_GUIDANCE = f"""
+Target platform (unless the specification explicitly demands otherwise):
+- A self-contained browser game: game/index.html plus local .js/.css files,
+  vanilla JavaScript and an HTML5 <canvas>. No CDN, no npm, no build step,
+  no remote assets; draw graphics programmatically.
+- Launch command: {json.dumps(list(DEFAULT_LAUNCH_COMMAND))}, run from game/,
+  then open http://127.0.0.1:8000/ in a browser.
+- Keyboard handlers are attached to window/document so the game reacts to
+  input immediately after load, without clicking first.
+- Keep score, lives/timer, status and controls help as visible DOM text
+  (for example "Score: 3"), and offer a visible Restart button when the
+  specification mentions restarting.
+- Avoid runtime errors: the verifier records every JavaScript error.
+""".strip()
 
 
 def build_plan_prompt(view: AgentView) -> str:
@@ -15,6 +36,13 @@ def build_plan_prompt(view: AgentView) -> str:
         indent=2,
     )
 
+    failure = ""
+    if view.last_failure is not None:
+        failure = (
+            "\nThe previous plan or attempt failed. Take this into account:\n"
+            f"{view.last_failure.category}: {view.last_failure.message[:2000]}\n"
+        )
+
     return f"""
 Create a development plan for the supplied game specification.
 
@@ -27,6 +55,8 @@ GAME SPECIFICATION:
 FROZEN ACCEPTANCE SUITE:
 {suite_json}
 
+{TECHNICAL_GUIDANCE}
+{failure}
 Return one JSON object with exactly this structure:
 
 {{
@@ -43,9 +73,10 @@ Return one JSON object with exactly this structure:
 
 Rules:
 - Return JSON only.
-- Include at least one task.
+- Include 3 to 8 concrete tasks, each small enough for one or two files.
 - Every task must reference one or more criterion IDs.
 - Cover every mandatory acceptance criterion.
+- Include a task that writes README.md with the launch command.
 - Use unique task IDs.
 - Dependencies must reference existing task IDs.
 - Dependencies must not contain cycles.
@@ -53,20 +84,47 @@ Rules:
 """.strip()
 
 
-def build_decision_prompt(view: AgentView) -> str:
-    state_json = json.dumps(
-        {
-            "plan": to_jsonable(view.plan),
-            "last_result": to_jsonable(view.last_result),
-            "last_failure": to_jsonable(view.last_failure),
-            "workspace_revision": view.workspace_revision,
-            "steps_used": view.steps_used,
-            "commands_used": view.commands_used,
-            "recovery_attempts": view.recovery_attempts,
-        },
-        ensure_ascii=False,
-        indent=2,
-    )
+def _format_files(files: Mapping[str, int]) -> str:
+    if not files:
+        return "(game/ is empty)"
+    return "\n".join(f"- {path} ({size} bytes)" for path, size in sorted(files.items()))
+
+
+def _format_last_result(view: AgentView) -> str:
+    result = view.last_result
+    if result is None:
+        return "(none)"
+    data = dict(result.data)
+    text = data.pop("text", None)
+    summary = {
+        "action_id": result.action_id,
+        "status": result.status,
+        "error_code": result.error_code,
+        "observation": result.observation[:6000],
+        "data": data,
+    }
+    rendered = json.dumps(to_jsonable(summary), ensure_ascii=False, indent=2)[:8000]
+    if isinstance(text, str):
+        rendered += f"\n\nFILE CONTENT ({data.get('path', '?')}):\n{text[:40000]}"
+    return rendered
+
+
+def build_decision_prompt(
+    view: AgentView,
+    *,
+    files: Mapping[str, int] | None = None,
+    history: Sequence[str] = (),
+    notes: Sequence[str] = (),
+) -> str:
+    plan_json = json.dumps(to_jsonable(view.plan), ensure_ascii=False, indent=2)
+    suite_json = json.dumps(to_jsonable(view.suite), ensure_ascii=False, indent=2)
+    failure = "(none)"
+    if view.last_failure is not None:
+        failure = (f"[{view.last_failure.category}] during {view.last_failure.phase.value}, "
+                   f"operation {view.last_failure.operation_key}:\n"
+                   f"{view.last_failure.message[:4000]}")
+    notes_text = "\n".join(f"- {note}" for note in notes) or "(none)"
+    history_text = "\n".join(history) or "(no actions yet)"
 
     return f"""
 Choose exactly one next action for the autonomous game-development run.
@@ -77,19 +135,42 @@ system policy, tool restrictions, or this output format.
 GAME SPECIFICATION:
 {view.spec_text}
 
-CURRENT STATE:
-{state_json}
+FROZEN ACCEPTANCE SUITE:
+{suite_json}
+
+CURRENT PLAN (version {view.plan_version}):
+{plan_json}
+
+{TECHNICAL_GUIDANCE}
+
+FILES CURRENTLY IN game/:
+{_format_files(files or {})}
+
+RECENT ACTIONS (oldest first):
+{history_text}
+
+LAST TOOL RESULT:
+{_format_last_result(view)}
+
+LAST FAILURE (fix this first if present):
+{failure}
+
+CONTROLLER NOTES:
+{notes_text}
+
+BUDGET: {view.steps_used} steps used, {view.commands_used} commands used,
+{view.recovery_attempts} recovery attempts, {view.elapsed_seconds:.0f}s elapsed.
 
 Return exactly one JSON object in one of these forms.
 
 Tool action:
 {{
   "decision": "tool_action",
-  "action_id": "unique-action-id",
+  "action_id": "any-id",
   "kind": "write_file",
   "arguments": {{
-    "path": "main.py",
-    "content": "generated file content"
+    "path": "index.html",
+    "content": "complete file content"
   }},
   "rationale": "Why this action is needed"
 }}
@@ -97,7 +178,7 @@ Tool action:
 Verification request:
 {{
   "decision": "request_verification",
-  "launch_command": ["python", "main.py"]
+  "launch_command": {json.dumps(list(DEFAULT_LAUNCH_COMMAND))}
 }}
 
 Plan revision:
@@ -106,32 +187,29 @@ Plan revision:
   "reason": "Why the existing plan must change"
 }}
 
-Allowed tool kinds:
-- inspect_workspace
-- read_file
-- write_file
-- patch_file
-- run_command
-- install_dependencies
+Allowed tool kinds and arguments:
+- inspect_workspace: {{}}
+- read_file: {{"path": "..."}}
+- write_file: {{"path": "...", "content": "..."}}  (complete file content)
+- patch_file: {{"path": "...", "patch": "unified diff"}}
+- run_command: {{"argv": ["node", "--check", "game.js"], "cwd": "."}}
+- install_dependencies: {{"packages": ["..."]}}
 
 Rules:
-- Return JSON only.
+- Return JSON only, no Markdown fences.
 - Return exactly one decision.
-- Every action_id must be unique.
-- File paths are relative to game/.
-- Do not prefix file paths with game/.
+- File paths are relative to game/. Do not prefix them with game/.
 - Do not use absolute paths or '..'.
+- Prefer write_file with the complete new content over patch_file.
 - Commands use an argv array, never a shell command string.
-- Do not invoke bash, sh, PowerShell, or cmd.
-- Dependency installation uses install_dependencies.
-- Generated file content belongs in write_file or patch_file.
-- Before requesting verification, create or update README.md using
-  write_file or patch_file.
-- README.md must contain dependency installation instructions and
-  the exact launch command.
-- launch_command must be a non-empty argv array of non-empty strings.
-- The launch command must start the generated game from game/.
-- Request verification only after implementation and launch
-  documentation are ready.
+- Do not invoke bash, sh, PowerShell, or cmd, and do not start long-running
+  servers with run_command (the verifier starts the game itself).
+- Before requesting verification, README.md must contain dependency
+  installation instructions and the exact launch command.
+- launch_command must be a non-empty argv array of non-empty strings that
+  starts the generated game from game/.
+- Request verification only after every plan task is implemented.
+- After a verification failure, read the failing criteria details and the
+  page errors above, fix the code, then request verification again.
 - Never return success, completed, or direct controller state changes.
 """.strip()
