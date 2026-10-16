@@ -1,0 +1,3 @@
+# Terminal hangman
+
+Create a terminal hangman game in Python that is played by typing letters on the keyboard. Pick a secret word from a built-in word list. Show the word with unguessed letters as underscores, the letters already guessed, and the number of remaining lives (start with 6). A wrong letter costs one life; repeating a guessed letter costs nothing and shows a message. Revealing the whole word wins; reaching zero lives loses and reveals the word. After a win or loss, typing r starts a new round and q quits. Use only the Python standard library and provide one documented launch command.

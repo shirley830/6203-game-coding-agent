@@ -8,7 +8,7 @@
 
 ![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
 ![Controller implemented](https://img.shields.io/badge/Controller-implemented-137C66?style=flat-square)
-![191 local tests passed](https://img.shields.io/badge/Local_tests-191_passed-137C66?style=flat-square)
+![199 local tests passed](https://img.shields.io/badge/Local_tests-199_passed-137C66?style=flat-square)
 ![Team modules integrated](https://img.shields.io/badge/Team_modules-integrated-137C66?style=flat-square)
 
 [Quick start](#quick-start) &nbsp; / &nbsp; [Architecture](#architecture) &nbsp; / &nbsp; [Team contracts](docs/INTERFACES.md) &nbsp; / &nbsp; [Integration review](docs/INTEGRATION_REVIEW_CN.md)
@@ -68,7 +68,7 @@ AGENT_API_BASE=https://course-endpoint/v1 # optional custom endpoint
 OPENAI_API_KEY=...                        # the provider's own key variable
 ```
 
-Shell variables override the file, and `--env-file PATH` selects another file. Only key names are printed, never values. Generated code cannot read `agent.env`: the command sandbox blocks it. **Never commit or submit `agent.env`.**
+Add `AGENT_MAX_RUNTIME=<seconds>` to fit the presentation slot (default 1800, includes finalization); the agent prints the latest time it will stop. Shell variables override the file, and `--env-file PATH` selects another file. Only key names are printed, never values. Generated code cannot read `agent.env`: the command sandbox blocks it. **Never commit or submit `agent.env`.**
 
 ### 3. Check the machine, then run
 
@@ -81,12 +81,14 @@ The agent runs the same self-check at startup. If something that makes success i
 
 Model calls that fail transiently (connection errors, rate limits, 5xx) are retried up to 5 times, waiting 5s, 15s, 45s, then 60s before each retry, always within the total time budget. Each wait is recorded as a `retry_backoff` event in the trace.
 
+Games are built for the browser unless the specification explicitly asks for something else. Terminal and pygame-style Python games (launch `python3 main.py`) are verified in process mode: the program must start and keep running without a traceback; terminal games are played by typing moves; graphical games run headless and their input handling is checked statically (labelled as such in the trace). Spec-derived scenarios apply to browser games only.
+
 The agent creates `game/` (with `README.md` and the launch command), `traces/<run_id>/` and `.agent-runtime/`. Start the generated game with the command in `game/README.md`, normally `cd game && python3 -m http.server 8000 --bind 127.0.0.1`, then open http://127.0.0.1:8000/.
 
 ### 4. Checks and offline rehearsal
 
 ```bash
-python -m pytest -q                                   # 191 tests incl. end-to-end
+python -m pytest -q                                   # 199 tests incl. end-to-end
 PYTHONPATH=<repo> python -m agent game_design_prompt.md \
     --factory tests.rehearsal_factory:create_dependencies   # no API key needed
 python -m agent.delivery traces/<run_id>              # audit a finished trace
@@ -304,7 +306,7 @@ When a module is ready, provide its import path, construction requirements, depe
 
 ## Testing scope
 
-The [Member 1 verification record](docs/testing/MEMBER1_TEST_REPORT.md) covers the controller; the full suite is 191 tests, listed by area in [docs/testing/README.md](docs/testing/README.md). Controller tests cover:
+The [Member 1 verification record](docs/testing/MEMBER1_TEST_REPORT.md) covers the controller; the full suite is 199 tests, listed by area in [docs/testing/README.md](docs/testing/README.md). Controller tests cover:
 
 - Current-revision acceptance, rejection of stale or missing evidence, and repair followed by fresh verification.
 - Safe retry accounting and rejection of retries with unknown side effects.

@@ -199,6 +199,12 @@ class VerifierWiringTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual([r.status for r in results], [CheckStatus.PASS, CheckStatus.PASS])
         self.assertIn("REQ-L1", results[0].detail)
 
+    def test_acceptance_info_is_never_a_pass_or_fail(self):
+        ledger = EvidenceLedger()
+        ledger.harness = {"checks": {"technical": {"status": "pass"}}}
+        info = Criterion("C-ACCEPTANCE-INFO", "note", "technical", mandatory=False)
+        self.assertEqual(evaluate_criteria((info,), ledger)[0].status, CheckStatus.SKIP)
+
     def test_decision_format_slips_are_repaired(self):
         from agent.planning.parser import parse_decision
         from agent.state import RequestVerification, ToolAction

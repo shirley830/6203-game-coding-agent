@@ -194,6 +194,12 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
 
     results: list[CriterionResult] = []
     for criterion in criteria:
+        if criterion.criterion_id == "C-ACCEPTANCE-INFO":
+            # Informational note about how the suite was built; never a test.
+            results.append(CriterionResult(
+                criterion.criterion_id, CheckStatus.SKIP,
+                tuple(ledger.tool_ops[-1:]) or ("note:acceptance",), "informational, not a test"))
+            continue
         refs = list(ledger.refs_by_criterion.get(criterion.criterion_id, []))
         # Always attach at least one cycle-level tool ref when tools ran.
         if not refs and ledger.tool_ops:

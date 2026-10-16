@@ -137,6 +137,22 @@ to succeeded through four verify-and-repair cycles.
 * No API key appeared in any of the 21 trace directories, game directories or
   runtime outputs; no game server or browser process was left running.
 
+## 5b. Additional run: non-browser specification
+
+After adding process-mode verification (non-browser games), Sonnet ran the new
+`evaluation/specs/dev_05_terminal.md` (terminal hangman, standard library only):
+
+| Outcome | Time | Steps | Recoveries | Launch command | Verification |
+|---|---|---|---|---|---|
+| succeeded | 77 s | 30 | 0 | `python3 main.py` | launch, functional, interaction pass in process mode (typed moves produced 1403 new output characters) |
+
+The agent wrote its own `test_hangman.py`, ran it with `python3 -m unittest`
+before requesting verification, and documented the launch command. Playing the
+generated game by hand confirmed correct guesses, repeated guesses without a
+life lost, and wrong guesses costing a life. Spec-derived scenarios are not
+used for non-browser games, so rule-level checks are weaker than for browser
+games.
+
 ## 6. Limitations of this evaluation
 
 * One run per cell; model output is nondeterministic, so single failures or

@@ -20,6 +20,11 @@
     "path": "evaluation/specs/dev_04_maze.md"
   },
   {
+    "spec_id": "dev_05_terminal",
+    "split": "development",
+    "path": "evaluation/specs/dev_05_terminal.md"
+  },
+  {
     "spec_id": "holdout_01_switches",
     "split": "reserved",
     "path": "evaluation/specs/holdout_01_switches.md"

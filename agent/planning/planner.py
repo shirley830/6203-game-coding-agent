@@ -47,6 +47,7 @@ class LLMPlanner:
         self._notes: deque[str] = deque(maxlen=5)
         self._seen_result: str | None = None
         self._edits_since_verification = 0
+        self._packages: list[str] = []
         self._seen_failure: object | None = None
 
     async def create_plan(
@@ -144,6 +145,10 @@ class LLMPlanner:
                 self._refresh_files(entries)
             return
 
+        if result.status == ToolStatus.OK and action.kind == ToolKind.INSTALL_DEPENDENCIES:
+            for package in action.arguments.get("packages", ()):
+                if package not in self._packages:
+                    self._packages.append(package)
         if result.status == ToolStatus.OK and action.kind in _EDIT_KINDS:
             self._edits_since_verification += 1
         label = self._describe(action)
@@ -239,41 +244,39 @@ class LLMPlanner:
             self._notes.append("README.md was (re)written with the exact launch command.")
             return self._register(ToolAction(
                 "guard", ToolKind.WRITE_FILE,
-                {"path": "README.md", "content": self._readme(launch, readme)},
+                {"path": "README.md", "content": self._readme(launch, readme, self._packages,
+                                                             "requirements.txt" in self._files)},
                 "Launch documentation must contain the exact launch command",
             ))
         self._edits_since_verification = 0
         return decision
 
     @staticmethod
-    def _readme(launch: tuple[str, ...], previous: str | None) -> str:
+    def _readme(launch: tuple[str, ...], previous: str | None,
+                packages: list[str] | None = None, has_requirements: bool = False) -> str:
         command = " ".join(launch)
         http = "http.server" in launch
         port = next((t for t in launch if t.isdigit()), "8000")
-        lines = [
-            "# Generated game",
-            "",
-            "Generated autonomously by the PE6203 coding agent.",
-            "",
-            "## Requirements",
-            "",
-            "- Python 3.11+ (only the standard library is used to serve the game)"
-            if http else "- See the dependency list below.",
-            "- A modern desktop browser (Chrome, Edge, Firefox or Safari)",
-            "",
-            "No dependency installation is required." if http else "",
-            "",
-            "## Start the game",
-            "",
-            "From this `game/` directory run:",
-            "",
-            "```bash",
-            command,
-            "```",
-            "",
-        ]
+        lines = ["# Generated game", "", "Generated autonomously by the PE6203 coding agent.", "",
+                 "## Requirements", ""]
+        if http:
+            lines += ["- Python 3.11+ (only the standard library is used to serve the game)",
+                      "- A modern desktop browser (Chrome, Edge, Firefox or Safari)", "",
+                      "No dependency installation is required.", ""]
+        else:
+            lines += ["- Python 3.11+", ""]
+            if has_requirements:
+                lines += ["Install the dependencies once:", "", "```bash",
+                          "python3 -m pip install -r requirements.txt", "```", ""]
+            elif packages:
+                lines += ["Install the dependencies once:", "", "```bash",
+                          "python3 -m pip install " + " ".join(packages), "```", ""]
+            else:
+                lines += ["No dependency installation is required (standard library only).", ""]
+        lines += ["## Start the game", "", "From this `game/` directory run:", "",
+                  "```bash", command, "```", ""]
         if http:
             lines += [f"Then open http://127.0.0.1:{port}/ in a browser.", ""]
         if previous and command not in previous:
             lines += ["## Notes from development", "", previous.strip(), ""]
-        return "\n".join(line for line in lines if line is not None) + "\n"
+        return "\n".join(lines) + "\n"

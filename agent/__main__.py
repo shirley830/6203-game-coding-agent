@@ -1,6 +1,7 @@
 """Required entry point: python -m agent game_design_prompt.md."""
 
 import argparse
+from datetime import datetime, timedelta
 import asyncio
 import importlib
 import json
@@ -27,7 +28,9 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--factory", default=os.environ.get(
         "AGENT_MODULE_FACTORY", "agent.integrations:create_dependencies"),
         help="Team dependency factory in module:function format")
-    parser.add_argument("--max-runtime", type=float, default=1800.0)
+    parser.add_argument("--max-runtime", type=float, default=None,
+                        help="Total seconds including finalization (default: AGENT_MAX_RUNTIME "
+                             "from the environment or agent.env, else 1800)")
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--max-commands", type=int, default=80)
     parser.add_argument("--max-retries", type=int, default=5)
@@ -80,8 +83,10 @@ def main(argv: Sequence[str] | None = None) -> int:
         loaded = load_env_file(env_file)
         if loaded:
             print(f"Loaded {', '.join(loaded)} from {env_file}", file=sys.stderr)
+        max_runtime = (args.max_runtime if args.max_runtime is not None
+                       else float(os.environ.get("AGENT_MAX_RUNTIME", "1800")))
         config = AgentConfig(
-            run_root=args.run_root, max_runtime_seconds=args.max_runtime,
+            run_root=args.run_root, max_runtime_seconds=max_runtime,
             max_steps=args.max_steps, max_commands=args.max_commands,
             max_retries_per_operation=args.max_retries,
             max_recovery_attempts=args.max_recovery_attempts,
@@ -99,6 +104,11 @@ def main(argv: Sequence[str] | None = None) -> int:
               file=sys.stderr)
         return 2
     try:
+        started = datetime.now()
+        deadline = started + timedelta(seconds=config.max_runtime_seconds)
+        print(f"Agent started at {started:%H:%M:%S}; it stops by {deadline:%H:%M:%S} at the latest "
+              f"(max runtime {config.max_runtime_seconds / 60:.0f} min, including finalization).",
+              file=sys.stderr, flush=True)
         summary = asyncio.run(Controller(config, dependencies).run(args.spec))
     except KeyboardInterrupt:
         print("Run interrupted; existing game/ and traces/ will not be deleted.", file=sys.stderr)

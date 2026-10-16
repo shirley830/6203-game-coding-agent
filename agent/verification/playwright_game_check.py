@@ -349,6 +349,127 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float,
     }
 
 
+_BROWSER_HINT = re.compile(r"http\.server|https?://|--port|\.html?\b")
+_GRAPHICAL_LIBS = re.compile(r"^\s*(import|from)\s+(pygame|tkinter|pyglet|arcade)\b", re.M)
+_EVENT_HANDLING = re.compile(r"KEYDOWN|key\.get_pressed|MOUSEBUTTONDOWN|\.bind\(|on_key_press|on_mouse_press")
+_TERMINAL_INPUTS = ("", "w", "a", "s", "d", "1", "2", "3", "h", "y", "n", "left", "right", "q")
+
+
+def _is_browser_launch(launch: list[str]) -> bool:
+    return not launch or bool(_BROWSER_HINT.search(" ".join(launch)))
+
+
+def _game_sources(cwd: Path) -> str:
+    texts = []
+    for path in sorted(cwd.rglob("*.py"))[:30]:
+        try:
+            texts.append(path.read_text(encoding="utf-8", errors="replace")[:200_000])
+        except OSError:
+            continue
+    return "\n".join(texts)
+
+
+def _run_process_checks(launch: list[str], cwd: Path, evidence_dir: Path, budget: float,
+                        spec: dict[str, Any] | None) -> dict[str, Any]:
+    """Basic verification for non-browser games (terminal or pygame-style).
+
+    Checks that the program starts and keeps running without a traceback;
+    terminal games are fed typed moves and must print more output in response.
+    Graphical games run headless (SDL dummy drivers); their input cannot be
+    injected, so interaction is judged from event-handling code and labelled as
+    static evidence. Spec scenarios need a browser page and are not run here.
+    """
+    evidence_dir.mkdir(parents=True, exist_ok=True)
+    stdout_path = evidence_dir / "game_stdout.log"
+    stderr_path = evidence_dir / "game_stderr.log"
+    env = {**os.environ, "SDL_VIDEODRIVER": "dummy", "SDL_AUDIODRIVER": "dummy",
+           "PYGAME_HIDE_SUPPORT_PROMPT": "1", "PYTHONUNBUFFERED": "1"}
+    sources = _game_sources(cwd)
+    graphical = bool(_GRAPHICAL_LIBS.search(sources))
+    read = lambda path: path.read_text(encoding="utf-8", errors="replace")  # noqa: E731
+    refs = [f"log:{stdout_path.name}", f"log:{stderr_path.name}"]
+    with stdout_path.open("wb") as out, stderr_path.open("wb") as err:
+        proc = subprocess.Popen(launch, cwd=str(cwd), stdin=subprocess.PIPE, stdout=out,
+                                stderr=err, env=env)
+        try:
+            time.sleep(min(3.0, max(budget * 0.2, 1.0)))
+            first_exit = proc.poll()
+            initial = read(stdout_path)
+            interaction = _check("fail", "not attempted", state_changed=False)
+            if graphical:
+                if first_exit is None and _EVENT_HANDLING.search(sources):
+                    interaction = _check(
+                        "pass", "graphical game runs headless and handles input events "
+                        "(static evidence only: input cannot be injected without a display)",
+                        evidence_refs=["static:event-handling", *refs], state_changed=True)
+                else:
+                    interaction = _check("fail", "no keyboard/mouse event handling found or the "
+                                         "program stopped", state_changed=False)
+            elif first_exit is None:
+                time.sleep(1.0)
+                idle = read(stdout_path)
+                for line in _TERMINAL_INPUTS:
+                    if proc.poll() is not None or proc.stdin is None:
+                        break
+                    try:
+                        proc.stdin.write((line + "\n").encode())
+                        proc.stdin.flush()
+                    except OSError:
+                        break
+                    time.sleep(0.25)
+                time.sleep(0.5)
+                after = read(stdout_path)
+                idle_growth = len(idle) - len(initial)
+                input_growth = len(after) - len(idle)
+                if input_growth > max(20, 2 * idle_growth):
+                    interaction = _check("pass", f"typed moves produced {input_growth} new output "
+                                         f"characters (idle growth {idle_growth})",
+                                         evidence_refs=refs, state_changed=True)
+                else:
+                    interaction = _check("fail", "typed moves on standard input did not change the "
+                                         "output", evidence_refs=refs, state_changed=False)
+            else:
+                interaction = _check("fail", "program exited before any input could be given",
+                                     evidence_refs=refs, state_changed=False)
+        finally:
+            _terminate(proc)
+    stdout_text, stderr_text = read(stdout_path), read(stderr_path)
+    traceback = "Traceback (most recent call last)" in stderr_text + stdout_text
+    err_lines = stderr_text.strip().splitlines()
+    # Final exception line first: it is what the planner needs to fix the bug.
+    tail = " | ".join(err_lines[-1:] + err_lines[-3:-1])[:300]
+    if first_exit not in (None, 0):
+        launch_block = _check("fail", f"exited with code {first_exit}: {tail} "
+                              f"(command: {' '.join(launch)[-120:]})", evidence_refs=refs)
+    elif first_exit == 0 and not initial.strip():
+        launch_block = _check("fail", "program exited immediately without output", evidence_refs=refs)
+    else:
+        launch_block = _check("pass", f"`{' '.join(launch)}` started and kept running"
+                              + (" headless (SDL dummy)" if graphical else ""), evidence_refs=refs)
+    if traceback:
+        functional = _check("fail", f"Python traceback while running: {tail}", evidence_refs=refs)
+    elif launch_block["status"] == "pass":
+        functional = _check("pass", "ran without errors" + ("" if graphical else
+                            f"; printed {len(stdout_text)} characters"), evidence_refs=refs)
+    else:
+        functional = _check("fail", "program did not run", evidence_refs=refs)
+    requirements = {
+        item["criterion_id"]: _check("fail", "spec scenarios need a browser page, but the launch "
+                                     "command starts a non-browser program")
+        for item in (spec or {}).get("scenarios", [])
+    }
+    return {
+        "mode": "process",
+        "page_errors": [tail] if traceback else [],
+        "ok": all(b["status"] == "pass" for b in (launch_block, functional, interaction)),
+        "checks": {"launch": launch_block, "functional": functional, "interaction": interaction,
+                   "technical": _check("pass" if launch_block["status"] == "pass" else "fail",
+                                       "non-browser program verified in process mode",
+                                       evidence_refs=refs)},
+        "requirements": requirements,
+    }
+
+
 def _is_favicon(msg: Any) -> bool:
     """Browsers request /favicon.ico on their own; its 404 is not a game error."""
     try:
@@ -604,6 +725,13 @@ def main(argv: list[str] | None = None) -> int:
     note = ""
     try:
         remaining = deadline - time.monotonic()
+        if not url and not _is_browser_launch(launch):
+            spec = json.loads(args.scenarios_json) if args.scenarios_json else None
+            result = _run_process_checks(launch, cwd, evidence_dir, remaining, spec)
+            result["launch_argv"] = launch
+            result["artifacts"] = sorted(str(p) for p in evidence_dir.iterdir() if p.is_file())
+            _print_json(result)
+            return 0
         if not url:
             proc, url, note = _start_launch(launch, cwd, remaining, evidence_dir / "game_server.log")
         else:

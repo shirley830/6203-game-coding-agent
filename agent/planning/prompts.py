@@ -21,6 +21,19 @@ Target platform (unless the specification explicitly demands otherwise):
   (for example "Score: 3"), and offer a visible Restart button when the
   specification mentions restarting.
 - Avoid runtime errors: the verifier records every JavaScript error.
+
+Only when the specification explicitly requires a non-browser game (for
+example pygame, a terminal/console/command-line game, or curses):
+- Write Python 3 with game/main.py as the entry point; launch command
+  ["python3", "main.py"], run from game/.
+- Prefer the standard library. Install a library the specification names
+  (for example pygame) with install_dependencies, and also list it in
+  game/requirements.txt.
+- Terminal games read moves from standard input line by line and print the
+  updated state after every move, so they can be played and checked by typing.
+- pygame games must keep running until the window is closed and must not
+  crash without a display (the verifier runs them with SDL_VIDEODRIVER=dummy).
+
 - If the acceptance suite contains C-CONTRACT, implement that test contract
   exactly: window.__gameState must reflect the REAL live game state (update it
   whenever the state changes, or define it as a getter), and window.__gameTest

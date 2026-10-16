@@ -11,3 +11,11 @@
 They are test inputs, not templates: the production agent (`agent/`) never
 reads `tests/`, contains no game code, and generates every game from the
 specification at run time. `tests/test_no_game_templates.py` enforces this.
+
+Process-mode fixtures (non-browser games), used by `tests/test_non_browser.py`:
+
+| Directory | Purpose |
+|---|---|
+| `process_term/` | A minimal terminal game that reads moves from standard input |
+| `process_crash/` | A program that crashes at start-up (must fail launch with the exception) |
+| `process_gfx/` | A stand-in for a pygame game (keeps running, has event-handling code) |

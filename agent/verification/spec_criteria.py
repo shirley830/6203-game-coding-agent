@@ -243,6 +243,16 @@ def contract_description(contract: Contract) -> str:
             "preconditions and must use the real game logic; they never fake results.")
 
 
+_NON_BROWSER = re.compile(r"\b(pygame|tkinter|pyglet|curses|terminal|console|command[- ]line|"
+                          r"text[- ]based|desktop (?:game|application|app|window))\b", re.I)
+_BROWSER = re.compile(r"\b(browser|html|canvas|web ?page|javascript)\b", re.I)
+
+
+def is_non_browser_spec(spec_text: str) -> bool:
+    """True when the specification asks for a non-browser game and never for a browser one."""
+    return bool(_NON_BROWSER.search(spec_text)) and not _BROWSER.search(spec_text)
+
+
 def _normalize_hook_calls(raw: Any, hooks: set[str]) -> Any:
     """Accept the shorthand {"placePlayer": [1, 1]} for a declared hook."""
     if not isinstance(raw, dict) or not isinstance(raw.get("steps"), list):

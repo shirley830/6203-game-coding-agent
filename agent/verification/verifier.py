@@ -32,12 +32,14 @@ from .criteria import build_acceptance_suite
 from .evidence import EvidenceLedger, evaluate_criteria
 from .spec_criteria import (
     SYSTEM_PROMPT, SpecAcceptance, build_prompt, criteria_from, harness_payload,
-    parse_spec_acceptance,
+    is_non_browser_spec, parse_spec_acceptance,
 )
 
 # Preferred entry files to read after inspect (relative to game/).
 _CANDIDATE_FILES = (
     "README.md",
+    "main.py",
+    "game.py",
     "readme.md",
     "LAUNCH.md",
     "launch.md",
@@ -108,6 +110,12 @@ class GameVerifier:
         generic = build_acceptance_suite(view.spec_text)
         if self._client is None:
             return generic
+        if is_non_browser_spec(view.spec_text):
+            # Spec scenarios drive a browser page; a terminal or pygame game is
+            # verified in the harness's process mode with the generic criteria.
+            self.acceptance_note = ("generic criteria: the specification asks for a non-browser "
+                                    "game, verified in process mode (start, no crash, input)")
+            return AcceptanceSuite(generic.version, generic.criteria + (self._note_criterion(),))
         try:
             reply = await self._client.generate(
                 system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(view.spec_text),
@@ -214,7 +222,7 @@ class GameVerifier:
         for path in listed:
             if len(selected) >= 4:
                 break
-            if path.endswith((".html", ".js")) and path not in selected and path not in self._reads_done:
+            if path.endswith((".html", ".js", ".py")) and path not in selected and path not in self._reads_done:
                 selected.append(path)
         return selected[:4]
 
