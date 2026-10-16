@@ -287,7 +287,9 @@ class ProcessRunner:
             return False
         group_id = process.pid
         try:
-            for sig in (signal.SIGTERM, signal.SIGKILL):
+            # SIGKILL teardown under macOS sandbox-exec can take over a second, so
+            # the post-KILL wait is longer; both waits stay bounded.
+            for sig, grace in ((signal.SIGTERM, 0.75), (signal.SIGKILL, 3.0)):
                 try:
                     os.killpg(group_id, sig)
                 except ProcessLookupError:
@@ -295,11 +297,11 @@ class ProcessRunner:
                     # callback. Reap the leader without treating that race as a
                     # cleanup failure.
                     try:
-                        await asyncio.wait_for(process.wait(), timeout=0.75)
+                        await asyncio.wait_for(process.wait(), timeout=grace)
                     except asyncio.TimeoutError:
                         return False
                     return True
-                deadline = time.monotonic() + 0.75
+                deadline = time.monotonic() + grace
                 while time.monotonic() < deadline:
                     if not cls._group_exists(group_id) and process.returncode is not None:
                         return True
