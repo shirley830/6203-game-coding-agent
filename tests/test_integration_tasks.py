@@ -174,11 +174,11 @@ class TracerTests(unittest.IsolatedAsyncioTestCase):
     async def test_output_refs_copied_and_outside_paths_refused(self):
         storage = self.root / ".agent-runtime" / "run" / "outputs"
         storage.mkdir(parents=True)
-        (storage / "shot.png").write_bytes(b"png")
+        (storage / "run.log").write_bytes(b"log")
         outside = self.root / "secret.txt"
         outside.write_text("nope", encoding="utf-8")
         await self.emit("action_result", {"result": {"action_id": "v1", "output_refs": [
-            str(storage / "shot.png"), str(outside)]}})
+            str(storage / "run.log"), str(outside)]}})
         index = [json.loads(l) for l in (self.context.trace_dir / "outputs" / "index.jsonl")
                  .read_text().splitlines()]
         self.assertIn("copy", index[0])
@@ -257,7 +257,7 @@ class EndToEndRehearsal(unittest.TestCase):
             self.assertEqual(summary["outcome"], "succeeded")
             self.assertEqual(summary["recovery_attempts"], 1)
             trace = Path(summary["trace_dir"])
-            self.assertTrue(list((trace / "outputs").glob("*after_input.png")))
+            self.assertTrue(list((trace / "evidence").glob("seq-*/after_input.png")))
             self.assertEqual(sorted(p.name for p in (root / "game").iterdir()),
                              ["README.md", "game.js", "index.html"])
             from agent.delivery import audit_delivery
