@@ -1,36 +1,66 @@
 <div align="center">
 
-![PE6203 Game Coding Agent: from a specification to a verified game](assets/readme-banner.svg)
+<img src="assets/readme-banner.svg" width="100%" alt="PE6203 Game Coding Agent: from an unseen specification to a verified game. A terminal replays a real run: 8 spec scenarios frozen, a failed check, an automatic repair, then 14 of 14 criteria passing.">
 
-# PE6203 Game Coding Agent
+<p><b>Give it one Markdown spec. Get back a playable game, the tests it passed,<br>and a trace of every decision along the way.</b></p>
 
-**An autonomous coding agent designed to build playable games from unseen Markdown specifications.**
+<p>
+<img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-0f2a33?style=flat-square&logo=python&logoColor=6ff0cf&labelColor=0f2a33">
+<img alt="199 tests passing" src="https://img.shields.io/badge/tests-199_passing-1f9d7a?style=flat-square&labelColor=0f2a33">
+<img alt="6 of 6 modules integrated" src="https://img.shields.io/badge/modules-6%2F6_integrated-1f9d7a?style=flat-square&labelColor=0f2a33">
+<img alt="Verified in headless Chromium" src="https://img.shields.io/badge/verified_in-Chromium_(Playwright)-2b7bb9?style=flat-square&labelColor=0f2a33">
+<img alt="Any model via LiteLLM" src="https://img.shields.io/badge/models-any_via_LiteLLM-2b7bb9?style=flat-square&labelColor=0f2a33">
+</p>
 
-![Python 3.11+](https://img.shields.io/badge/Python-3.11%2B-3776AB?style=flat-square&logo=python&logoColor=white)
-![Controller implemented](https://img.shields.io/badge/Controller-implemented-137C66?style=flat-square)
-![199 local tests passed](https://img.shields.io/badge/Local_tests-199_passed-137C66?style=flat-square)
-![Team modules integrated](https://img.shields.io/badge/Team_modules-integrated-137C66?style=flat-square)
-
-[Quick start](#quick-start) &nbsp; / &nbsp; [Architecture](#architecture) &nbsp; / &nbsp; [Team contracts](docs/INTERFACES.md) &nbsp; / &nbsp; [Integration review](docs/INTEGRATION_REVIEW_CN.md)
+<p>
+<a href="#quick-start"><b>Quick start</b></a> &nbsp;·&nbsp;
+<a href="#architecture"><b>Architecture</b></a> &nbsp;·&nbsp;
+<a href="docs/testing/LIVE_MODEL_TESTS.md"><b>Live model tests</b></a> &nbsp;·&nbsp;
+<a href="docs/INTERFACES.md"><b>Team contracts</b></a> &nbsp;·&nbsp;
+<a href="docs/INTEGRATION_REVIEW_CN.md"><b>Integration review</b></a>
+</p>
 
 </div>
 
-> [!IMPORTANT]
-> **Current milestone: all six modules integrated.** `python -m agent game_design_prompt.md` wires the real planner (LiteLLM), sandboxed runtime, Playwright verifier, recovery policy and tracer through `agent/integrations.py`. An offline end-to-end rehearsal (scripted model, everything else real) passes: it builds a game, fails verification on interaction, repairs, and succeeds. A rehearsal with the course-provided model is still required before the presentation.
+## At a glance
 
-## Project at a glance
+<table>
+<tr>
+<td width="33%" valign="top">
 
-| Input | Development process | Preserved output |
-|---|---|---|
-| An unseen `game_design_prompt.md` | Plan, propose, execute, observe, verify, and recover | Generated `game/` plus execution records in `traces/` |
+**📄 In**
 
-The agent must start with one documented command and develop autonomously without manual fixes. The controller owns the workflow, validates proposed actions, enforces budgets, and permits success only when verification and delivery conditions hold.
+One unseen `game_design_prompt.md`, nothing else.
 
 ```bash
 python -m agent game_design_prompt.md
 ```
 
-This is the production command. If `AGENT_MODEL` is not configured it stops before development starts and never substitutes mocks.
+</td>
+<td width="33%" valign="top">
+
+**⚙️ Process**
+
+Freeze executable acceptance tests from the spec, plan, write code in a sandbox, test the game in a real browser, repair or replan on failure, all within time, step and retry budgets.
+
+</td>
+<td width="33%" valign="top">
+
+**📦 Out**
+
+`game/`: a playable game with a documented launch command.<br>
+`traces/<run_id>/`: every action, decision, failure and recovery, with screenshots and a readable `run_report.md`.
+
+</td>
+</tr>
+</table>
+
+<table>
+<tr><td><b>Status</b></td><td>All six modules integrated · 199 tests passing · 23 live runs on 3 models (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
+<tr><td><b>Success means</b></td><td>Every mandatory criterion passes on the current code, with evidence; nothing else counts</td></tr>
+<tr><td><b>Never</b></td><td>Mocks in the production path, edits to <code>agent/</code> or the spec during a run, deleting earlier <code>game/</code> or <code>traces/</code></td></tr>
+<tr><td><b>Still to do</b></td><td>Rehearse with the course-provided model · write <code>report.pdf</code></td></tr>
+</table>
 
 ## Why the harness matters
 

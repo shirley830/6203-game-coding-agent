@@ -1,47 +1,108 @@
-<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="370" viewBox="0 0 1280 370" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="460" viewBox="0 0 1280 460" role="img" aria-labelledby="title desc">
   <title id="title">PE6203 Game Coding Agent</title>
-  <desc id="desc">A coding agent harness that reads a specification, plans, builds, verifies, and preserves results. The controller is implemented and team integration is pending.</desc>
+  <desc id="desc">An autonomous coding agent that reads an unseen game specification, freezes executable acceptance tests, plans and builds the game, verifies it in a real browser, repairs failures, and preserves the game and a complete trace. The terminal shows a real run: 8 spec scenarios, a failed check, a repair, and 14 of 14 criteria passing.</desc>
   <defs>
-    <linearGradient id="background" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#10252d"/>
-      <stop offset="1" stop-color="#07151c"/>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0f2a33"/>
+      <stop offset="0.55" stop-color="#0a1d24"/>
+      <stop offset="1" stop-color="#06141a"/>
     </linearGradient>
-    <marker id="arrow" markerWidth="8" markerHeight="8" refX="6" refY="4" orient="auto">
-      <path d="M0 0 L7 4 L0 8" fill="none" stroke="#5b8d95" stroke-width="1.3"/>
-    </marker>
+    <radialGradient id="glow" cx="0.18" cy="0.2" r="0.6">
+      <stop offset="0" stop-color="#2ad1a8" stop-opacity="0.16"/>
+      <stop offset="1" stop-color="#2ad1a8" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="accent" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0" stop-color="#6ff0cf"/>
+      <stop offset="1" stop-color="#38b6e8"/>
+    </linearGradient>
+    <pattern id="grid" width="32" height="32" patternUnits="userSpaceOnUse">
+      <path d="M32 0H0V32" fill="none" stroke="#ffffff" stroke-opacity="0.035"/>
+    </pattern>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="130%">
+      <feDropShadow dx="0" dy="10" stdDeviation="14" flood-color="#000000" flood-opacity="0.45"/>
+    </filter>
   </defs>
-  <rect width="1280" height="370" rx="18" fill="url(#background)"/>
-  <rect x="1" y="1" width="1278" height="368" rx="17" fill="none" stroke="#29454e"/>
-  <path d="M52 41h15v15H52z" fill="#69e0c4"/>
-  <text x="80" y="54" fill="#d4e5e9" font-size="15" font-weight="600" letter-spacing="2" font-family="Arial, Helvetica, sans-serif">PE6203 / GAME CODING AGENT</text>
-  <text x="52" y="123" fill="#f0f7f8" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">From a specification</text>
-  <text x="52" y="181" fill="#69e0c4" font-size="48" font-weight="700" font-family="Arial, Helvetica, sans-serif">to a verified game.</text>
-  <text x="54" y="218" fill="#a7c0c7" font-size="17" font-family="Arial, Helvetica, sans-serif">A finite-state harness for autonomous software development.</text>
-  <rect x="827" y="88" width="400" height="135" rx="12" fill="#10232c" stroke="#365660"/>
-  <circle cx="849" cy="109" r="4" fill="#69e0c4"/>
-  <text x="864" y="114" fill="#a7c0c7" font-size="12" letter-spacing="1" font-family="Arial, Helvetica, sans-serif">REQUIRED ENTRY POINT</text>
-  <text x="848" y="147" fill="#e7f1f3" font-size="18" font-family="monospace">python -m agent</text>
-  <text x="848" y="176" fill="#69e0c4" font-size="17" font-family="monospace">game_design_prompt.md</text>
-  <text x="848" y="202" fill="#e8bd7d" font-size="12" font-family="Arial, Helvetica, sans-serif">Controller ready / Production modules pending</text>
-  <g font-family="Arial, Helvetica, sans-serif">
-    <rect x="52" y="268" width="210" height="61" rx="9" fill="#152c34" stroke="#35545e"/>
-    <text x="70" y="291" fill="#7ea2ad" font-size="11" letter-spacing="1">01 / INPUT</text>
-    <text x="70" y="314" fill="#f0f7f8" font-size="17" font-weight="600">Read specification</text>
-    <path d="M272 298h15" stroke="#5b8d95" marker-end="url(#arrow)"/>
-    <rect x="295" y="268" width="210" height="61" rx="9" fill="#152c34" stroke="#35545e"/>
-    <text x="313" y="291" fill="#7ea2ad" font-size="11" letter-spacing="1">02 / REASON</text>
-    <text x="313" y="314" fill="#f0f7f8" font-size="17" font-weight="600">Plan the work</text>
-    <path d="M515 298h15" stroke="#5b8d95" marker-end="url(#arrow)"/>
-    <rect x="538" y="268" width="210" height="61" rx="9" fill="#152c34" stroke="#35545e"/>
-    <text x="556" y="291" fill="#7ea2ad" font-size="11" letter-spacing="1">03 / ACT</text>
-    <text x="556" y="314" fill="#f0f7f8" font-size="17" font-weight="600">Build and execute</text>
-    <path d="M758 298h15" stroke="#5b8d95" marker-end="url(#arrow)"/>
-    <rect x="781" y="268" width="210" height="61" rx="9" fill="#193831" stroke="#69e0c4"/>
-    <text x="799" y="291" fill="#9debd7" font-size="11" letter-spacing="1">04 / CHECK</text>
-    <text x="799" y="314" fill="#f0f7f8" font-size="17" font-weight="600">Verify the result</text>
-    <path d="M1001 298h15" stroke="#5b8d95" marker-end="url(#arrow)"/>
-    <rect x="1024" y="268" width="203" height="61" rx="9" fill="#152c34" stroke="#35545e"/>
-    <text x="1042" y="291" fill="#7ea2ad" font-size="11" letter-spacing="1">05 / DELIVER</text>
-    <text x="1042" y="314" fill="#f0f7f8" font-size="17" font-weight="600">Preserve artifacts</text>
+
+  <rect width="1280" height="460" rx="20" fill="url(#bg)"/>
+  <rect width="1280" height="460" rx="20" fill="url(#grid)"/>
+  <rect width="1280" height="460" rx="20" fill="url(#glow)"/>
+  <rect x="0.5" y="0.5" width="1279" height="459" rx="19.5" fill="none" stroke="#2b4a54"/>
+
+  <g font-family="Segoe UI, -apple-system, Helvetica Neue, Helvetica, Arial, sans-serif">
+    <!-- Eyebrow -->
+    <rect x="56" y="44" width="10" height="10" rx="2" fill="#6ff0cf"/>
+    <text x="76" y="54" fill="#9fc3cb" font-size="13" font-weight="600" letter-spacing="2.4">PE6203 · GENERATIVE AND AGENTIC AI · GROUP PROJECT</text>
+
+    <!-- Headline -->
+    <text x="54" y="122" fill="#f2f8f9" font-size="50" font-weight="700" letter-spacing="-0.5">From an unseen spec</text>
+    <text x="54" y="182" fill="url(#accent)" font-size="50" font-weight="700" letter-spacing="-0.5">to a verified game.</text>
+    <text x="56" y="222" fill="#a9c2c9" font-size="18">An autonomous coding agent that plans, builds, tests in a real</text>
+    <text x="56" y="248" fill="#a9c2c9" font-size="18">browser, repairs what fails, and keeps a complete trace.</text>
+
+    <!-- Stats -->
+    <g font-size="12" letter-spacing="1.2" fill="#7fa3ad">
+      <text x="56" y="292">MODULES</text>
+      <text x="196" y="292">TESTS</text>
+      <text x="316" y="292">LIVE RUNS</text>
+    </g>
+    <g font-size="26" font-weight="700" fill="#f2f8f9">
+      <text x="56" y="322">6<tspan fill="#6f8f98" font-size="18" font-weight="600"> / 6</tspan></text>
+      <text x="196" y="322">199</text>
+      <text x="316" y="322">23<tspan fill="#6f8f98" font-size="16" font-weight="600"> · 3 models</tspan></text>
+    </g>
+  </g>
+
+  <!-- Terminal -->
+  <g filter="url(#shadow)">
+    <rect x="690" y="40" width="536" height="296" rx="14" fill="#08161c" stroke="#2f505a"/>
+  </g>
+  <path d="M690 54a14 14 0 0 1 14-14h508a14 14 0 0 1 14 14v22H690z" fill="#10242c"/>
+  <line x1="690" y1="76" x2="1226" y2="76" stroke="#2f505a"/>
+  <circle cx="712" cy="58" r="5.5" fill="#ff6b6b" fill-opacity="0.85"/>
+  <circle cx="731" cy="58" r="5.5" fill="#f5c451" fill-opacity="0.85"/>
+  <circle cx="750" cy="58" r="5.5" fill="#4fd18b" fill-opacity="0.85"/>
+  <text x="958" y="62" text-anchor="middle" fill="#7fa3ad" font-size="12" font-family="Segoe UI, -apple-system, Helvetica, Arial, sans-serif">live run · claude-sonnet-5.5 · collection game</text>
+
+  <g font-family="SFMono-Regular, Menlo, Consolas, Liberation Mono, monospace" font-size="14.5">
+    <text x="712" y="106" fill="#6ff0cf">$ <tspan fill="#e8f2f4">python -m agent game_design_prompt.md</tspan></text>
+    <text x="712" y="136" fill="#4fd18b">✓ <tspan x="732" fill="#7fa3ad">preflight</tspan><tspan x="834" fill="#e8f2f4">sandbox, Chromium, port 8000 ready</tspan></text>
+    <text x="712" y="162" fill="#4fd18b">✓ <tspan x="732" fill="#7fa3ad">acceptance</tspan><tspan x="834" fill="#e8f2f4">8 spec scenarios frozen</tspan></text>
+    <text x="712" y="188" fill="#4fd18b">✓ <tspan x="732" fill="#7fa3ad">plan</tspan><tspan x="834" fill="#e8f2f4">7 tasks · write index.html, game.js</tspan></text>
+    <text x="712" y="214" fill="#ff8a7a">✗ <tspan x="732" fill="#7fa3ad">verify</tspan><tspan x="834" fill="#e8f2f4">13/14 · style.css missing (404)</tspan></text>
+    <text x="712" y="240" fill="#f5c451">↻ <tspan x="732" fill="#7fa3ad">repair</tspan><tspan x="834" fill="#e8f2f4">inline the CSS into index.html</tspan></text>
+    <text x="712" y="266" fill="#4fd18b">✓ <tspan x="732" fill="#7fa3ad">verify</tspan><tspan x="834" fill="#6ff0cf" font-weight="700">14/14 criteria pass</tspan></text>
+    <text x="712" y="300" fill="#7fa3ad">→ <tspan fill="#e8f2f4">game/</tspan><tspan x="790" fill="#e8f2f4">traces/&lt;run_id&gt;/run_report.md</tspan></text>
+  </g>
+  <rect x="712" y="310" width="9" height="16" fill="#6ff0cf" fill-opacity="0.8"/>
+
+  <!-- Pipeline -->
+  <g font-family="Segoe UI, -apple-system, Helvetica Neue, Helvetica, Arial, sans-serif">
+    <line x1="56" y1="398" x2="1226" y2="398" stroke="#2b4a54" stroke-dasharray="3 5"/>
+    <g>
+      <rect x="56" y="370" width="178" height="56" rx="10" fill="#10262e" stroke="#33545e"/>
+      <text x="72" y="391" fill="#7fa3ad" font-size="10.5" letter-spacing="1.2">01 · RUNTIME</text>
+      <text x="72" y="413" fill="#f2f8f9" font-size="15" font-weight="600">Read the spec</text>
+
+      <rect x="254" y="370" width="178" height="56" rx="10" fill="#10262e" stroke="#33545e"/>
+      <text x="270" y="391" fill="#7fa3ad" font-size="10.5" letter-spacing="1.2">02 · VERIFIER</text>
+      <text x="270" y="413" fill="#f2f8f9" font-size="15" font-weight="600">Freeze acceptance</text>
+
+      <rect x="452" y="370" width="178" height="56" rx="10" fill="#10262e" stroke="#33545e"/>
+      <text x="468" y="391" fill="#7fa3ad" font-size="10.5" letter-spacing="1.2">03 · PLANNER</text>
+      <text x="468" y="413" fill="#f2f8f9" font-size="15" font-weight="600">Plan and build</text>
+
+      <rect x="650" y="370" width="178" height="56" rx="10" fill="#123229" stroke="#4fbf9c"/>
+      <text x="666" y="391" fill="#7fd8bd" font-size="10.5" letter-spacing="1.2">04 · HARNESS</text>
+      <text x="666" y="413" fill="#f2f8f9" font-size="15" font-weight="600">Test in a browser</text>
+
+      <rect x="848" y="370" width="178" height="56" rx="10" fill="#10262e" stroke="#33545e"/>
+      <text x="864" y="391" fill="#7fa3ad" font-size="10.5" letter-spacing="1.2">05 · RECOVERY</text>
+      <text x="864" y="413" fill="#f2f8f9" font-size="15" font-weight="600">Repair or replan</text>
+
+      <rect x="1046" y="370" width="180" height="56" rx="10" fill="#10262e" stroke="#33545e"/>
+      <text x="1062" y="391" fill="#7fa3ad" font-size="10.5" letter-spacing="1.2">06 · TRACING</text>
+      <text x="1062" y="413" fill="#f2f8f9" font-size="15" font-weight="600">Deliver + trace</text>
+    </g>
+    <text x="56" y="355" fill="#6f8f98" font-size="12" letter-spacing="1.2">ONE CONTROLLER · SIX MODULES · BOUNDED BY TIME, STEPS AND RETRIES</text>
   </g>
 </svg>
