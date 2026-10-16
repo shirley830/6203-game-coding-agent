@@ -10,6 +10,8 @@ import asyncio
 import errno
 import json
 import os
+import hashlib
+import stat
 from pathlib import Path
 import tempfile
 from typing import Any, Mapping
@@ -99,6 +101,73 @@ class FileTraceRecorder:
             if temporary_path is not None:
                 temporary_path.unlink(missing_ok=True)
 
+    @staticmethod
+    def _archive_game_screenshots(context: ExecutionContext, seq: int) -> None:
+        """Keep per-action copies of real verifier screenshots in traces/.
+
+        Member 4 writes screenshots to game/.verification-evidence/. Do not
+        rename or alter those source files. Copy them after action results so
+        a later verification cycle cannot overwrite earlier evidence.
+        """
+        source = context.game_dir / ".verification-evidence"
+        if source.is_symlink():
+            raise ValueError("Verification evidence directory cannot be a symlink")
+        if not source.exists():
+            return
+        if not source.is_dir():
+            raise ValueError("Verification evidence path is not a directory")
+
+        evidence = []
+        # Member 4 uses flat screenshots; refuse symlinks and ignore other
+        # generated files. Limit file size so logs cannot fill the disk.
+        for path in sorted(source.iterdir()):
+            if path.suffix.lower() not in {".png", ".jpg", ".jpeg", ".webp"}:
+                continue
+            if path.is_symlink():
+                raise ValueError("Verification screenshot cannot be a symlink")
+            if not path.is_file():
+                continue
+            source_flags = os.O_RDONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                source_flags |= os.O_NOFOLLOW
+            fd = os.open(path, source_flags)
+            try:
+                info = os.fstat(fd)
+                if not stat.S_ISREG(info.st_mode):
+                    raise ValueError("Verification screenshot is not a regular file")
+                if info.st_size > 15 * 1024 * 1024:
+                    raise ValueError("Verification screenshot exceeds 15 MiB")
+                with os.fdopen(fd, "rb", closefd=False) as reader:
+                    payload = reader.read(15 * 1024 * 1024 + 1)
+                if len(payload) > 15 * 1024 * 1024:
+                    raise ValueError("Verification screenshot exceeds 15 MiB")
+            finally:
+                os.close(fd)
+            evidence.append((path.name, payload))
+
+        if not evidence:
+            return
+        relative_folder = Path("evidence") / f"seq-{seq:06d}"
+        target = context.trace_dir / relative_folder
+        target.mkdir(parents=True, exist_ok=False)
+        index_records = []
+        for filename, data in evidence:
+            destination = target / filename
+            with destination.open("xb") as stream:
+                stream.write(data)
+                stream.flush()
+                os.fsync(stream.fileno())
+            index_records.append({
+                "event_seq": seq,
+                "source_ref": f"screenshot:{filename}",
+                "archived_path": (relative_folder / filename).as_posix(),
+                "sha256": hashlib.sha256(data).hexdigest(),
+            })
+        index_path = context.trace_dir / "evidence" / "index.jsonl"
+        index_path.touch(exist_ok=True)
+        for record in index_records:
+            FileTraceRecorder._append_line(index_path, json.dumps(record, separators=(",", ":")))
+
     async def open_run(self, context: ExecutionContext) -> None:
         """Create a fresh run directory; never replace an earlier run."""
         async with self._lock:
@@ -118,6 +187,9 @@ class FileTraceRecorder:
                 raise ValueError("Event belongs to a different run")
             if event.seq != self._next_seq:
                 raise ValueError(f"Expected event seq={self._next_seq}, got {event.seq}")
+            # Capture screenshots while they still represent this action.
+            if event.kind == "action_result":
+                await asyncio.to_thread(self._archive_game_screenshots, context, event.seq)
             line = json.dumps(to_jsonable(event), ensure_ascii=False, separators=(",", ":"))
             await asyncio.to_thread(self._append_line, self._trace_dir() / "events.jsonl", line)
             self._next_seq += 1
