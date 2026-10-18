@@ -6,7 +6,7 @@
 
 <p>
 <img alt="Python 3.11+" src="https://img.shields.io/badge/python-3.11%2B-0f2a33?style=flat-square&logo=python&logoColor=6ff0cf&labelColor=0f2a33">
-<img alt="199 tests passing" src="https://img.shields.io/badge/tests-199_passing-1f9d7a?style=flat-square&labelColor=0f2a33">
+<img alt="207 tests passing" src="https://img.shields.io/badge/tests-207_passing-1f9d7a?style=flat-square&labelColor=0f2a33">
 <img alt="6 of 6 modules integrated" src="https://img.shields.io/badge/modules-6%2F6_integrated-1f9d7a?style=flat-square&labelColor=0f2a33">
 <img alt="Verified in headless Chromium" src="https://img.shields.io/badge/verified_in-Chromium_(Playwright)-2b7bb9?style=flat-square&labelColor=0f2a33">
 <img alt="Any model via LiteLLM" src="https://img.shields.io/badge/models-any_via_LiteLLM-2b7bb9?style=flat-square&labelColor=0f2a33">
@@ -26,7 +26,7 @@
 <img src="assets/glance.svg" width="100%" alt="At a glance. In: one unseen spec. Process: freeze tests, plan, write code, play it in a browser, repair. Out: a playable game and a complete trace.">
 
 <table>
-<tr><td><b>Status</b></td><td>All six modules integrated · 199 tests passing · 23 live runs on 3 models (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
+<tr><td><b>Status</b></td><td>All six modules integrated · 207 tests passing · 32 live runs on 4 models (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
 <tr><td><b>Success means</b></td><td>Every mandatory criterion passes on the current code, with evidence; nothing else counts</td></tr>
 <tr><td><b>Never</b></td><td>Mocks in the production path, edits to <code>agent/</code> or the spec during a run, deleting earlier <code>game/</code> or <code>traces/</code></td></tr>
 <tr><td><b>Still to do</b></td><td>Rehearse with the course-provided model · write <code>report.pdf</code></td></tr>
@@ -286,7 +286,7 @@ Every module call and tool attempt consumes a step, including rejected proposals
 │   ├── tracing/                recorder, run report, model usage
 │   └── delivery.py             trace audit
 ├── evaluation/                 evaluation specs and run-record report
-├── tests/                      199 tests; fixtures/ holds test-only pages
+├── tests/                      207 tests; fixtures/ holds test-only pages
 ├── docs/                       contracts, integration review, member notes, testing
 ├── assets/                    README artwork; regenerate: python3 assets/src/build_readme_art.py
 ├── agent.env.example
@@ -298,7 +298,7 @@ Every module call and tool attempt consumes a step, including rejected proposals
 <a name="testing"></a>
 <img src="assets/sections/09-testing.svg" width="100%" alt="09 · Testing">
 
-<img src="assets/testing.svg" width="100%" alt="Testing: 199 tests, 23 live model runs with 3 models over 4 rounds; succeeded: Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.">
+<img src="assets/testing.svg" width="100%" alt="Testing: 207 tests, 32 live model runs with 4 models; succeeded: GLM-5.3 (the course model) 8 of 9, Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.">
 
 ```bash
 python -m pytest -q

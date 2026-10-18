@@ -75,3 +75,9 @@
 | 启动自检 | `agent/preflight.py`：Python、python3、8000 端口、沙箱、Playwright Chromium 不满足时在创建 game/ 前停止；node/npm 是否存在等写入 planner 提示词 | `python -m agent.preflight` 可在演示机上单独运行 |
 | `agent.env` 配置 | 运行目录下的 `agent.env` 自动加载（shell 变量优先，只打印变量名）；沙箱禁止生成的代码读取该文件 | 只用 `python -m agent game_design_prompt.md` 一条命令完成运行；traces 中无 key |
 | 附带修复 | LiteLLM 出错时向 stdout 打印横幅，破坏 CLI 输出的 JSON；已关闭 | 回归测试 |
+
+## 六、课程模型 GLM-5.3 评估（2026-10-18）
+
+- 未设置推理上限时，GLM-5.3 会把全部输出额度用于推理并返回空正文；现已对 GLM 默认限制推理 8000 token（`AGENT_REASONING_MAX_TOKENS`）。
+- 7 份规格 + 2 次修复后重跑，共 9 次，**8 次成功**，其中 5 次另经人工对照规格检查，其余依赖规格场景测试通过。质量接近 Claude Sonnet 5.5。
+- 发现并修复 3 个问题：契约中的函数字段被误判缺失、GLM 偶发返回空 `{}` 消耗恢复预算、网格点击不支持 HTML 棋盘。详见 `docs/testing/LIVE_MODEL_TESTS.md` 第 5c 节。

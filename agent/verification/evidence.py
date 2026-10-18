@@ -192,6 +192,14 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
         and str(requirement_blocks[c.criterion_id].get("status", "")).lower() == "pass"
     ]
 
+    # Rules proven by spec scenarios (and no JavaScript errors) outweigh the
+    # generic "looks like a game" heuristics for functional coverage.
+    spec_functional = [c.criterion_id for c in criteria
+                       if c.criterion_id.startswith("REQ-") and c.category == "functional"]
+    spec_rules_proven = (bool(spec_functional) and not harness.get("page_errors") and all(
+        isinstance(requirement_blocks.get(cid), Mapping)
+        and str(requirement_blocks[cid].get("status", "")).lower() == "pass" for cid in spec_functional))
+
     results: list[CriterionResult] = []
     for criterion in criteria:
         if criterion.criterion_id == "C-ACCEPTANCE-INFO":
@@ -256,6 +264,11 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
             status = CheckStatus.PASS
             refs.extend(f"scenario:{cid}" for cid in spec_input_proven)
             detail_parts.append("player input proven by spec scenario(s) " + ", ".join(spec_input_proven))
+        elif (criterion.category == "functional" and not spec_criterion
+                and status != CheckStatus.PASS and spec_rules_proven):
+            status = CheckStatus.PASS
+            refs.extend(f"scenario:{cid}" for cid in spec_functional)
+            detail_parts.append("game rules proven by every spec functional scenario, no JavaScript errors")
         elif status == CheckStatus.PASS and criterion.category == "interaction" and not spec_criterion:
             if not _interaction_proven(ledger, refs):
                 status = CheckStatus.FAIL

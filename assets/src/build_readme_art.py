@@ -192,8 +192,8 @@ def banner() -> None:
     {t(56, 252, "browser, repairs what fails, and keeps a complete trace.", 18, C['muted'])}
     {t(56, 296, "MODULES", 12, C['dim'], extra='letter-spacing="1.2"')}{t(196, 296, "TESTS", 12, C['dim'], extra='letter-spacing="1.2"')}{t(316, 296, "LIVE RUNS", 12, C['dim'], extra='letter-spacing="1.2"')}
     <text x="56" y="328" font-size="28" font-weight="700" fill="{C['text']}">6<tspan fill="{C['faint']}" font-size="18"> / 6</tspan></text>
-    <text x="196" y="328" font-size="28" font-weight="700" fill="{C['text']}">199</text>
-    <text x="316" y="328" font-size="28" font-weight="700" fill="{C['text']}">23<tspan fill="{C['faint']}" font-size="16" font-weight="600"> · 3 models</tspan></text>
+    <text x="196" y="328" font-size="28" font-weight="700" fill="{C['text']}">207</text>
+    <text x="316" y="328" font-size="28" font-weight="700" fill="{C['text']}">32<tspan fill="{C['faint']}" font-size="16" font-weight="600"> · 4 models</tspan></text>
   </g>
   <rect x="660" y="20" width="600" height="340" rx="40" fill="{C['teal']}" opacity="0.05" filter="url(#soft)"/>
   <g filter="url(#shadow)">{card(690, 40, 536, 316, '#08161c', '#2f505a', 14)}</g>
@@ -537,8 +537,8 @@ def team() -> None:
 # ---------------------------------------------------------------- testing
 
 def testing() -> None:
-    stats = [("199", "tests passing", C["teal"]), ("23", "live model runs", C["blue"]),
-             ("3", "models compared", C["ok"]), ("4", "rounds of fixes", C["warn"])]
+    stats = [("207", "tests passing", C["teal"]), ("32", "live model runs", C["blue"]),
+             ("4", "models compared", C["ok"]), ("5", "rounds of fixes", C["warn"])]
     body = []
     for i, (value, label, colour) in enumerate(stats):
         x, y = 40 + (i % 2) * 250, 34 + (i // 2) * 150
@@ -546,20 +546,21 @@ def testing() -> None:
         body.append(f'<rect x="{x}" y="{y}" width="230" height="3" fill="{colour}"/>')
         body.append(t(x + 24, y + 74, value, 52, colour, 800))
         body.append(t(x + 24, y + 106, label, 15, C["muted"]))
-    bars = [("Claude Sonnet 5.5", 11, 11, C["ok"]), ("GPT-4.1-mini", 5, 8, C["warn"]), ("Qwen3-Coder", 1, 4, C["err"])]
+    bars = [("GLM-5.3 (course)", 8, 9, C["teal"]), ("Claude Sonnet 5.5", 11, 11, C["ok"]),
+            ("GPT-4.1-mini", 5, 8, C["warn"]), ("Qwen3-Coder", 1, 4, C["err"])]
     css = [".bar{transform-box:fill-box;transform-origin:left;animation:grow 2.2s cubic-bezier(.2,.8,.2,1) both;}",
            "@keyframes grow{from{transform:scaleX(0)}to{transform:scaleX(1)}}"]
     body.append(card(560, 34, 680, 280, C["card"], C["stroke"], 14))
     body.append(t(588, 74, "Live runs that succeeded, by model", 19, weight=700))
-    body.append(t(588, 98, "all 23 runs · round 1 used generic checks only · details in LIVE_MODEL_TESTS.md", 13, C["dim"]))
+    body.append(t(588, 98, "all 32 runs · round 1 used generic checks only · details in LIVE_MODEL_TESTS.md", 13, C["dim"]))
     for i, (name, ok, total, colour) in enumerate(bars):
-        y = 136 + i * 56
+        y = 124 + i * 46
         body.append(t(588, y + 18, name, 15, C["text"], 600))
         body.append(f'<rect x="760" y="{y}" width="380" height="26" rx="13" fill="{C["card2"]}"/>')
         body.append(f'<rect x="760" y="{y}" width="{380 * ok / total:.0f}" height="26" rx="13" fill="{colour}" class="bar" style="animation-delay:{0.3 + i * 0.25}s"/>')
         body.append(t(1156, y + 19, f"{ok}/{total}", 16, colour, 800))
-    write("testing.svg", page(1280, 348, "Testing", "199 tests; 23 live runs with 3 models over 4 rounds. "
-                              "Succeeded: Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.",
+    write("testing.svg", page(1280, 348, "Testing", "207 tests; 32 live runs with 4 models. Succeeded: GLM-5.3 (the course model) 8 of 9, "
+                              "Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.",
                               "\n".join(body), "\n".join(css), radius=18))
 
 

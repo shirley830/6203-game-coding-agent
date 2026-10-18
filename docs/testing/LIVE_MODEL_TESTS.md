@@ -1,6 +1,6 @@
 # Live model tests (OpenRouter, 2026-10-16)
 
-Four rounds, 21 autonomous runs of `python -m agent game_design_prompt.md` against
+Four rounds, 21 autonomous runs (plus nine runs with the course model GLM-5.3, section 5c) of `python -m agent game_design_prompt.md` against
 real language models. Each round changed the agent based on what the previous
 round's traces showed. This document is the evidence base for the report's
 "how the agent verifies its work", "failure recovery" and "limitations" sections.
@@ -153,6 +153,56 @@ life lost, and wrong guesses costing a life. Spec-derived scenarios are not
 used for non-browser games, so rule-level checks are weaker than for browser
 games.
 
+## 5c. Course model: GLM-5.3 (2026-10-18)
+
+The course confirmed GLM-5.3 (`openrouter/z-ai/glm-5.3`) as the evaluation model.
+
+**Probe before any run.** With no reasoning setting, one acceptance call spent all
+16 000 output tokens on reasoning (`finish_reason=length`, 81.5 s) and returned **no
+text**: every planning call would have failed. Reasoning cannot be disabled on
+OpenRouter for this model ("reasoning is mandatory"), but with
+`reasoning.max_tokens` set the same call answered in about 5 s with valid JSON.
+Commit `dfb0ae0` caps reasoning at 8 000 tokens for GLM models
+(`AGENT_REASONING_MAX_TOKENS`) and raises the output limit to 32 000.
+
+| Round | Case | Outcome | Time | Recoveries | Verification cycles | Spec review / notes |
+|---|---|---|---|---|---|---|
+| 5a | Collection | ✅ succeeded | 39 s | 0 | 12/12 | Correct: spawns 60 px away, win at 10 freezes input, restart resets score and position |
+| 5a | Dodge | ✅ succeeded | 453 s | 5 | 2 → 11 → 10 → 11 → 12/12 | Correct; the contract reported `paused` as `playing` (state not reported faithfully) |
+| 5a | Memory (mouse only) | ✅ succeeded | 1151 s | 8 | 8 cycles, final 13/13 | Correct and mouse only; 196 of 200 steps; added a 450 ms settle lock to absorb timing |
+| 5a | Maze | ❌ exhausted (recoveries) | 265 s | 20 | best 9/11 | Unpassable contract (function field, see below) + 11 empty `{}` replies |
+| 5a | Terminal hangman | ✅ succeeded | 17 s | 0 | 3/3 (process mode) | Correct, played by hand |
+| 5a | Switches (mouse only) | ✅ succeeded | 115 s | 1 | 6 → 13/13 | Rewrote its DOM board as a canvas 8 times only because `click_cell` needed a canvas |
+| 5a | Turn-based | ✅ succeeded | 433 s | 1 | 10 → 13/13 | First cycle caught "walking into the enemy does not lose"; fixed in one repair |
+| 5b | Maze (rerun) | ✅ succeeded | 235 s | 6 | 11 → 11 → 11 → 13/13 | Empty replies absorbed by the planner instead of recovery |
+| 5b | Switches (rerun) | ✅ succeeded | 202 s | 1 | 10 → 13/13 | |
+
+**GLM-5.3 succeeded in 8 of 9 runs.** Five of the successes (collection, dodge,
+memory, terminal, turn-based) were also reviewed against the specification by
+hand; the switches runs and the maze rerun rely on their passing spec-derived
+scenarios. Its games and tests were close to Claude Sonnet 5.5 in
+quality, far better than GPT-4.1-mini and Qwen3-Coder; it needs more repair cycles
+on timing-heavy rules (memory: 19 min of the 20-min budget).
+
+Issues found and fixed (commit `3758484` and the following commit):
+
+1. **Function fields in the state contract.** The maze contract required
+   `isWall(x, y)`. The harness checked fields on a JSON copy, which drops
+   functions, so the contract could never pass. Fields are now checked on the live
+   object.
+2. **Empty decisions.** GLM-5.3 sometimes replied `{}` (2 output tokens); 11 such
+   replies spent the maze run's recovery budget in 4.5 minutes. The planner now
+   absorbs up to two consecutive empty or unrecognised replies by refreshing the
+   workspace with a note, then normal recovery applies.
+3. **DOM boards.** `click_cell` now also clicks DOM boards (data-* cells or a
+   container of equal cells), and the generic checks accept a DOM board and words
+   such as moves, turns, lives or status as gameplay signals. When every
+   spec-derived functional scenario passes and the page has no JavaScript errors,
+   the generic functional check is satisfied.
+
+Cost: about **US$1.7** for the probes and all nine GLM-5.3 runs (OpenRouter
+account usage); single runs ranged from about $0.01 to $0.41.
+
 ## 6. Limitations of this evaluation
 
 * One run per cell; model output is nondeterministic, so single failures or
@@ -161,7 +211,7 @@ games.
   scenarios, not exhaustively for every later game. Spec-derived scenarios are
   themselves model-written and were judged individually (section 5.3).
 * Only three specifications; all are browser games with canvas rendering.
-* The course model is not yet announced; it may behave like any of the three.
+* GLM-5.3 was run once per specification (plus two reruns after fixes); the evaluation key and network on presentation day may differ.
 
 ## 7. Implications for the presentation
 

@@ -187,9 +187,14 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float,
             body_text = page.locator("body").inner_text(timeout=action_timeout_ms)[:2000]
             has_controls = any(
                 token in body_text.lower()
-                for token in ("score", "restart", "pause", "arrow", "wasd", "controls", "points")
+                for token in ("score", "restart", "pause", "arrow", "wasd", "controls", "points",
+                              "moves", "turn", "lives", "level", "status", "click", "win", "reset")
             )
-            play_surface = canvas_count > 0 or bool(page.locator("#game, .game, [data-game]").count())
+            # A canvas, an explicit game container, or a DOM board (a grid of
+            # cells: data-* cells or a container of 4+ equally sized children).
+            dom_board = page.evaluate(_DOM_BOARD_JS)
+            play_surface = (canvas_count > 0 or dom_board
+                            or bool(page.locator("#game, .game, [data-game]").count()))
 
             if status and status >= 400:
                 launch_block = _check(
@@ -219,7 +224,7 @@ def _run_playwright(url: str, evidence_dir: Path, budget: float,
             elif play_surface:
                 technical_block = _check(
                     "pass",
-                    "Found non-canvas game container",
+                    "Found a DOM game board" if dom_board else "Found non-canvas game container",
                     evidence_refs=["dom:game-container"],
                 )
             else:
@@ -525,6 +530,17 @@ _STATE_JS = """() => { const g = window.__gameState;
 _EVAL_JS = """([expr, saved]) => { const g = window.__gameState;
   const s = typeof g === 'function' ? g() : g;
   return (new Function('s', 'saved', 'return (' + expr + ');'))(s, saved); }"""
+
+_DOM_BOARD_JS = """() => {
+  if (document.querySelector('[data-cell],[data-col],[data-x],[data-index]')) return true;
+  return [...document.querySelectorAll('body *')].some(e => {
+    const kids = [...e.children];
+    if (kids.length < 4) return false;
+    const r0 = kids[0].getBoundingClientRect();
+    return r0.width > 8 && kids.every(k => { const r = k.getBoundingClientRect();
+      return Math.abs(r.width - r0.width) < 2 && Math.abs(r.height - r0.height) < 2; });
+  });
+}"""
 
 _MISSING_FIELDS_JS = """(fields) => { const g = window.__gameState;
   const s = typeof g === 'function' ? g() : g;

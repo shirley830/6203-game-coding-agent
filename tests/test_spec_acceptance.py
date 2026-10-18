@@ -205,6 +205,15 @@ class VerifierWiringTests(unittest.IsolatedAsyncioTestCase):
         info = Criterion("C-ACCEPTANCE-INFO", "note", "technical", mandatory=False)
         self.assertEqual(evaluate_criteria((info,), ledger)[0].status, CheckStatus.SKIP)
 
+    def test_generic_functional_accepts_proven_rules_without_js_errors(self):
+        crit = (Criterion("C-FUNCTIONAL", "x", "functional"), Criterion("REQ-F1", "rule", "functional"))
+        for errors, expected in (([], CheckStatus.PASS), (["TypeError: x"], CheckStatus.FAIL)):
+            ledger = EvidenceLedger()
+            ledger.harness = {"checks": {"functional": {"status": "fail", "detail": "no signals"}},
+                              "requirements": {"REQ-F1": {"status": "pass"}}, "page_errors": errors}
+            ledger.tool_ops.append("tool:run_command:x")
+            self.assertEqual(evaluate_criteria(crit, ledger)[0].status, expected)
+
     def test_decision_format_slips_are_repaired(self):
         from agent.planning.parser import parse_decision
         from agent.state import RequestVerification, ToolAction
@@ -262,6 +271,9 @@ class HarnessScenarioTests(unittest.TestCase):
         self.assertEqual(result["checks"]["contract"]["status"], "pass", result["checks"]["contract"])
         self.assertEqual({k: v["status"] for k, v in result["requirements"].items()},
                          {"REQ-D1": "pass", "REQ-D2": "pass", "REQ-D3": "pass"}, result["requirements"])
+        # A DOM board with a "Moves" counter is a game too, without a canvas.
+        self.assertEqual(result["checks"]["technical"]["status"], "pass", result["checks"]["technical"])
+        self.assertEqual(result["checks"]["functional"]["status"], "pass", result["checks"]["functional"])
 
     def test_mouse_only_game_passes_by_clicks(self):
         result = run_harness(LIGHTS_GAME, LIGHTS_SPEC)
