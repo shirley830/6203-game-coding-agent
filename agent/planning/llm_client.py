@@ -34,6 +34,7 @@ class LiteLLMClient:
         json_mode: bool = True,
         role: str = "model",
         usage: "UsageMeter | None" = None,
+        reasoning_max_tokens: int | None = None,
     ) -> None:
         if not model.strip():
             raise ValueError("Model name must not be empty")
@@ -48,6 +49,9 @@ class LiteLLMClient:
         # Accounting only (tokens, latency, cost); never prompt text or keys.
         self.role = role
         self.usage = usage
+        # Cap for reasoning models (OpenRouter `reasoning.max_tokens`). Without
+        # it GLM-5.3 spent the whole output budget reasoning and returned no text.
+        self.reasoning_max_tokens = reasoning_max_tokens
 
     async def generate(
         self,
@@ -83,6 +87,8 @@ class LiteLLMClient:
         if self.json_mode:
             request["response_format"] = {"type": "json_object"}
             request["drop_params"] = True
+        if self.reasoning_max_tokens:
+            request["extra_body"] = {"reasoning": {"max_tokens": self.reasoning_max_tokens}}
 
         started = time.monotonic()
         try:
@@ -94,6 +100,10 @@ class LiteLLMClient:
         content = response.choices[0].message.content
 
         if not isinstance(content, str) or not content.strip():
+            finish = getattr(response.choices[0], "finish_reason", None)
+            if finish == "length":
+                raise ValueError("Model returned no text: the output limit was used up "
+                                 "(reasoning models: set AGENT_REASONING_MAX_TOKENS)")
             raise ValueError("Model returned empty text content")
 
         return content

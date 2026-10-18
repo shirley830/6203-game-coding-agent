@@ -9,7 +9,9 @@ Environment variables (read here, never stored in state, prompts or traces):
                         or ``openai/gpt-5``. Provider credentials use the provider's own
                         variable (``ANTHROPIC_API_KEY``, ``OPENAI_API_KEY``, ...).
 - ``AGENT_API_BASE``    optional custom endpoint for the course-provided API.
-- ``AGENT_MAX_TOKENS``  optional output limit per model call (default 16000).
+- ``AGENT_MAX_TOKENS``  optional output limit per model call (default 32000).
+- ``AGENT_REASONING_MAX_TOKENS``  reasoning cap for reasoning models (default 8000
+                        for GLM, unset otherwise; "0" disables).
 - ``AGENT_STRICT_SANDBOX``  ``0`` disables the OS command sandbox (not recommended).
 - ``AGENT_SKIP_PREFLIGHT``  ``1`` skips the startup self-check (not recommended).
 
@@ -49,6 +51,20 @@ def _playwright_environment() -> dict[str, str]:
     return {"PLAYWRIGHT_BROWSERS_PATH": str(default)}
 
 
+def reasoning_budget(model: str) -> int | None:
+    """Reasoning-token cap sent to the provider, or None to leave it unset.
+
+    AGENT_REASONING_MAX_TOKENS overrides ("0" disables). By default only GLM
+    models get a cap (8000): reasoning is mandatory there, and uncapped it used
+    the entire output budget and returned no text. Other models keep their
+    default behaviour (for some, sending the parameter would enable thinking).
+    """
+    configured = os.environ.get("AGENT_REASONING_MAX_TOKENS", "").strip()
+    if configured:
+        return int(configured) or None
+    return 8000 if "glm" in model.lower() else None
+
+
 def create_dependencies(config: AgentConfig) -> Dependencies:
     model = os.environ.get("AGENT_MODEL", "").strip()
     if not model:
@@ -68,7 +84,8 @@ def create_dependencies(config: AgentConfig) -> Dependencies:
         notes = report.notes
     usage = UsageMeter()
     settings = dict(model=model, api_base=os.environ.get("AGENT_API_BASE") or None,
-                    max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "16000")), usage=usage)
+                    max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "32000")), usage=usage,
+                    reasoning_max_tokens=reasoning_budget(model))
     # Same model, two roles, accounted separately in traces/<run_id>/model_usage.jsonl.
     client = LiteLLMClient(role="planner", **settings)
     acceptance_client = LiteLLMClient(role="acceptance", **settings)
