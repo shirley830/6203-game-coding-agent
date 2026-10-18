@@ -1,0 +1,19 @@
+<!doctype html><html><body>
+<p id="moves">Moves: 0</p>
+<div id="board" style="display:grid;grid-template-columns:repeat(3,60px);gap:4px">
+  <div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div><div></div>
+</div>
+<script>
+const st = {grid: {cols: 3, rows: 3}, moves: 0, lit: Array(9).fill(false),
+            isWall(x, y) { return x < 0 || y < 0 || x > 2 || y > 2; }};
+window.__gameState = st;
+const cells = [...document.querySelectorAll('#board > div')];
+cells.forEach((cell, i) => {
+  cell.style.cssText = 'width:60px;height:60px;background:#333';
+  cell.addEventListener('click', () => {
+    st.lit[i] = !st.lit[i]; st.moves += 1;
+    cell.style.background = st.lit[i] ? '#ff0' : '#333';
+    document.getElementById('moves').textContent = 'Moves: ' + st.moves;
+  });
+});
+</script></body></html>

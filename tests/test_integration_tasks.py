@@ -139,6 +139,24 @@ class EditLoopGuardTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(client.prompts), MAX_EDITS_BEFORE_VERIFICATION)  # no model call spent
 
 
+class EmptyReplyTests(unittest.IsolatedAsyncioTestCase):
+    async def test_empty_objects_are_absorbed_then_recovery_takes_over(self):
+        planner = LLMPlanner(Client("{}", '{"content": "..."}', "{}"))
+        first = await planner.next_decision(view(), LIMITS)
+        second = await planner.next_decision(view(), LIMITS)
+        self.assertEqual((first.kind, second.kind), (ToolKind.INSPECT_WORKSPACE, ToolKind.INSPECT_WORKSPACE))
+        with self.assertRaises(Exception):
+            await planner.next_decision(view(), LIMITS)
+
+    async def test_a_valid_decision_resets_the_counter(self):
+        planner = LLMPlanner(Client("{}", write("a.js"), "{}", "{}"))
+        await planner.next_decision(view(), LIMITS)
+        self.assertEqual((await planner.next_decision(view(), LIMITS)).kind, ToolKind.WRITE_FILE)
+        self.assertEqual((await planner.next_decision(view(), LIMITS)).kind, ToolKind.INSPECT_WORKSPACE)
+        prompt_notes = planner._notes
+        self.assertTrue(any("empty or unrecognised" in n for n in prompt_notes))
+
+
 class RuntimeArtifactTests(unittest.IsolatedAsyncioTestCase):
     async def test_artifacts_are_output_refs_and_do_not_touch_game(self):
         with tempfile.TemporaryDirectory() as directory:

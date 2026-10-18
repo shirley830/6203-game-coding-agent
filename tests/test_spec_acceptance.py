@@ -248,6 +248,21 @@ class HarnessScenarioTests(unittest.TestCase):
         self.assertEqual(result["checks"]["contract"]["status"], "fail")
         self.assertTrue(all(v["status"] == "fail" for v in result["requirements"].values()))
 
+    def test_dom_grid_and_function_fields(self):
+        spec = {"state_contract": {"state_fields": {"grid": "{cols, rows}", "moves": "number",
+                                                    "isWall": "(x, y) -> boolean"}, "test_hooks": {}},
+                "requirements": [
+                    {"id": "D1", "category": "interaction", "description": "Clicking a DOM cell lights it",
+                     "steps": [{"click_cell": [1, 1]}, {"expect": "s.lit[4] && s.moves === 1"}]},
+                    {"id": "D2", "category": "functional", "description": "Walls are outside the board",
+                     "steps": [{"expect": "s.isWall(-1, 0) && !s.isWall(1, 1)"}]},
+                    {"id": "D3", "category": "functional", "description": "Corner click counts once",
+                     "steps": [{"click_cell": [2, 2]}, {"expect": "s.moves === 1 && s.lit[8]"}]}]}
+        result = run_harness((FIXTURES / "contract_dom_grid.html").read_text(encoding="utf-8"), spec)
+        self.assertEqual(result["checks"]["contract"]["status"], "pass", result["checks"]["contract"])
+        self.assertEqual({k: v["status"] for k, v in result["requirements"].items()},
+                         {"REQ-D1": "pass", "REQ-D2": "pass", "REQ-D3": "pass"}, result["requirements"])
+
     def test_mouse_only_game_passes_by_clicks(self):
         result = run_harness(LIGHTS_GAME, LIGHTS_SPEC)
         self.assertEqual(result["checks"]["interaction"]["status"], "pass",

@@ -23,6 +23,20 @@ HISTORY_LIMIT = 25
 # verification triggers one: live runs showed weaker models rewriting the same
 # file dozens of times without fresh feedback until the budget ran out.
 MAX_EDITS_BEFORE_VERIFICATION = 8
+# Consecutive empty decision objects absorbed before normal recovery takes over.
+MAX_EMPTY_REPLIES = 2
+
+
+def _is_empty_decision(model_response: str) -> bool:
+    import json
+    from .parser import extract_json_object, normalize_decision
+    try:
+        payload = json.loads(extract_json_object(model_response))
+    except (ValueError, TypeError):
+        return False
+    return isinstance(payload, dict) and "decision" not in (normalize_decision(payload) or {})
+
+
 _EDIT_KINDS = {ToolKind.WRITE_FILE, ToolKind.PATCH_FILE, ToolKind.INSTALL_DEPENDENCIES}
 _SOURCE_SUFFIXES = (".html", ".htm", ".js", ".mjs", ".py", ".css")
 
@@ -48,6 +62,7 @@ class LLMPlanner:
         self._seen_result: str | None = None
         self._edits_since_verification = 0
         self._packages: list[str] = []
+        self._empty_replies = 0
         self._seen_failure: object | None = None
 
     async def create_plan(
@@ -107,9 +122,18 @@ class LLMPlanner:
             timeout_seconds=limits.timeout_seconds,
         )
 
+        if _is_empty_decision(model_response) and self._empty_replies < MAX_EMPTY_REPLIES:
+            # GLM-5.3 occasionally answers "{}". Rather than spend a recovery
+            # attempt, refresh the workspace view and ask again next step.
+            self._empty_replies += 1
+            self._notes.append("Your previous reply was an empty or unrecognised JSON object. "
+                               "Reply with one complete decision object as specified.")
+            return self._register(ToolAction("guard", ToolKind.INSPECT_WORKSPACE, {},
+                                             "Previous model reply was empty; refresh the file list"))
         decision = parse_decision(
             model_response=model_response,
         )
+        self._empty_replies = 0
         if isinstance(decision, ToolAction):
             return self._register(decision)
         if isinstance(decision, RequestVerification):

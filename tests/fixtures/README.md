@@ -19,3 +19,6 @@ Process-mode fixtures (non-browser games), used by `tests/test_non_browser.py`:
 | `process_term/` | A minimal terminal game that reads moves from standard input |
 | `process_crash/` | A program that crashes at start-up (must fail launch with the exception) |
 | `process_gfx/` | A stand-in for a pygame game (keeps running, has event-handling code) |
+
+`contract_dom_grid.html` (used by `tests/test_spec_acceptance.py`): a board built from
+DOM cells (no canvas) whose state contract includes a function field, `isWall(x, y)`.

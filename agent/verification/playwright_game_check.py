@@ -526,12 +526,30 @@ _EVAL_JS = """([expr, saved]) => { const g = window.__gameState;
   const s = typeof g === 'function' ? g() : g;
   return (new Function('s', 'saved', 'return (' + expr + ');'))(s, saved); }"""
 
+_MISSING_FIELDS_JS = """(fields) => { const g = window.__gameState;
+  const s = typeof g === 'function' ? g() : g;
+  if (s === undefined || s === null) return fields;
+  return fields.filter(f => !(f in Object(s))); }"""
+
+# Grid cell centre for click_cell: a canvas board (state.grid gives the size),
+# or a DOM board (data-* attributes, or a container whose children are cells).
 _CELL_JS = """([col, row]) => { const g = window.__gameState;
   const s = typeof g === 'function' ? g() : g;
+  const grid = s && s.grid;
+  const centre = (r) => [r.left + r.width / 2, r.top + r.height / 2];
+  const tagged = document.querySelector(`[data-cell="${col},${row}"]`)
+    || document.querySelector(`[data-col="${col}"][data-row="${row}"]`)
+    || document.querySelector(`[data-x="${col}"][data-y="${row}"]`)
+    || document.querySelector(`[data-c="${col}"][data-r="${row}"]`);
+  if (tagged) return centre(tagged.getBoundingClientRect());
   const c = document.querySelector('canvas');
-  if (!c || !s || !s.grid) throw new Error('click_cell needs a canvas and state.grid {cols, rows}');
-  const r = c.getBoundingClientRect();
-  return [r.left + (col + 0.5) * r.width / s.grid.cols, r.top + (row + 0.5) * r.height / s.grid.rows]; }"""
+  if (c && grid) { const r = c.getBoundingClientRect();
+    return [r.left + (col + 0.5) * r.width / grid.cols, r.top + (row + 0.5) * r.height / grid.rows]; }
+  if (grid) { const n = grid.cols * grid.rows;
+    const box = [...document.querySelectorAll('body *')].find(e => e.children.length === n
+      && [...e.children].every(k => k.getBoundingClientRect().width > 0));
+    if (box) return centre(box.children[row * grid.cols + col].getBoundingClientRect()); }
+  throw new Error('click_cell needs state.grid {cols, rows} and a canvas board or a DOM grid of cells'); }"""
 
 
 def _describe_step(step: dict[str, Any]) -> str:
@@ -591,12 +609,15 @@ def _run_spec_scenarios(page: Any, spec: dict[str, Any], evidence_dir: Path,
         state = page.evaluate(_STATE_JS)
         hooks = page.evaluate("() => Object.keys(window.__gameTest || {}).filter("
                               "k => typeof window.__gameTest[k] === 'function')")
+        # Checked on the live object: JSON copies drop function-valued fields
+        # such as isWall(x, y), which a contract may legitimately require.
+        live_missing = page.evaluate(_MISSING_FIELDS_JS, list(contract.get("state_fields", {})))
     except Exception as exc:  # noqa: BLE001
-        state, hooks = None, []
+        state, hooks, live_missing = None, [], None
         contract_error = f"{type(exc).__name__}: {str(exc).splitlines()[0][:200]}"
     else:
         contract_error = ""
-    missing = [f for f in contract.get("state_fields", {}) if not isinstance(state, dict) or f not in state]
+    missing = list(contract.get("state_fields", {})) if state is None else list(live_missing or [])
     missing_hooks = [h for h in contract.get("test_hooks", {}) if h not in hooks]
     if state is None:
         contract_block = _check("fail", "window.__gameState is not defined; the state contract "
