@@ -203,6 +203,27 @@ Issues found and fixed (commit `3758484` and the following commit):
 Cost: about **US$1.7** for the probes and all nine GLM-5.3 runs (OpenRouter
 account usage); single runs ranged from about $0.01 to $0.41.
 
+## 5d. Final GLM-5.3 rehearsal (2026-10-19)
+
+After the model probe and best-version restore were added (PR #7), Member 5 ran all seven specifications once more
+with the course key on OpenRouter, a 20-minute budget and no human intervention.
+
+| Spec | Outcome | Time | Steps | Recoveries |
+|---|---|---|---|---|
+| dev_01_collect | succeeded | 48 s | 20 | 0 |
+| dev_02_dodge | exhausted | 1180 s | 166 | 8 |
+| dev_03_memory | succeeded | 45 s | 22 | 0 |
+| dev_04_maze | succeeded | 334 s | 128 | 5 |
+| dev_05_terminal | succeeded | 23 s | 18 | 0 |
+| holdout_01_switches | succeeded | 61 s | 41 | 1 |
+| holdout_02_turns | succeeded | 106 s | 30 | 0 |
+
+The dodge run failed timing assertions in model-written scenarios (exact score values while the real-time loop keeps
+running). At the deadline the controller restored the best assessed version (11 mandatory criteria passing) and the run
+was still reported as exhausted. The batch cost about US$0.5. Raw data: `GLM_REPEAT_20261019.json`,
+`BEST_VERSION_RESTORE_20261019.json`; checklist: `HANDOFF_20261019.md`. These seven runs used a newer agent than the 32
+runs above, so they are reported separately rather than merged into one success rate.
+
 ## 6. Limitations of this evaluation
 
 * One run per cell; model output is nondeterministic, so single failures or

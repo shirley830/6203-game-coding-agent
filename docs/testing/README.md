@@ -1,6 +1,6 @@
 # Testing overview
 
-Current status (2026-10-16): **207 tests, all passing** on macOS / Python 3.11
+Current status (2026-10-19): **226 tests (plus 58 subtests), all passing** on macOS / Python 3.11
 (`python -m pytest -q`, about 80 s). Browser tests are skipped automatically
 when Playwright Chromium is not installed.
 
@@ -25,6 +25,7 @@ when Playwright Chromium is not installed.
 | `test_no_game_templates.py` | 3 | Integration | The agent ships no game code and never reads test fixtures |
 | `test_reasoning_config.py` | 4 | Integration | Reasoning cap for GLM models, request parameters |
 | `test_non_browser.py` | 7 | Integration | Process-mode verification of terminal, crashing and pygame-style games; run time from `agent.env` |
+| `test_handoff_completion.py` | 19 | Member 5 | Model probe in the self-check, source snapshots and best-version restore, rehearsal archiving |
 
 ## End-to-end evidence
 

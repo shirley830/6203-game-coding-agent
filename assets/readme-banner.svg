@@ -61,8 +61,8 @@
     <text x="56" y="252" font-size="18" fill="#a9c2c9" font-weight="400" text-anchor="start" >browser, repairs what fails, and keeps a complete trace.</text>
     <text x="56" y="296" font-size="12" fill="#7fa3ad" font-weight="400" text-anchor="start" letter-spacing="1.2">MODULES</text><text x="196" y="296" font-size="12" fill="#7fa3ad" font-weight="400" text-anchor="start" letter-spacing="1.2">TESTS</text><text x="316" y="296" font-size="12" fill="#7fa3ad" font-weight="400" text-anchor="start" letter-spacing="1.2">LIVE RUNS</text>
     <text x="56" y="328" font-size="28" font-weight="700" fill="#f2f8f9">6<tspan fill="#5f7f88" font-size="18"> / 6</tspan></text>
-    <text x="196" y="328" font-size="28" font-weight="700" fill="#f2f8f9">207</text>
-    <text x="316" y="328" font-size="28" font-weight="700" fill="#f2f8f9">32<tspan fill="#5f7f88" font-size="16" font-weight="600"> · 4 models</tspan></text>
+    <text x="196" y="328" font-size="28" font-weight="700" fill="#f2f8f9">226</text>
+    <text x="316" y="328" font-size="28" font-weight="700" fill="#f2f8f9">39<tspan fill="#5f7f88" font-size="16" font-weight="600"> · 4 models</tspan></text>
   </g>
   <rect x="660" y="20" width="600" height="340" rx="40" fill="#6ff0cf" opacity="0.05" filter="url(#soft)"/>
   <g filter="url(#shadow)"><rect x="690" y="40" width="536" height="316" rx="14" fill="#08161c" stroke="#2f505a" /></g>
