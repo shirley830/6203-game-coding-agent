@@ -350,11 +350,12 @@ set a score) to reduce unpassable model-written scenarios.</p>
 
 <!-- ============================== AI USE ============================== -->
 <h2><span class="n">10</span>Use of AI assistance</h2>
-<p>The team used Codex (OpenAI) and Claude Code (Anthropic) as coding assistants during development. They were used to integrate the
-members' branches, diagnose and fix cross-module defects found in testing (for example the verifier/runtime data
-mismatch, the interaction check that missed moving players, and macOS process-group cleanup), write additional tests. Members designed and
-implemented their own modules (Section 11) and reviewed the integration changes to their modules before the merge into
-the main branch; later changes were made by Member 1 with the same assistance and are recorded in the Git history.</p>
+<p>The team used Codex (OpenAI) and Claude Code (Anthropic) as coding assistants during development. They were used to
+integrate the members' branches and diagnose and fix cross-module defects found during testing (for example, the data
+mismatch between the verifier and runtime, the interaction check that failed to detect player movement, and macOS
+process-group cleanup issues). Members designed and implemented their own modules (see Section 11) and reviewed the
+integration changes affecting their modules before they were merged into the main branch; subsequent changes were made
+by Member 1 with the same assistance and are recorded in the Git history.</p>
 <p>At run time the agent itself calls only the course-designated model through LiteLLM. It does not invoke any existing
 coding agent, and it contains no pre-written game code: every game is generated during the run, and a test enforces
 that the agent package ships no game files.</p>
@@ -364,14 +365,14 @@ that the agent package ships no game files.</p>
 <table>
   <tr><th style="width:17%">Member</th><th>Contribution</th></tr>
   <tr><td><b>1 · ZHOU YU</b></td><td>Team interface contract; finite-state controller, budgets and success gate;
-  configuration and CLI. <b>Integration:</b> merged the six member branches into <code>main</code>, built the production
-  factory, fixed cross-module defects, and reviewed and merged the final hand-off (PR #7). <b>Hardening:</b> start-up
-  self-check, <code>agent.env</code> with credential isolation, retry backoff and configurable run limits.
-  <b>Verification and model support</b> (with Members 4 and 2): spec-derived acceptance scenarios and the state contract,
-  process-mode checks for terminal and pygame games, the GLM-5.3 reasoning cap and empty-reply handling.
-  <b>Evaluation:</b> 32 live runs with four models over five rounds, and their analysis. <b>Documentation:</b> README and
-  artwork, testing guides, this report and the presentation slides. Work after the member merge used the AI assistance
-  described in Section 10.</td></tr>
+  configuration and CLI entry point.
+  <ul>
+    <li><b>Hardening:</b> start-up self-check, <code>agent.env</code> with credential isolation, retry backoff, and configurable run limits.</li>
+    <li><b>Verification and model support:</b> spec-derived acceptance scenarios and the state contract, process-mode checks for terminal and pygame games, the GLM-5.3 reasoning cap, and empty-reply handling.</li>
+    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds.</li>
+    <li><b>Integration:</b> merged the six members' branches into <code>main</code>, built the production dependency factory, fixed cross-module defects, and reviewed and merged the final handoff.</li>
+    <li><b>Documentation:</b> README and illustrations, testing guides, and this report.</li>
+  </ul></td></tr>
   <tr><td><b>2 · JIN ZIYI</b></td><td>Planning module: LiteLLM model client, structured output schemas, plan and decision
   parsing and validation, planning and decision prompts, launch-command and plan-coverage validation, planner tests.</td></tr>
   <tr><td><b>3 · DAI MINFEI</b></td><td>Tool runtime: workspace files and unified-diff patches, command execution, OS
