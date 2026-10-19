@@ -29,7 +29,7 @@
 <tr><td><b>Status</b></td><td>All six modules integrated · 207 tests passing · 32 live runs on 4 models (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
 <tr><td><b>Success means</b></td><td>Every mandatory criterion passes on the current code, with evidence; nothing else counts</td></tr>
 <tr><td><b>Never</b></td><td>Mocks in the production path, edits to <code>agent/</code> or the spec during a run, deleting earlier <code>game/</code> or <code>traces/</code></td></tr>
-<tr><td><b>Still to do</b></td><td>Rehearse with the course-provided model · write <code>report.pdf</code></td></tr>
+<tr><td><b>Report</b></td><td><a href="report/report.pdf">report/report.pdf</a> (section 7.4, the live presentation run, is completed after the presentation) · source <code>report/report.html</code></td></tr>
 </table>
 
 <br>

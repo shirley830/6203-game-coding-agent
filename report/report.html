@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>PE6203 Group Project 1 Report: A Coding Agent That Builds Games</title>
+<style>
+  @page { size: A4; margin: 20mm 18mm 20mm 18mm; }
+  :root { --ink:#13232b; --muted:#4d6670; --teal:#1f9d7a; --deep:#0f2a33; --line:#d6e2e5; --soft:#f3f8f9; --warn:#b7791f; }
+  * { box-sizing: border-box; }
+  body { font-family: "Segoe UI", -apple-system, "Helvetica Neue", Helvetica, Arial, sans-serif; color: var(--ink);
+         font-size: 10.4pt; line-height: 1.5; margin: 0; }
+  h1, h2, h3 { color: var(--deep); line-height: 1.25; }
+  h2 { font-size: 15pt; margin: 22pt 0 6pt; padding-bottom: 4pt; border-bottom: 2px solid var(--teal); break-after: avoid; }
+  h2 .n { color: var(--teal); margin-right: 6pt; }
+  h3 { font-size: 11.6pt; margin: 14pt 0 4pt; break-after: avoid; }
+  p { margin: 0 0 7pt; text-align: justify; }
+  ul, ol { margin: 0 0 8pt 16pt; padding: 0; } li { margin-bottom: 2pt; }
+  code { font-family: "SFMono-Regular", Menlo, Consolas, monospace; font-size: 8.9pt; background: var(--soft);
+         padding: 0 3px; border-radius: 3px; }
+  table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; font-size: 9.2pt; break-inside: avoid; }
+  th { background: var(--deep); color: #fff; text-align: left; padding: 5pt 6pt; font-weight: 600; }
+  td { padding: 4pt 6pt; border-bottom: 1px solid var(--line); vertical-align: top; }
+  tr:nth-child(even) td { background: var(--soft); }
+  figure { margin: 8pt 0 12pt; break-inside: avoid; }
+  figure img { width: 100%; border-radius: 8px; display: block; }
+  figcaption { font-size: 8.8pt; color: var(--muted); margin-top: 4pt; }
+  .callout { border-left: 4px solid var(--teal); background: var(--soft); padding: 7pt 10pt; margin: 8pt 0 10pt; break-inside: avoid; }
+  .callout.warn { border-color: var(--warn); background: #fdf6ea; }
+  .callout b:first-child { color: var(--deep); }
+  .cover { height: 255mm; display: flex; flex-direction: column; break-after: page; }
+  .cover .band { background: var(--deep); color: #fff; border-radius: 14px; padding: 30pt 28pt 26pt; }
+  .cover .eyebrow { letter-spacing: 2.4px; font-size: 9pt; color: #9fc3cb; font-weight: 600; }
+  .cover h1 { color: #fff; font-size: 27pt; margin: 12pt 0 6pt; }
+  .cover h1 span { color: #6ff0cf; }
+  .cover .sub { color: #c7dbe0; font-size: 12pt; margin: 0; }
+  .cover img { width: 100%; margin-top: 18pt; border-radius: 12px; }
+  .cover table { margin-top: 18pt; }
+  .cover .meta { margin-top: auto; color: var(--muted); font-size: 9.5pt; }
+  .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; margin: 8pt 0 12pt; break-inside: avoid; }
+  .kpi { border: 1px solid var(--line); border-top: 3px solid var(--teal); border-radius: 8px; padding: 7pt 9pt; }
+  .kpi b { display: block; font-size: 17pt; color: var(--deep); }
+  .kpi span { font-size: 8.6pt; color: var(--muted); }
+  .toc { columns: 2; font-size: 10pt; margin: 4pt 0 0; } .toc div { margin-bottom: 3pt; }
+  .pending { border: 2px dashed var(--warn); border-radius: 10px; padding: 10pt 12pt; background: #fdf6ea; break-inside: avoid; }
+  .small { font-size: 9pt; color: var(--muted); }
+  .page-break { break-before: page; }
+</style>
+</head>
+<body>
+
+<!-- ============================== COVER ============================== -->
+<section class="cover">
+  <div class="band">
+    <div class="eyebrow">PE6203 · GENERATIVE AND AGENTIC AI · GROUP PROJECT 1</div>
+    <h1>A Coding Agent That<br><span>Builds a Game</span></h1>
+    <p class="sub">Project report: architecture, planning and verification, failure recovery, evaluation, limitations and next steps</p>
+  </div>
+  <img src="figures/readme-banner.png" alt="Project banner">
+  <table>
+    <tr><th style="width:12%">Member</th><th style="width:22%">Name</th><th>Module owned</th></tr>
+    <tr><td>1</td><td>Shirley Z</td><td>Controller, CLI, configuration, team contract, integration</td></tr>
+    <tr><td>2</td><td>Jin Ziyi</td><td>Planner: model client, prompts, plan and decision parsing</td></tr>
+    <tr><td>3</td><td>Dai Minfei</td><td>Tool runtime: files, commands, sandbox, processes, dependencies</td></tr>
+    <tr><td>4</td><td>Zhou Sihan</td><td>Verifier: acceptance criteria and the Playwright game harness</td></tr>
+    <tr><td>5</td><td>Lin Siyuan</td><td>Failure recovery policy and offline evaluation</td></tr>
+    <tr><td>6</td><td>Li Jiakun</td><td>Tracing, run report and delivery audit</td></tr>
+  </table>
+  <div class="meta">
+    Repository: github.com/shirley830/6203-game-coding-agent &nbsp;·&nbsp; Entry point: <code>python -m agent game_design_prompt.md</code><br>
+    Instructor: Prof. Bo An &nbsp;·&nbsp; Teaching assistant: Feng Lang &nbsp;·&nbsp; October 2026
+  </div>
+</section>
+
+<!-- ============================== SUMMARY ============================== -->
+<h2><span class="n">1</span>Summary</h2>
+<p>We built an autonomous coding agent that starts from a single, previously unseen <code>game_design_prompt.md</code>,
+writes a complete game into <code>game/</code>, and leaves a full execution record in <code>traces/</code>. The agent is
+started with one documented command and needs no human help afterwards. Its distinguishing design choice is that
+<b>success is never declared by the language model</b>: a deterministic controller grants success only when every
+mandatory acceptance criterion passes on the current code, with evidence, and those criteria are derived from the
+specification <i>before</i> any code exists and checked by actually playing the game in a headless browser.</p>
+
+<div class="kpis">
+  <div class="kpi"><b>8 / 9</b><span>runs succeeded with the course model GLM-5.3</span></div>
+  <div class="kpi"><b>32</b><span>autonomous runs with four real models</span></div>
+  <div class="kpi"><b>207</b><span>automated tests, all passing</span></div>
+  <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
+</div>
+
+<div class="toc">
+  <div>1 · Summary</div><div>2 · System architecture and rationale</div><div>3 · How the agent plans</div>
+  <div>4 · How the agent verifies its work</div><div>5 · How the agent recovers from failure</div>
+  <div>6 · Runtime safety and tracing</div><div>7 · Evaluation</div><div>8 · Current limitations</div>
+  <div>9 · Next planned improvement</div><div>10 · Use of AI assistance</div><div>11 · Member contributions</div>
+  <div>Appendix · Running the agent</div>
+</div>
+
+<!-- ============================== ARCHITECTURE ============================== -->
+<h2><span class="n">2</span>System architecture and rationale</h2>
+
+<figure>
+  <img src="figures/architecture.png" alt="Architecture">
+  <figcaption>Figure 1. One finite-state controller decides. The planner, verifier and recovery modules propose and
+  check; the sandboxed runtime and tracing act and record.</figcaption>
+</figure>
+
+<p>The agent is a <b>single sequential controller</b> (Member 1) with five injected modules. Modules receive an
+immutable view of the run and return a typed proposal or observation; they cannot change controller state, call each
+other, or run tools themselves. Every file write, command and dependency installation passes through one tool gateway
+in the controller, which validates its scope, charges it to the budgets, records it in the trace and only then hands it
+to the runtime. All modules are wired by one production factory (<code>agent/integrations.py</code>); test doubles exist
+only under <code>tests/</code>.</p>
+
+<table>
+  <tr><th>Module</th><th>Contract</th><th>Responsibility</th></tr>
+  <tr><td>Controller (M1)</td><td>state machine, budgets</td><td>Phases, legal transitions, tool gateway, stopping conditions, the success gate</td></tr>
+  <tr><td>Planner (M2)</td><td><code>create_plan</code>, <code>next_decision</code></td><td>Plan from frozen criteria; propose exactly one next action per call</td></tr>
+  <tr><td>Runtime (M3)</td><td><code>execute</code></td><td>Files, commands, installs inside an OS sandbox; process-group cleanup; workspace revisions</td></tr>
+  <tr><td>Verifier (M4)</td><td><code>prepare_acceptance</code>, <code>next_check</code></td><td>Spec-derived acceptance; read-only checks; browser play-testing; evidence</td></tr>
+  <tr><td>Recovery (M5)</td><td><code>recommend_recovery</code></td><td>Classify each failure; recommend RETRY, REPAIR, REPLAN or ABORT</td></tr>
+  <tr><td>Tracing (M6)</td><td><code>open_run</code>, <code>append_event</code>, <code>finalize</code></td><td>Durable events, checkpoints, evidence, run report, delivery check</td></tr>
+</table>
+
+<h3>Design rationale and trade-offs</h3>
+<ul>
+  <li><b>One controller instead of a multi-agent system.</b> A single owner of state makes every decision traceable and
+  every budget enforceable, and it removes coordination failures between agents. The cost is less parallelism; for one
+  game in a bounded time slot, predictability mattered more than throughput.</li>
+  <li><b>The model proposes, the controller decides.</b> Language models are good at generating code and poor at judging
+  their own completion. Success therefore requires a verification report that matches the current specification digest,
+  workspace revision and acceptance-suite version, with evidence for every mandatory criterion.</li>
+  <li><b>Typed contracts first.</b> The team agreed a written interface contract (<code>docs/INTERFACES.md</code>) before
+  implementation, so six members could build modules in parallel and integrate them without changing each other's code.</li>
+  <li><b>Browser games by default.</b> A self-contained HTML5 canvas game needs no build step or installation and can be
+  verified by a real browser. The agent builds Python terminal or pygame games only when the specification asks for them,
+  as the course allows both.</li>
+  <li><b>Provider independence.</b> The model is reached through LiteLLM, so changing to the course model required only
+  configuration. Reasoning models needed one provider-specific setting (Section 7.3).</li>
+</ul>
+
+<figure>
+  <img src="figures/state-machine.png" alt="State machine">
+  <figcaption>Figure 2. The run state machine. Errors, failed checks and uncertain outcomes go to RECOVERING, which
+  repairs (back to DECIDING), replans (back to PLANNING) or aborts. Budget exhaustion or cancellation finalizes from any
+  phase; finalization always preserves <code>game/</code> and <code>traces/</code>.</figcaption>
+</figure>
+
+<!-- ============================== PLANNING ============================== -->
+<h2><span class="n">3</span>How the agent plans</h2>
+<p><b>Plan.</b> After the acceptance suite is frozen (Section 4), the planner asks the model for 3-8 concrete tasks.
+Each task must reference acceptance criteria; the plan must cover every mandatory criterion and have an acyclic
+dependency graph, otherwise it is rejected and regenerated. The plan prompt treats the specification as data that
+cannot override system policy.</p>
+<p><b>Decide, one action at a time.</b> In the build loop the planner returns exactly one decision per call: a tool
+action (write, patch, read, inspect, run, install), a verification request with a launch command, or a plan revision.
+Because the controller exposes only the latest result, the planner keeps its own <b>working memory</b>: the files in
+<code>game/</code>, the last 25 actions and failures, guard notes, and facts from the start-up self-check (for example
+"node is not installed"). This keeps prompts small while preserving context across steps.</p>
+<p><b>Guards.</b> Some rules are enforced in code rather than trusted to the model:</p>
+<ul>
+  <li>A verification request is refused if the launch command refers to files that do not exist; <code>game/README.md</code>
+  must contain the exact launch command and is written deterministically if missing.</li>
+  <li>After eight consecutive edits without verification, the planner requests verification itself. Live runs showed a
+  model rewriting one file 35-45 times without fresh feedback until the time budget ran out.</li>
+  <li>The planner owns action IDs (models reuse example IDs) and repairs unambiguous format slips, such as
+  <code>{"decision": "read_file"}</code> instead of a tool action of kind <code>read_file</code>. Calls use JSON mode.</li>
+  <li><b>Specification fidelity.</b> The prompt forbids adding controls, shortcuts or behaviour outside the specification
+  to make a check pass, and requires fixing the real defect instead (Section 4.4).</li>
+</ul>
+
+<!-- ============================== VERIFICATION ============================== -->
+<h2><span class="n">4</span>How the agent verifies its work</h2>
+
+<figure>
+  <img src="figures/verification.png" alt="Verification">
+  <figcaption>Figure 3. Verification: the specification becomes frozen executable scenarios before any code exists; the
+  harness plays the game in headless Chromium; failures return to the planner with the failing step and the game state.</figcaption>
+</figure>
+
+<h3>4.1 Acceptance is frozen before planning</h3>
+<p>Immediately after reading the specification, the verifier asks the model, in the role of an independent tester, for
+a <b>state contract</b> and <b>3-10 executable scenarios</b>. The contract requires the game to expose its real live state
+as <code>window.__gameState</code> and a few setup hooks as <code>window.__gameTest</code> (for example placing a
+collectible next to the player). A scenario is a list of real inputs (key presses, held keys, clicks on DOM elements or
+grid cells) and JavaScript assertions over the state. These criteria are frozen with the generic launch, functional,
+interaction and technical criteria; neither planning nor repair can change them.</p>
+<p>Model-written tests can be wrong, so each requirement is validated on its own: invalid steps, undeclared hooks, or
+canvas clicks in a specification without mouse input drop that requirement only. If fewer than three survive, or the
+call fails, the verifier falls back to the generic criteria and records why.</p>
+
+<h3>4.2 The game is actually played</h3>
+<p>The harness starts the documented launch command, loads the page in headless Chromium and records JavaScript errors.
+It checks the contract on the live object, then runs every scenario on a freshly loaded page, saving a screenshot per
+scenario. A failing scenario reports the step that failed and the state after it, for example
+<code>step 5 {"expect": "s.status === 'lost'"} … state after: {...}</code>, which is exactly what the planner needs to
+repair the game. A generic interaction probe (keys, canvas points, board cells, buttons) and checks for a play surface
+complement the scenarios. Terminal and pygame games are verified in a process mode: start without a traceback, keep
+running, react to typed moves (pygame input can only be checked statically and is labelled as such).</p>
+
+<h3>4.3 The success gate</h3>
+<p>The controller computes the outcome; a verifier cannot simply claim success. A report passes only if its
+specification digest, workspace revision and acceptance-suite version are current, every criterion has a result,
+every mandatory result is PASS with non-empty evidence, at least one verification tool operation succeeded in this
+cycle, a launch command exists, and the trace is durably preserved.</p>
+
+<h3>4.4 Why this matters: evidence from live runs</h3>
+<table>
+  <tr><th style="width:44%">Observation</th><th>Consequence</th></tr>
+  <tr><td>With generic checks only, all six first-round runs "succeeded", but manual review found specification
+  violations in three of them (for example, walking into the enemy did not lose).</td>
+  <td>Spec-derived scenarios now catch these: the same "enemy contact loses" rule failed in every cycle on the
+  faulty game, and GLM-5.3 fixed it after one failed cycle.</td></tr>
+  <tr><td>When the harness could only press keys, the agent added keyboard controls and click-anywhere behaviour to a
+  mouse-only memory game to make the probe pass.</td>
+  <td>Mouse-aware scenarios and the fidelity rule removed this: later runs passed by real clicks with no extra controls.</td></tr>
+</table>
+
+<!-- ============================== RECOVERY ============================== -->
+<h2><span class="n">5</span>How the agent recovers from failure</h2>
+<p>Every failure is recorded with its phase and category and goes to the recovery module, which classifies it and
+recommends one of four decisions. The controller enforces the decision and all limits; modules cannot reset counters.</p>
+<table>
+  <tr><th style="width:26%">Failure class</th><th style="width:16%">Decision</th><th>Reasoning</th></tr>
+  <tr><td>Transient model error (timeout, connection, rate limit, 5xx)</td><td>RETRY</td><td>Proposal-only calls are safe to repeat; waits 5 s, 15 s, 45 s, 60 s before each retry, within the deadline</td></tr>
+  <tr><td>Malformed model output</td><td>REPAIR / REPLAN</td><td>Ask again with the parse error visible; an invalid plan is regenerated</td></tr>
+  <tr><td>Command failed, file missing</td><td>REPAIR</td><td>Inspect output and fix; never replay the unchanged command</td></tr>
+  <tr><td>Timeout or unknown side effects</td><td>REPAIR</td><td><b>Never retried blindly</b>; earlier verification is invalidated and the workspace re-inspected</td></tr>
+  <tr><td>Failed verification</td><td>REPAIR, periodically REPLAN</td><td>The failing steps go to the planner; repeated failure rebuilds the plan</td></tr>
+  <tr><td>Permission, sandbox or credential error; process cleanup failure</td><td>ABORT</td><td>Retrying cannot help; preserve artifacts and finalize honestly</td></tr>
+</table>
+<p>Stopping conditions bound every run: total time (including a finalization reserve), steps, commands, retries per
+operation, global recovery attempts, and repeated no-progress cycles. Any stop still finalizes the trace and keeps
+<code>game/</code>. In live runs this machinery handled real provider timeouts, malformed JSON (including empty
+<code>{}</code> replies from GLM-5.3, which the planner now absorbs without spending recovery attempts), runtime errors in
+generated code, and missing files.</p>
+
+<!-- ============================== RUNTIME + TRACING ============================== -->
+<h2><span class="n">6</span>Runtime safety and tracing</h2>
+<p><b>Runtime (Member 3).</b> Commands run as argument vectors (no shell) inside an OS sandbox (macOS
+<code>sandbox-exec</code>, Linux <code>bwrap</code>) that allows writes only to <code>game/</code> and the run's private
+storage, so generated code cannot modify the agent, the specification or the traces. Each command runs in its own
+process group, which is terminated and confirmed gone after every command, timeout or cancellation. Dependencies install
+into an isolated environment. Credentials stay in the agent process: commands get a filtered environment and cannot read
+<code>agent.env</code>. A start-up self-check stops the run before <code>game/</code> exists if Chromium, the sandbox, a
+free port or Python is missing.</p>
+<p><b>Tracing (Member 6).</b> Every controller event is appended to <code>events.jsonl</code> and is durable before the
+controller continues. The trace also holds checkpoints, every verification report, screenshots with a SHA-256 index,
+model usage per call (role, tokens, latency) and <code>run_report.md</code>, a readable timeline with each action's
+rationale, the frozen criteria, the plans and every verification cycle. <code>finalize</code> re-reads what it wrote
+before reporting the delivery as preserved, and <code>python -m agent.delivery</code> audits a finished trace.</p>
+
+<!-- ============================== EVALUATION ============================== -->
+<h2><span class="n">7</span>Evaluation</h2>
+
+<h3>7.1 Automated tests</h3>
+<p>207 tests cover the controller (36), configuration (7), planner (6), runtime and sandbox (22), verifier and harness
+(26, including real Playwright runs against fixture pages), recovery and evaluation (46), tracing (21), and integration
+(43, including an offline end-to-end rehearsal with a scripted model and the real sandbox, browser, recovery and
+tracing). A guard test ensures that the agent package contains no game code.</p>
+
+<h3>7.2 Live runs with real models</h3>
+<p>We ran the agent autonomously 32 times on seven specifications (collection, dodge, memory cards, maze, terminal
+hangman, light switches, turn-based keys) with four models, changing the agent between rounds based on what the traces
+showed.</p>
+<table>
+  <tr><th>Model</th><th>Runs</th><th>Succeeded</th><th>Observations</th></tr>
+  <tr><td><b>GLM-5.3 (course model)</b></td><td>9</td><td>8</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
+  <tr><td>Claude Sonnet 5.5</td><td>11</td><td>11</td><td>Valid scenarios and spec-faithful games in every run</td></tr>
+  <tr><td>GPT-4.1-mini</td><td>8</td><td>5</td><td>Missed rule details; some generated scenarios could not be passed by a correct game</td></tr>
+  <tr><td>Qwen3-Coder</td><td>4</td><td>1</td><td>Frequent format errors and unpassable tests</td></tr>
+</table>
+<p class="small">Round 1 used generic checks only, so its successes are weaker evidence; later rounds used spec-derived
+scenarios. Each specification was run once per model and round, so these figures indicate tendencies rather than rates.
+Full data: <code>docs/testing/LIVE_MODEL_TESTS.md</code>.</p>
+
+<h3>7.3 The course model: GLM-5.3</h3>
+<p>A probe before any run revealed a critical behaviour: with no reasoning setting, GLM-5.3 spent all 16 000 output
+tokens on reasoning and returned <b>no text</b> after 81 s, which would have stopped every planning call. Reasoning cannot
+be disabled for this model, but a reasoning cap makes it answer in about 5 s with valid JSON. The agent now caps
+reasoning at 8 000 tokens for GLM models. With that setting:</p>
+<table>
+  <tr><th>Specification</th><th>Outcome</th><th>Time</th><th>Repairs</th><th>Notes</th></tr>
+  <tr><td>Collection</td><td>succeeded</td><td>39 s</td><td>0</td><td>All 7 scenarios passed first time; reviewed against the spec</td></tr>
+  <tr><td>Terminal hangman</td><td>succeeded</td><td>17 s</td><td>0</td><td>Python, process mode; played by hand</td></tr>
+  <tr><td>Light switches</td><td>succeeded</td><td>115 s / 202 s</td><td>1 / 1</td><td>Two runs (before and after a harness fix)</td></tr>
+  <tr><td>Turn-based keys</td><td>succeeded</td><td>433 s</td><td>1</td><td>Caught and fixed "walking into the enemy does not lose"</td></tr>
+  <tr><td>Dodge</td><td>succeeded</td><td>453 s</td><td>5</td><td>Restart and timing rules took several cycles</td></tr>
+  <tr><td>Memory cards</td><td>succeeded</td><td>1151 s</td><td>8</td><td>Mouse only; used almost the whole 20-minute budget</td></tr>
+  <tr><td>Maze</td><td>failed, then succeeded</td><td>265 s / 235 s</td><td>20 / 6</td><td>First run hit a harness defect (function field in the state contract) and empty replies; both fixed</td></tr>
+</table>
+<p>The probes and nine runs cost about US$1.7 in total, which also confirmed that the run fits within a presentation slot.</p>
+
+<h3>7.4 Live run at the presentation</h3>
+<div class="pending">
+  <b>To be completed after the presentation.</b> Specification received, outcome and reason, elapsed time, number of
+  verification cycles and repairs, the most important failure and how the agent handled it, and where the evidence is in
+  <code>traces/&lt;run_id&gt;/</code>.
+</div>
+
+<!-- ============================== LIMITATIONS ============================== -->
+<h2><span class="n">8</span>Current limitations</h2>
+<ul>
+  <li><b>Model-written tests can be wrong.</b> The scenarios come from the same model that writes the game. Filtering
+  removes known bad patterns, but a scenario that a correct game cannot pass still leads to repeated repairs until a budget
+  runs out. Stronger models write far fewer such tests.</li>
+  <li><b>No rollback to the best version.</b> If a late repair breaks the game and the budget ends, <code>game/</code> keeps
+  the broken version rather than the best verified one.</li>
+  <li><b>Timing-heavy rules converge slowly.</b> Delays and timers needed up to eight verification cycles with GLM-5.3.</li>
+  <li><b>Non-browser games are verified less deeply.</b> Terminal games are played through standard input, but spec-derived
+  scenarios apply to browser games only, and pygame input is checked statically.</li>
+  <li><b>Configuration risk on the day.</b> The evaluation key is only provided at the presentation; a different provider
+  could ignore the reasoning cap, and this would only appear once the run starts.</li>
+  <li><b>Small evaluation.</b> Seven specifications and one run per configuration; results are indicative.</li>
+  <li><b>Platform.</b> The command sandbox requires macOS or Linux with bubblewrap; there is no resume after a hard
+  interruption.</li>
+</ul>
+
+<!-- ============================== NEXT ============================== -->
+<h2><span class="n">9</span>Next planned improvement</h2>
+<p><b>Keep the best verified version.</b> Before every verification, the runtime will snapshot <code>game/</code> together
+with its workspace revision; the verifier already reports how many criteria pass. At finalization, if the current
+version scores lower than an earlier one, the controller restores the best snapshot and records the decision in the
+trace. This turns a late regression into the best result the run achieved, directly improving the reliability of the
+demonstrated game.</p>
+<p>Two smaller follow-ups: a <b>model connectivity check</b> in the start-up self-check (one tiny request that must
+return valid JSON, so a wrong key, endpoint or reasoning setting is caught before development starts), and <b>standard
+setup hooks</b> per game type (place an item next to the player, open a grid cell, set a score) to reduce unpassable
+model-written scenarios.</p>
+
+<!-- ============================== AI USE ============================== -->
+<h2><span class="n">10</span>Use of AI assistance</h2>
+<p>The team used Claude Code (Anthropic) as a coding assistant during development. It was used to integrate the
+members' branches, diagnose and fix cross-module defects found in testing (for example the verifier/runtime data
+mismatch, the interaction check that missed moving players, and macOS process-group cleanup), write additional tests,
+run and analyse the live-model evaluations, produce the README artwork, and draft this report. Members designed and
+implemented their own modules (Section 11) and reviewed the integration changes to their modules before the merge into
+the main branch; later changes were made by Member 1 with the same assistance and are recorded in the Git history.</p>
+<p>At run time the agent itself calls only the course-designated model through LiteLLM. It does not invoke any existing
+coding agent, and it contains no pre-written game code: every game is generated during the run, and a test enforces
+that the agent package ships no game files.</p>
+
+<!-- ============================== CONTRIBUTIONS ============================== -->
+<h2><span class="n">11</span>Member contributions</h2>
+<table>
+  <tr><th style="width:17%">Member</th><th>Contribution</th></tr>
+  <tr><td><b>1 · Shirley Z</b></td><td>Team interface contract; finite-state controller, budgets and success gate;
+  configuration and CLI; production factory and module integration; start-up self-check, <code>agent.env</code> and retry
+  backoff; live-model evaluation campaigns; README and documentation; report.</td></tr>
+  <tr><td><b>2 · Jin Ziyi</b></td><td>Planning module: LiteLLM model client, structured output schemas, plan and decision
+  parsing and validation, planning and decision prompts, launch-command and plan-coverage validation, planner tests.</td></tr>
+  <tr><td><b>3 · Dai Minfei</b></td><td>Tool runtime: workspace files and unified-diff patches, command execution, OS
+  sandbox, process-group cleanup, isolated dependency installation, workspace revisions, runtime tests and test reports.</td></tr>
+  <tr><td><b>4 · Zhou Sihan</b></td><td>Verification module: <code>GameVerifier</code>, acceptance criteria, evidence
+  ledger and criterion evaluation, the Playwright game harness, verifier tests and design notes.</td></tr>
+  <tr><td><b>5 · Lin Siyuan</b></td><td>Recovery module: failure classification and recovery policy; offline evaluation
+  specifications and run-record report; recovery and recovery-verifier integration tests.</td></tr>
+  <tr><td><b>6 · Li Jiakun</b></td><td>Tracing and delivery: durable trace recorder, checkpoints, verification screenshot
+  archiving with integrity checks, delivery audit including missing-evidence detection, tracing tests.</td></tr>
+</table>
+
+<!-- ============================== APPENDIX ============================== -->
+<h2><span class="n">A</span>Appendix: running the agent</h2>
+<table>
+  <tr><th style="width:30%">Step</th><th>Command</th></tr>
+  <tr><td>Install (once)</td><td><code>pip install -e ".[test]"</code> then <code>python -m playwright install chromium-headless-shell</code></td></tr>
+  <tr><td>Configure</td><td><code>agent.env</code> next to the specification: <code>AGENT_MODEL=openrouter/z-ai/glm-5.3</code>, <code>OPENROUTER_API_KEY=…</code>, optional <code>AGENT_MAX_RUNTIME</code></td></tr>
+  <tr><td>Check the machine</td><td><code>python -m agent.preflight</code></td></tr>
+  <tr><td>Run</td><td><code>python -m agent game_design_prompt.md</code></td></tr>
+  <tr><td>Start the game</td><td>the command in <code>game/README.md</code>, normally <code>cd game &amp;&amp; python3 -m http.server 8000</code></td></tr>
+  <tr><td>Inspect the run</td><td><code>traces/&lt;run_id&gt;/run_report.md</code>; audit with <code>python -m agent.delivery traces/&lt;run_id&gt;</code></td></tr>
+</table>
+
+</body>
+</html>
