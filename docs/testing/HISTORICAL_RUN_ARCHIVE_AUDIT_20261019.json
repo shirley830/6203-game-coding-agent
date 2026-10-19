@@ -47,7 +47,8 @@
         "problems": []
       },
       "screenshots": 2,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs/dev_01_collect__openai_gpt-4.1-mini",
@@ -76,7 +77,8 @@
         "problems": []
       },
       "screenshots": 2,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs/dev_01_collect__qwen_qwen3-coder",
@@ -105,7 +107,8 @@
         "problems": []
       },
       "screenshots": 2,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs/dev_03_memory__anthropic_claude-sonnet-5.5",
@@ -134,7 +137,8 @@
         "problems": []
       },
       "screenshots": 6,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs/holdout_02_turns__anthropic_claude-sonnet-5.5",
@@ -163,7 +167,8 @@
         "problems": []
       },
       "screenshots": 2,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs/holdout_02_turns__openai_gpt-4.1-mini",
@@ -192,7 +197,8 @@
         "problems": []
       },
       "screenshots": 2,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm/dev_01_collect__z-ai_glm-5.3",
@@ -221,7 +227,8 @@
         "problems": []
       },
       "screenshots": 9,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm/dev_02_dodge__z-ai_glm-5.3",
@@ -250,7 +257,8 @@
         "problems": []
       },
       "screenshots": 45,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm/dev_03_memory__z-ai_glm-5.3",
@@ -279,7 +287,8 @@
         "problems": []
       },
       "screenshots": 80,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm/dev_04_maze__z-ai_glm-5.3",
@@ -294,7 +303,7 @@
       "checks": {
         "game_source_present": true,
         "spec_present": true,
-        "spec_digest_matches": true,
+        "spec_digest_matches": null,
         "checkpoint_present": true,
         "report_present": true,
         "stdout_stderr_present": true,
@@ -308,7 +317,8 @@
         "problems": []
       },
       "screenshots": 40,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": false
     },
     {
       "path": "live_runs/runs_glm/dev_05_terminal__z-ai_glm-5.3",
@@ -337,7 +347,8 @@
         "problems": []
       },
       "screenshots": 0,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm/holdout_01_switches__z-ai_glm-5.3",
@@ -366,7 +377,8 @@
         "problems": []
       },
       "screenshots": 20,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm/holdout_02_turns__z-ai_glm-5.3",
@@ -395,7 +407,8 @@
         "problems": []
       },
       "screenshots": 20,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm2/dev_04_maze__z-ai_glm-5.3",
@@ -424,7 +437,8 @@
         "problems": []
       },
       "screenshots": 40,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_glm2/holdout_01_switches__z-ai_glm-5.3",
@@ -453,7 +467,8 @@
         "problems": []
       },
       "screenshots": 20,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v2/dev_01_collect__anthropic_claude-sonnet-5.5",
@@ -482,7 +497,8 @@
         "problems": []
       },
       "screenshots": 20,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v2/dev_01_collect__openai_gpt-4.1-mini",
@@ -511,7 +527,8 @@
         "problems": []
       },
       "screenshots": 2,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v2/dev_01_collect__qwen_qwen3-coder",
@@ -526,7 +543,7 @@
       "checks": {
         "game_source_present": true,
         "spec_present": true,
-        "spec_digest_matches": true,
+        "spec_digest_matches": null,
         "checkpoint_present": true,
         "report_present": true,
         "stdout_stderr_present": true,
@@ -540,7 +557,8 @@
         "problems": []
       },
       "screenshots": 56,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": false
     },
     {
       "path": "live_runs/runs_v2/dev_03_memory__anthropic_claude-sonnet-5.5",
@@ -569,7 +587,8 @@
         "problems": []
       },
       "screenshots": 18,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v2/holdout_02_turns__anthropic_claude-sonnet-5.5",
@@ -598,7 +617,8 @@
         "problems": []
       },
       "screenshots": 12,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v2/holdout_02_turns__openai_gpt-4.1-mini",
@@ -627,7 +647,8 @@
         "problems": []
       },
       "screenshots": 2,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v3/dev_01_collect__anthropic_claude-sonnet-5.5",
@@ -656,7 +677,8 @@
         "problems": []
       },
       "screenshots": 20,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v3/dev_01_collect__openai_gpt-4.1-mini",
@@ -671,7 +693,7 @@
       "checks": {
         "game_source_present": true,
         "spec_present": true,
-        "spec_digest_matches": true,
+        "spec_digest_matches": null,
         "checkpoint_present": true,
         "report_present": true,
         "stdout_stderr_present": true,
@@ -685,7 +707,8 @@
         "problems": []
       },
       "screenshots": 14,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": false
     },
     {
       "path": "live_runs/runs_v3/dev_01_collect__qwen_qwen3-coder",
@@ -700,7 +723,7 @@
       "checks": {
         "game_source_present": true,
         "spec_present": true,
-        "spec_digest_matches": true,
+        "spec_digest_matches": null,
         "checkpoint_present": true,
         "report_present": true,
         "stdout_stderr_present": true,
@@ -714,7 +737,8 @@
         "problems": []
       },
       "screenshots": 8,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": false
     },
     {
       "path": "live_runs/runs_v3/dev_03_memory__anthropic_claude-sonnet-5.5",
@@ -743,7 +767,8 @@
         "problems": []
       },
       "screenshots": 10,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v3/holdout_02_turns__anthropic_claude-sonnet-5.5",
@@ -772,7 +797,8 @@
         "problems": []
       },
       "screenshots": 22,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v3/holdout_02_turns__openai_gpt-4.1-mini",
@@ -787,7 +813,7 @@
       "checks": {
         "game_source_present": true,
         "spec_present": true,
-        "spec_digest_matches": true,
+        "spec_digest_matches": null,
         "checkpoint_present": true,
         "report_present": true,
         "stdout_stderr_present": true,
@@ -801,7 +827,8 @@
         "problems": []
       },
       "screenshots": 24,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": false
     },
     {
       "path": "live_runs/runs_v4/dev_01_collect__openai_gpt-4.1-mini",
@@ -830,7 +857,8 @@
         "problems": []
       },
       "screenshots": 32,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v4/dev_01_collect__qwen_qwen3-coder",
@@ -845,7 +873,7 @@
       "checks": {
         "game_source_present": true,
         "spec_present": true,
-        "spec_digest_matches": true,
+        "spec_digest_matches": null,
         "checkpoint_present": true,
         "report_present": true,
         "stdout_stderr_present": true,
@@ -859,7 +887,8 @@
         "problems": []
       },
       "screenshots": 64,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": false
     },
     {
       "path": "live_runs/runs_v4/holdout_02_turns__openai_gpt-4.1-mini",
@@ -874,7 +903,7 @@
       "checks": {
         "game_source_present": true,
         "spec_present": true,
-        "spec_digest_matches": true,
+        "spec_digest_matches": null,
         "checkpoint_present": true,
         "report_present": true,
         "stdout_stderr_present": true,
@@ -888,7 +917,8 @@
         "problems": []
       },
       "screenshots": 55,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": false
     },
     {
       "path": "live_runs/runs_v5/dev_01_collect__anthropic_claude-sonnet-5.5",
@@ -917,7 +947,8 @@
         "problems": []
       },
       "screenshots": 18,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     },
     {
       "path": "live_runs/runs_v6/dev_05_terminal__anthropic_claude-sonnet-5.5",
@@ -946,7 +977,10 @@
         "problems": []
       },
       "screenshots": 0,
-      "source_commit_recorded": null
+      "source_commit_recorded": null,
+      "spec_digest_check_available": true
     }
-  ]
+  ],
+  "final_verification_unavailable_runs": 7,
+  "final_verification_note": "Seven exhausted runs have no current final verification report. Their spec-digest check is unavailable, not passed; trace/evidence delivery audits remain complete."
 }
