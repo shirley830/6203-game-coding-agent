@@ -20,6 +20,8 @@
   table { width: 100%; border-collapse: collapse; margin: 6pt 0 10pt; font-size: 9.2pt; break-inside: avoid; }
   th { background: var(--deep); color: #fff; text-align: left; padding: 5pt 6pt; font-weight: 600; }
   td { padding: 4pt 6pt; border-bottom: 1px solid var(--line); vertical-align: top; }
+  table.contributions { break-inside: auto; }
+  table.contributions tr { break-inside: avoid; }
   tr:nth-child(even) td { background: var(--soft); }
   figure { margin: 8pt 0 12pt; break-inside: avoid; }
   figure img { width: 100%; border-radius: 8px; display: block; }
@@ -362,7 +364,7 @@ that the agent package ships no game files.</p>
 
 <!-- ============================== CONTRIBUTIONS ============================== -->
 <h2><span class="n">11</span>Member contributions</h2>
-<table>
+<table class="contributions">
   <tr><th style="width:17%">Member</th><th>Contribution</th></tr>
   <tr><td><b>1 · ZHOU YU</b></td><td>Team interface contract; finite-state controller, budgets and success gate;
   configuration and CLI entry point.
@@ -374,12 +376,26 @@ that the agent package ships no game files.</p>
     <li><b>Documentation:</b> README and illustrations, testing guides, and this report.</li>
     <li><b>Presentation:</b> prepared the presentation slides.</li>
   </ul></td></tr>
-  <tr><td><b>2 · JIN ZIYI</b></td><td>Planning module: LiteLLM model client, structured output schemas, plan and decision
-  parsing and validation, planning and decision prompts, launch-command and plan-coverage validation, planner tests.</td></tr>
-  <tr><td><b>3 · DAI MINFEI</b></td><td>Tool runtime: workspace files and unified-diff patches, command execution, OS
-  sandbox, process-group cleanup, isolated dependency installation, workspace revisions, runtime tests and test reports.</td></tr>
-  <tr><td><b>4 · ZHOU SIHAN</b></td><td>Verification module: <code>GameVerifier</code>, acceptance criteria, evidence
-  ledger and criterion evaluation, the Playwright game harness, verifier tests and design notes.</td></tr>
+  <tr><td><b>2 · JIN ZIYI</b></td><td>Planning module: model access, planning, and decision generation.
+  <ul>
+    <li><b>Model integration:</b> implemented the LiteLLM model client.</li>
+    <li><b>Structured output:</b> defined output schemas and implemented plan and decision parsing and validation.</li>
+    <li><b>Prompts and validation:</b> developed planning and decision prompts, launch-command validation, and plan-coverage validation.</li>
+    <li><b>Testing:</b> implemented planner tests.</li>
+  </ul></td></tr>
+  <tr><td><b>3 · DAI MINFEI</b></td><td>Tool runtime: workspace operations and command execution.
+  <ul>
+    <li><b>File operations:</b> implemented workspace file operations, unified-diff patches, and workspace revisions.</li>
+    <li><b>Hardening:</b> implemented the OS sandbox, process-group cleanup, and isolated dependency installation.</li>
+    <li><b>Testing:</b> implemented runtime tests and prepared test reports.</li>
+  </ul></td></tr>
+  <tr><td><b>4 · ZHOU SIHAN</b></td><td>Verification module: <code>GameVerifier</code> and acceptance criteria.
+  <ul>
+    <li><b>Evidence and evaluation:</b> implemented the evidence ledger and criterion evaluation.</li>
+    <li><b>Game testing:</b> implemented the Playwright game harness.</li>
+    <li><b>Testing:</b> implemented verifier tests.</li>
+    <li><b>Documentation:</b> prepared verification design notes.</li>
+  </ul></td></tr>
   <tr><td><b>5 · LIN SIYUAN</b></td><td>Recovery module: failure classification and recovery policy.
   <ul>
     <li><b>Hardening:</b> model probe in the self-check, source snapshots, and best-version restore.</li>
@@ -387,8 +403,13 @@ that the agent package ships no game files.</p>
     <li><b>Evaluation:</b> offline evaluation specifications and the run-record report, and the final GLM-5.3 rehearsal.</li>
     <li><b>Handoff:</b> audited the historical run archive.</li>
   </ul></td></tr>
-  <tr><td><b>6 · LI JIAKUN</b></td><td>Tracing and delivery: durable trace recorder, checkpoints, verification screenshot
-  archiving with integrity checks, delivery audit including missing-evidence detection, tracing tests.</td></tr>
+  <tr><td><b>6 · LI JIAKUN</b></td><td>Tracing and delivery: durable execution records and delivery auditing.
+  <ul>
+    <li><b>Trace recording:</b> implemented the durable trace recorder and checkpoints.</li>
+    <li><b>Evidence preservation:</b> implemented verification screenshot archiving with integrity checks.</li>
+    <li><b>Delivery audit:</b> implemented delivery auditing, including missing-evidence detection.</li>
+    <li><b>Testing:</b> implemented tracing tests.</li>
+  </ul></td></tr>
 </table>
 
 <!-- ============================== APPENDIX ============================== -->
