@@ -24,6 +24,6 @@ PR：https://github.com/shirley830/6203-game-coding-agent/pull/7
 
 ## 材料位置
 
-本分支 deliverables/member5/ 中提供完整交接包及两份面向团队的说明；docs/testing/HANDOFF_20261019.md 是逐项核对表。完整包内已有详细运行指南，Key 请在演示机本地填写，不要发群或提交仓库。
+docs/handoff/member5/ 中提供完整交接包及两份面向团队的说明；docs/testing/HANDOFF_20261019.md 是逐项核对表。完整包内已有详细运行指南，Key 请在演示机本地填写，不要发群或提交仓库。
 
 如果要处理本轮躲避游戏的失败，请 Member 2 / Member 4 根据现有日志核对游戏逻辑及验收时序；本次交接保留了问题和证据，没有宣称所有题目都能一次成功。

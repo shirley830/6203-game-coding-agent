@@ -29,7 +29,8 @@
 <tr><td><b>Status</b></td><td>All six modules integrated · 226 tests passing · 39 live runs on 4 models (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
 <tr><td><b>Success means</b></td><td>Every mandatory criterion passes on the current code, with evidence; nothing else counts</td></tr>
 <tr><td><b>Never</b></td><td>Mocks in the production path, edits to <code>agent/</code> or the spec during a run, deleting earlier <code>game/</code> or <code>traces/</code></td></tr>
-<tr><td><b>Report</b></td><td><a href="report/report.pdf">report/report.pdf</a> (section 7.4, the live presentation run, is completed after the presentation) · source <code>report/report.html</code></td></tr>
+<tr><td><b>Submission</b></td><td><a href="agent/">agent/</a> (with <a href="agent/README.md">README</a>) · <code>game/</code> and <code>traces/</code> from the assessed run at the presentation · <a href="report.pdf">report.pdf</a></td></tr>
+<tr><td><b>Report</b></td><td><a href="report.pdf">report.pdf</a> (section 7.4, the live presentation run, is completed after the presentation) · source <code>docs/report/report.html</code></td></tr>
 </table>
 
 <br>
@@ -273,7 +274,7 @@ Every module call and tool attempt consumes a step, including rejected proposals
 
 ```text
 6203-game-coding-agent/
-├── agent/                      the submitted agent (no game code)
+├── agent/                      SUBMITTED: the agent (no game code); see agent/README.md
 │   ├── __main__.py             CLI: python -m agent game_design_prompt.md
 │   ├── controller.py           state machine, tool gateway, success gate
 │   ├── state.py · config.py    shared contracts, validated limits
@@ -286,10 +287,15 @@ Every module call and tool attempt consumes a step, including rejected proposals
 │   ├── recovery/               error classification and recovery policy
 │   ├── tracing/                recorder, run report, model usage
 │   └── delivery.py             trace audit
+├── game/                       SUBMITTED: the game built in the assessed run (created by the agent)
+├── traces/                     SUBMITTED: the full trace of that run (created by the agent)
+├── report.pdf                  SUBMITTED: the project report
 ├── evaluation/                 evaluation specs and run-record report
 ├── tests/                      226 tests; fixtures/ holds test-only pages
 ├── docs/                       contracts, integration review, member notes, testing
-├── assets/                    README artwork; regenerate: python3 assets/src/build_readme_art.py
+│   ├── report/                 report source; rebuild: python docs/report/build_report.py
+│   └── handoff/member5/        Member 5 hand-off notes
+├── assets/                     README artwork; regenerate: python3 assets/src/build_readme_art.py
 ├── agent.env.example
 └── pyproject.toml
 ```

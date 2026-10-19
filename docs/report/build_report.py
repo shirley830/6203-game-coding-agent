@@ -1,4 +1,4 @@
-"""Render report/report.html to report/report.pdf with headless Chromium.
+"""Render docs/report/report.html to report.pdf at the repository root with headless Chromium.
 
 Run from the repository root:  python report/build_report.py
 Animated SVG figures render as their final frame (reduced motion).
@@ -9,7 +9,9 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 HERE = Path(__file__).resolve().parent
-ASSETS = HERE.parent / "assets"
+ROOT = HERE.parent.parent
+ASSETS = ROOT / "assets"
+OUTPUT = ROOT / "report.pdf"
 FIGURES = HERE / "figures"
 # (svg, milliseconds into the animation when every element is shown)
 FIGURE_FRAMES = [("readme-banner.svg", 13000), ("architecture.svg", 1500),
@@ -44,11 +46,11 @@ def main() -> None:
         page.emulate_media(reduced_motion="reduce", media="print")
         page.goto((HERE / "report.html").as_uri())
         page.wait_for_load_state("networkidle")
-        page.pdf(path=str(HERE / "report.pdf"), format="A4", print_background=True,
+        page.pdf(path=str(OUTPUT), format="A4", print_background=True,
                  display_header_footer=True, header_template="<span></span>", footer_template=FOOTER,
                  margin={"top": "18mm", "bottom": "18mm", "left": "18mm", "right": "18mm"})
         browser.close()
-    print(f"wrote {HERE / 'report.pdf'}")
+    print(f"wrote {OUTPUT}")
 
 
 if __name__ == "__main__":

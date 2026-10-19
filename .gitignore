@@ -219,9 +219,6 @@ __marimo__/
 # Streamlit
 .streamlit/secrets.toml
 
-# Generated run artifacts; preserve separately after the assessed run.
-game/
-traces/
 
 # Member 3 isolated runtime environments and raw output
 .agent-runtime/
