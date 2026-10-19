@@ -57,9 +57,9 @@ AGENT_MAX_RUNTIME=老师允许的秒数
 
 ## 5 原始运行记录与新记录归档
 
-GitHub 主分支、可见 Git 历史、Releases 和 Actions artifacts 中未找到旧 32 次的完整运行目录。docs/testing/LIVE_MODEL_TESTS.md 明确说明原始目录在仓库外。结果表和三张展示截图不能还原每次源代码、日志与证据。
+最初检索 GitHub 主分支、可见 Git 历史、Releases 和 Actions artifacts 时，未找到旧 32 次的完整运行目录。docs/testing/LIVE_MODEL_TESTS.md 明确说明原始目录在仓库外。结果表和三张展示截图不能还原每次源代码、日志与证据。
 
-仍需 Member 1 提供原始目录或压缩包；缺失记录不能补造。新测试已使用持久目录，不依赖临时会话目录。每轮应保留成功和失败两类结果。
+更新：用户已提供 live_runs_32.zip，32 个独立 run_id、667 张截图，32/32 交付审计通过；历史结果为 25 succeeded、7 exhausted。已原样复制并核验 SHA-256，详见 docs/testing/HISTORICAL_RUN_ARCHIVE_20261019.md。此前搜索记录仍保留作追溯。新测试也使用持久目录，成功和失败结果均保留。
 
 运行全部七个既有规格的新一轮测试：
 
@@ -91,7 +91,7 @@ python -m evaluation.rehearse --env-file /本机私有配置/agent.env \
 - 当前老师提供的 Key：OpenRouter 已验证；现场换发后须重新试调用。
 - 老师允许的 Agent 运行秒数：未知。
 - 最终演示电脑及其自检、完整彩排证据：未提供。
-- 旧 32 次原始运行目录：未找到，需 Member 1 提供。
+- 旧 32 次原始运行目录：已收到用户提供的 ZIP 并完成原样归档与核验。
 - 当前 Key 可用额度：已能查询；老师账户钱包余额不作为用户签收前置条件。
 
 这些外部事项完成前，不能签收为整份交接全部完成。

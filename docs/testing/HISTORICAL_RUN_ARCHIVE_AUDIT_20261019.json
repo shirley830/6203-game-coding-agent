@@ -1,0 +1,952 @@
+{
+  "received_date": "2026-10-19",
+  "archive_file": "live_runs_32_原始归档.zip",
+  "archive_sha256": "d0e3ecf8334e3a9cc609972f0df51f776c4d568eb3d06dcf521ef9ad64b78fd6",
+  "archive_bytes": 28518986,
+  "archive_entries": 2934,
+  "uncompressed_bytes": 61695614,
+  "zip_integrity": "passed",
+  "unsafe_paths_or_symlinks": false,
+  "private_env_present": false,
+  "credential_patterns_found": false,
+  "runs": 32,
+  "unique_run_ids": 32,
+  "outcome_counts": {
+    "succeeded": 25,
+    "exhausted": 7
+  },
+  "delivery_audits_complete": 32,
+  "screenshots_total": 667,
+  "original_archive_preserved_unchanged": true,
+  "scope": "Read-only structural, event, evidence hash and credential-pattern audit; no archived game or command executed; no historical result re-labelled. Original source commit provenance is not independently reconstructed.",
+  "run_details": [
+    {
+      "path": "live_runs/runs/dev_01_collect__anthropic_claude-sonnet-5.5",
+      "run_id": "37f43df0a92744f2a0e9fa5b8a11598e",
+      "outcome": "succeeded",
+      "elapsed_seconds": 65.94964479201008,
+      "trace_elapsed_seconds": 65.94570712500717,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 32,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "37f43df0a92744f2a0e9fa5b8a11598e",
+        "outcome": "succeeded",
+        "event_count": 97,
+        "problems": []
+      },
+      "screenshots": 2,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs/dev_01_collect__openai_gpt-4.1-mini",
+      "run_id": "8c25b778531642609382c490a9a48129",
+      "outcome": "succeeded",
+      "elapsed_seconds": 49.43908150005154,
+      "trace_elapsed_seconds": 49.433990791090764,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 22,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "8c25b778531642609382c490a9a48129",
+        "outcome": "succeeded",
+        "event_count": 67,
+        "problems": []
+      },
+      "screenshots": 2,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs/dev_01_collect__qwen_qwen3-coder",
+      "run_id": "7ea1f1604d0a4f52aff865882425cda9",
+      "outcome": "succeeded",
+      "elapsed_seconds": 216.8495958329877,
+      "trace_elapsed_seconds": 216.84511729201768,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 26,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "7ea1f1604d0a4f52aff865882425cda9",
+        "outcome": "succeeded",
+        "event_count": 81,
+        "problems": []
+      },
+      "screenshots": 2,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs/dev_03_memory__anthropic_claude-sonnet-5.5",
+      "run_id": "7aa106c139674883b711a3cf3635ebe2",
+      "outcome": "succeeded",
+      "elapsed_seconds": 207.86867037496995,
+      "trace_elapsed_seconds": 207.86285066697747,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 72,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "7aa106c139674883b711a3cf3635ebe2",
+        "outcome": "succeeded",
+        "event_count": 224,
+        "problems": []
+      },
+      "screenshots": 6,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs/holdout_02_turns__anthropic_claude-sonnet-5.5",
+      "run_id": "b63d35370e1840fbb579e8b0d89e80d4",
+      "outcome": "succeeded",
+      "elapsed_seconds": 97.56661166693084,
+      "trace_elapsed_seconds": 97.56251904193778,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 32,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "b63d35370e1840fbb579e8b0d89e80d4",
+        "outcome": "succeeded",
+        "event_count": 97,
+        "problems": []
+      },
+      "screenshots": 2,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs/holdout_02_turns__openai_gpt-4.1-mini",
+      "run_id": "18e0bbac93024912a2eec718ca5dbc13",
+      "outcome": "succeeded",
+      "elapsed_seconds": 39.31743687496055,
+      "trace_elapsed_seconds": 39.313575832988136,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 22,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "18e0bbac93024912a2eec718ca5dbc13",
+        "outcome": "succeeded",
+        "event_count": 67,
+        "problems": []
+      },
+      "screenshots": 2,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm/dev_01_collect__z-ai_glm-5.3",
+      "run_id": "46cb726e808a4b7b916175ecd6b137c7",
+      "outcome": "succeeded",
+      "elapsed_seconds": 38.63243225007318,
+      "trace_elapsed_seconds": 38.61950433405582,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 20,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "46cb726e808a4b7b916175ecd6b137c7",
+        "outcome": "succeeded",
+        "event_count": 61,
+        "problems": []
+      },
+      "screenshots": 9,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm/dev_02_dodge__z-ai_glm-5.3",
+      "run_id": "deef411526ff40678363d0e4b157eac1",
+      "outcome": "succeeded",
+      "elapsed_seconds": 452.56759795791004,
+      "trace_elapsed_seconds": 452.5458950420143,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 118,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "deef411526ff40678363d0e4b157eac1",
+        "outcome": "succeeded",
+        "event_count": 364,
+        "problems": []
+      },
+      "screenshots": 45,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm/dev_03_memory__z-ai_glm-5.3",
+      "run_id": "455698ecae1447ac9e6a88856a1cc745",
+      "outcome": "succeeded",
+      "elapsed_seconds": 1151.090855333954,
+      "trace_elapsed_seconds": 1151.073587999912,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 196,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "455698ecae1447ac9e6a88856a1cc745",
+        "outcome": "succeeded",
+        "event_count": 604,
+        "problems": []
+      },
+      "screenshots": 80,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm/dev_04_maze__z-ai_glm-5.3",
+      "run_id": "9a476e13bbff4e54950a7aff6b0128cd",
+      "outcome": "exhausted",
+      "elapsed_seconds": 265.3326170409564,
+      "trace_elapsed_seconds": 265.31520641595125,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 146,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "9a476e13bbff4e54950a7aff6b0128cd",
+        "outcome": "exhausted",
+        "event_count": 468,
+        "problems": []
+      },
+      "screenshots": 40,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm/dev_05_terminal__z-ai_glm-5.3",
+      "run_id": "16ca61f7da2244d3ac512832f39d5bbc",
+      "outcome": "succeeded",
+      "elapsed_seconds": 16.771996167022735,
+      "trace_elapsed_seconds": 16.766245207982138,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 18,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "16ca61f7da2244d3ac512832f39d5bbc",
+        "outcome": "succeeded",
+        "event_count": 55,
+        "problems": []
+      },
+      "screenshots": 0,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm/holdout_01_switches__z-ai_glm-5.3",
+      "run_id": "68284ceda0dd4df8ac9c509b0d1e3315",
+      "outcome": "succeeded",
+      "elapsed_seconds": 115.11097304092254,
+      "trace_elapsed_seconds": 115.10340479097795,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 49,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "68284ceda0dd4df8ac9c509b0d1e3315",
+        "outcome": "succeeded",
+        "event_count": 150,
+        "problems": []
+      },
+      "screenshots": 20,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm/holdout_02_turns__z-ai_glm-5.3",
+      "run_id": "a4866a8b96b8434d9ff361a805475128",
+      "outcome": "succeeded",
+      "elapsed_seconds": 432.70092045806814,
+      "trace_elapsed_seconds": 432.69473679107614,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 47,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "a4866a8b96b8434d9ff361a805475128",
+        "outcome": "succeeded",
+        "event_count": 144,
+        "problems": []
+      },
+      "screenshots": 20,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm2/dev_04_maze__z-ai_glm-5.3",
+      "run_id": "5981880617b34016a5b2e9c0cfc5dd74",
+      "outcome": "succeeded",
+      "elapsed_seconds": 235.21060849993955,
+      "trace_elapsed_seconds": 235.20097462495323,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 98,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "5981880617b34016a5b2e9c0cfc5dd74",
+        "outcome": "succeeded",
+        "event_count": 302,
+        "problems": []
+      },
+      "screenshots": 40,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_glm2/holdout_01_switches__z-ai_glm-5.3",
+      "run_id": "1a58e0fad3134b3cbdae55bb08e94415",
+      "outcome": "succeeded",
+      "elapsed_seconds": 202.16651958297007,
+      "trace_elapsed_seconds": 202.1596210419666,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 47,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "1a58e0fad3134b3cbdae55bb08e94415",
+        "outcome": "succeeded",
+        "event_count": 144,
+        "problems": []
+      },
+      "screenshots": 20,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v2/dev_01_collect__anthropic_claude-sonnet-5.5",
+      "run_id": "27cea355c0b94345be51f21fbddb9073",
+      "outcome": "succeeded",
+      "elapsed_seconds": 234.37730116595048,
+      "trace_elapsed_seconds": 234.37218420789577,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 57,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "27cea355c0b94345be51f21fbddb9073",
+        "outcome": "succeeded",
+        "event_count": 176,
+        "problems": []
+      },
+      "screenshots": 20,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v2/dev_01_collect__openai_gpt-4.1-mini",
+      "run_id": "681cc4d87fb54db2927c39f6fd2fd206",
+      "outcome": "succeeded",
+      "elapsed_seconds": 57.35265354195144,
+      "trace_elapsed_seconds": 57.34713374997955,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 24,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "681cc4d87fb54db2927c39f6fd2fd206",
+        "outcome": "succeeded",
+        "event_count": 74,
+        "problems": []
+      },
+      "screenshots": 2,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v2/dev_01_collect__qwen_qwen3-coder",
+      "run_id": "70ada4da010f41a4ac0c7bfc90271523",
+      "outcome": "exhausted",
+      "elapsed_seconds": 419.0575037499657,
+      "trace_elapsed_seconds": 419.03017858299427,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 196,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "70ada4da010f41a4ac0c7bfc90271523",
+        "outcome": "exhausted",
+        "event_count": 617,
+        "problems": []
+      },
+      "screenshots": 56,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v2/dev_03_memory__anthropic_claude-sonnet-5.5",
+      "run_id": "84b0275f39bd4244959b6173fa4212f5",
+      "outcome": "succeeded",
+      "elapsed_seconds": 194.3996726250043,
+      "trace_elapsed_seconds": 194.39310404099524,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 51,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "84b0275f39bd4244959b6173fa4212f5",
+        "outcome": "succeeded",
+        "event_count": 157,
+        "problems": []
+      },
+      "screenshots": 18,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v2/holdout_02_turns__anthropic_claude-sonnet-5.5",
+      "run_id": "996a5c374a4e4da395fd407ffc102b91",
+      "outcome": "succeeded",
+      "elapsed_seconds": 168.4179876249982,
+      "trace_elapsed_seconds": 168.41152829106431,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 34,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "996a5c374a4e4da395fd407ffc102b91",
+        "outcome": "succeeded",
+        "event_count": 104,
+        "problems": []
+      },
+      "screenshots": 12,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v2/holdout_02_turns__openai_gpt-4.1-mini",
+      "run_id": "7cd71dfaf122426db01c8ca98411329b",
+      "outcome": "succeeded",
+      "elapsed_seconds": 110.54454425000586,
+      "trace_elapsed_seconds": 110.54070370807312,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 22,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "7cd71dfaf122426db01c8ca98411329b",
+        "outcome": "succeeded",
+        "event_count": 68,
+        "problems": []
+      },
+      "screenshots": 2,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v3/dev_01_collect__anthropic_claude-sonnet-5.5",
+      "run_id": "86200190e7db40dcbfad3bebcbced92e",
+      "outcome": "succeeded",
+      "elapsed_seconds": 214.79122612497304,
+      "trace_elapsed_seconds": 214.78570700006094,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 49,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "86200190e7db40dcbfad3bebcbced92e",
+        "outcome": "succeeded",
+        "event_count": 152,
+        "problems": []
+      },
+      "screenshots": 20,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v3/dev_01_collect__openai_gpt-4.1-mini",
+      "run_id": "d2c036e0233a423985aabbb139eed4a8",
+      "outcome": "exhausted",
+      "elapsed_seconds": 1180.0399007500382,
+      "trace_elapsed_seconds": 1180.0081950000022,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 177,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "d2c036e0233a423985aabbb139eed4a8",
+        "outcome": "exhausted",
+        "event_count": 538,
+        "problems": []
+      },
+      "screenshots": 14,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v3/dev_01_collect__qwen_qwen3-coder",
+      "run_id": "3d6607473fc141e9a22ca6f9ef111b0e",
+      "outcome": "exhausted",
+      "elapsed_seconds": 310.95231666602194,
+      "trace_elapsed_seconds": 310.93273491598666,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 200,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "3d6607473fc141e9a22ca6f9ef111b0e",
+        "outcome": "exhausted",
+        "event_count": 605,
+        "problems": []
+      },
+      "screenshots": 8,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v3/dev_03_memory__anthropic_claude-sonnet-5.5",
+      "run_id": "b2ecab9d267243bda920f9db79c8ed16",
+      "outcome": "succeeded",
+      "elapsed_seconds": 124.95464233402163,
+      "trace_elapsed_seconds": 124.95053199992981,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 32,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "b2ecab9d267243bda920f9db79c8ed16",
+        "outcome": "succeeded",
+        "event_count": 97,
+        "problems": []
+      },
+      "screenshots": 10,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v3/holdout_02_turns__anthropic_claude-sonnet-5.5",
+      "run_id": "a6cf718313fd4509a72564ee640cdb4e",
+      "outcome": "succeeded",
+      "elapsed_seconds": 198.53687099996023,
+      "trace_elapsed_seconds": 198.53028004197404,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 49,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "a6cf718313fd4509a72564ee640cdb4e",
+        "outcome": "succeeded",
+        "event_count": 150,
+        "problems": []
+      },
+      "screenshots": 22,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v3/holdout_02_turns__openai_gpt-4.1-mini",
+      "run_id": "e568616f9c9a4fbc916a12f44cb1e523",
+      "outcome": "exhausted",
+      "elapsed_seconds": 1180.0439287920017,
+      "trace_elapsed_seconds": 1180.0164458330255,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 119,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "e568616f9c9a4fbc916a12f44cb1e523",
+        "outcome": "exhausted",
+        "event_count": 365,
+        "problems": []
+      },
+      "screenshots": 24,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v4/dev_01_collect__openai_gpt-4.1-mini",
+      "run_id": "b34f89bd0662425cb617720f810ab1b0",
+      "outcome": "succeeded",
+      "elapsed_seconds": 601.5966282499721,
+      "trace_elapsed_seconds": 601.5837957080221,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 105,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "b34f89bd0662425cb617720f810ab1b0",
+        "outcome": "succeeded",
+        "event_count": 323,
+        "problems": []
+      },
+      "screenshots": 32,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v4/dev_01_collect__qwen_qwen3-coder",
+      "run_id": "b0920a83898741e0b704c8b18cb3fae2",
+      "outcome": "exhausted",
+      "elapsed_seconds": 354.40478475007694,
+      "trace_elapsed_seconds": 354.38398000004236,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 200,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "b0920a83898741e0b704c8b18cb3fae2",
+        "outcome": "exhausted",
+        "event_count": 620,
+        "problems": []
+      },
+      "screenshots": 64,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v4/holdout_02_turns__openai_gpt-4.1-mini",
+      "run_id": "79b111187965463cb0ca7ec52c481c7e",
+      "outcome": "exhausted",
+      "elapsed_seconds": 1180.045057584066,
+      "trace_elapsed_seconds": 1180.0146444590064,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 149,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "79b111187965463cb0ca7ec52c481c7e",
+        "outcome": "exhausted",
+        "event_count": 462,
+        "problems": []
+      },
+      "screenshots": 55,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v5/dev_01_collect__anthropic_claude-sonnet-5.5",
+      "run_id": "e1295460bc214801a34f3bf47d7d6010",
+      "outcome": "succeeded",
+      "elapsed_seconds": 185.46010995900724,
+      "trace_elapsed_seconds": 185.45305737503804,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 47,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "e1295460bc214801a34f3bf47d7d6010",
+        "outcome": "succeeded",
+        "event_count": 144,
+        "problems": []
+      },
+      "screenshots": 18,
+      "source_commit_recorded": null
+    },
+    {
+      "path": "live_runs/runs_v6/dev_05_terminal__anthropic_claude-sonnet-5.5",
+      "run_id": "1b5a45db011e430784d89eaff9ec774f",
+      "outcome": "succeeded",
+      "elapsed_seconds": 76.68554120894987,
+      "trace_elapsed_seconds": 76.67797695891932,
+      "summary_different_fields": [
+        "elapsed_seconds"
+      ],
+      "steps_used": 30,
+      "checks": {
+        "game_source_present": true,
+        "spec_present": true,
+        "spec_digest_matches": true,
+        "checkpoint_present": true,
+        "report_present": true,
+        "stdout_stderr_present": true,
+        "root_summary_matches_trace_except_elapsed": true
+      },
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "1b5a45db011e430784d89eaff9ec774f",
+        "outcome": "succeeded",
+        "event_count": 91,
+        "problems": []
+      },
+      "screenshots": 0,
+      "source_commit_recorded": null
+    }
+  ]
+}
