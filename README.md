@@ -101,13 +101,6 @@ The exact command is always in `game/README.md`; `traces/<run_id>/run_report.md`
 </tr>
 </table>
 
-> [!WARNING]
-> `agent.env` holds your API key. Never commit or submit it. Only key **names** are printed, and generated code cannot read the file: the command sandbox blocks it.
-
-> [!TIP]
-> No API key yet? Rehearse the whole pipeline with a scripted model (real sandbox, browser, recovery and tracing):
-> `PYTHONPATH=<repo> python -m agent game_design_prompt.md --factory tests.rehearsal_factory:create_dependencies`
-
 <a name="games"></a>
 <img src="assets/sections/02-games.svg" width="100%" alt="02 · Games it built, live">
 
