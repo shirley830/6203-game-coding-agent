@@ -1,0 +1,20 @@
+{
+  "checked_after_batch": true,
+  "command_checks": {
+    "port_8000": {
+      "exit_code": 1,
+      "stdout": [],
+      "stderr": [],
+      "check_valid": true,
+      "no_match": true
+    },
+    "harness": {
+      "exit_code": 1,
+      "stdout": [],
+      "stderr": [],
+      "check_valid": true,
+      "no_match": true
+    }
+  },
+  "note": "Point-in-time check of the batch launch port and harness; no processes terminated."
+}
