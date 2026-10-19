@@ -1,0 +1,38 @@
+{
+  "date": "2026-10-19",
+  "base_main": "f8a514dbfaec509562ed8ab00af23552490efd0b",
+  "branches": [
+    {
+      "branch": "integration",
+      "sha": "e942233edb57efe71408dcbc1db83f5d12854f2c",
+      "local_archive_ref": "refs/archive/handoff-20261019/integration"
+    },
+    {
+      "branch": "member2_Jin_Ziyi_planner",
+      "sha": "340876c12fa3c3a6cb7756934fcb8cc2790a29d2",
+      "local_archive_ref": "refs/archive/handoff-20261019/member2_Jin_Ziyi_planner"
+    },
+    {
+      "branch": "member3_Dai_Minfei_runtime-cleanup",
+      "sha": "f70f64ac1ed00f295ddb774b6f264274b56554cd",
+      "local_archive_ref": "refs/archive/handoff-20261019/member3_Dai_Minfei_runtime-cleanup"
+    },
+    {
+      "branch": "member4_Zhou_Sihan-verification",
+      "sha": "ca2561d161569a4108859fcb1bd11565d114d36e",
+      "local_archive_ref": "refs/archive/handoff-20261019/member4_Zhou_Sihan-verification"
+    },
+    {
+      "branch": "member5_Lin_Siyuan_recovery-evaluation",
+      "sha": "7889e40254f503cafd98e6d15188b7b34594497c",
+      "local_archive_ref": "refs/archive/handoff-20261019/member5_Lin_Siyuan_recovery-evaluation"
+    },
+    {
+      "branch": "member6_Li_Jiakun_racing-from-main",
+      "sha": "9de6d0e38b8b02d75ddcff44564d47978bacb0e6",
+      "local_archive_ref": "refs/archive/handoff-20261019/member6_Li_Jiakun_racing-from-main"
+    }
+  ],
+  "backup_bundle_sha256": "848599449005bbb80adca364f6b3379bc0ca242a60708eb88dce8ce9e9a9ca38",
+  "remote_deletion_completed": true
+}

@@ -12,12 +12,16 @@ Standalone use on the demo machine:  python -m agent.preflight
 from __future__ import annotations
 
 from dataclasses import dataclass, field
+import argparse
+import asyncio
+import json
 import os
 import platform
 import shutil
 import socket
 import subprocess
 import sys
+from pathlib import Path
 
 from .planning.prompts import DEFAULT_LAUNCH_COMMAND
 from .tools.processes import OSSandbox
@@ -129,13 +133,66 @@ def run_preflight(*, strict_sandbox: bool = True,
     return report
 
 
-def main() -> int:
-    from .integrations import _playwright_environment
+async def probe_model(client, *, timeout_seconds: float = 90.0) -> PreflightReport:
+    """One explicitly requested, billed call; never print raw response/errors/keys."""
+    report = PreflightReport()
+    try:
+        content = await asyncio.wait_for(client.generate(
+            system_prompt="Return exactly one JSON object, without commentary.",
+            user_prompt='Reply with exactly {"ready":true}.',
+            timeout_seconds=timeout_seconds,
+        ), timeout_seconds)
+        payload = json.loads(content)
+        if not isinstance(payload, dict) or payload.get("ready") is not True:
+            raise ValueError("Unexpected probe output")
+    except asyncio.CancelledError:
+        raise
+    except Exception as exc:
+        # Provider exception messages can include request details. Type only.
+        report.blocking.append(
+            f"Model probe failed ({type(exc).__name__}); check provider, credentials, "
+            "model ID, output budget and reasoning parameters. No development started.")
+    else:
+        report.passed.append("Model API returns usable JSON text with current provider settings")
+    return report
+
+
+def main(argv=None) -> int:
+    from .integrations import _playwright_environment, reasoning_budget
+    from .envfile import load_env_file
+
+    parser = argparse.ArgumentParser(description="Check demo machine and optionally make one billed model call")
+    parser.add_argument("--env-file", type=Path, default=Path.cwd() / "agent.env")
+    parser.add_argument("--probe-model", action="store_true", help="Make one billed API call; no retries")
+    parser.add_argument("--model-timeout", type=float, default=90.0)
+    args = parser.parse_args(argv)
+    if not 0 < args.model_timeout <= 600:
+        parser.error("--model-timeout must be positive and at most 600 seconds")
+    load_env_file(args.env_file)
 
     report = run_preflight(
         strict_sandbox=os.environ.get("AGENT_STRICT_SANDBOX", "1") != "0",
         browser_environment=_playwright_environment(),
     )
+    if args.probe_model and report.ok:
+        model = os.environ.get("AGENT_MODEL", "").strip()
+        if not model:
+            report.blocking.append("AGENT_MODEL is not configured")
+        else:
+            from .planning.llm_client import LiteLLMClient
+            try:
+                client = LiteLLMClient(
+                    model=model, api_base=os.environ.get("AGENT_API_BASE") or None,
+                    max_tokens=int(os.environ.get("AGENT_MAX_TOKENS", "32000")),
+                    reasoning_max_tokens=reasoning_budget(model),
+                )
+                model_report = asyncio.run(probe_model(client, timeout_seconds=args.model_timeout))
+                report.passed.extend(model_report.passed)
+                report.blocking.extend(model_report.blocking)
+            except Exception as exc:
+                report.blocking.append(f"Invalid model configuration ({type(exc).__name__})")
+    elif not args.probe_model:
+        report.notes.append("Model connectivity NOT checked; use --probe-model for one billed test")
     print(report.render())
     print("\nREADY" if report.ok else "\nNOT READY: fix the [FAIL] items above")
     return 0 if report.ok else 1
