@@ -4,7 +4,7 @@
 
 ## 1 模型平台与试调用
 
-目前用自己的 OpenRouter Key 调用 GLM-5.3 已通过。现场平台仍需老师最终确认，不能把“应该是 OpenRouter”写成确认结果。
+用户已确认当前 Key 由老师提供，已通过 OpenRouter 调用 GLM-5.3。若现场换发 Key 或更换平台，仍需用最终配置重新试调用。
 
 在最终演示机上，用最终平台、模型标识及 Key 配置本机 agent.env 后运行：
 
@@ -74,7 +74,9 @@ python -m evaluation.rehearse --env-file /本机私有配置/agent.env \
 
 ## 6 Key 与余额
 
-已能读取当前 Key 的 usage、limit、limit_remaining。limit_remaining 是 Key 剩余额度，不是账户钱包余额。账户 credits 接口返回 403，未申请额外权限或更改账户设置；账户真实余额需用户在 OpenRouter 控制台查看。不要把旧文档的 1.98 美元当作当前余额。
+当前 Key 由老师提供，API Key 不是网站登录凭据；用户无需登录老师账户，也无需知道老师的注册方式。已能读取当前 Key 的 usage、limit、limit_remaining，初次确认剩余额度约 9.07 美元，测试后以最新查询为准。limit_remaining 是 Key 剩余额度，不是账户钱包余额。
+
+账户 credits 接口返回 403，未申请额外权限或更改账户设置。账户钱包余额属于 Key 所属账户的信息，不再要求用户登录确认；若后续出现额度不足或账户余额不足，再请老师确认可用额度或补充 Key。不要把旧文档的 1.98 美元当作当前余额。
 
 ## 7 重复测试证据
 
@@ -86,10 +88,10 @@ python -m evaluation.rehearse --env-file /本机私有配置/agent.env \
 
 ## 最终签收前仍需填写
 
-- 老师确认的 API 平台：待确认（目前按 OpenRouter 准备）。
+- 当前老师提供的 Key：OpenRouter 已验证；现场换发后须重新试调用。
 - 老师允许的 Agent 运行秒数：未知。
 - 最终演示电脑及其自检、完整彩排证据：未提供。
 - 旧 32 次原始运行目录：未找到，需 Member 1 提供。
-- 当前账户钱包余额：接口无权读取，需控制台确认。
+- 当前 Key 可用额度：已能查询；老师账户钱包余额不作为用户签收前置条件。
 
 这些外部事项完成前，不能签收为整份交接全部完成。
