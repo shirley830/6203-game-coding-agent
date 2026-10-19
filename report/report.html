@@ -81,9 +81,9 @@ mandatory acceptance criterion passes on the current code, with evidence, and th
 specification <i>before</i> any code exists and checked by actually playing the game in a headless browser.</p>
 
 <div class="kpis">
-  <div class="kpi"><b>8 / 9</b><span>runs succeeded with the course model GLM-5.3</span></div>
-  <div class="kpi"><b>32</b><span>autonomous runs with four real models</span></div>
-  <div class="kpi"><b>207</b><span>automated tests, all passing</span></div>
+  <div class="kpi"><b>6 / 7</b><span>specifications passed in the final GLM-5.3 rehearsal</span></div>
+  <div class="kpi"><b>39</b><span>autonomous runs with four real models</span></div>
+  <div class="kpi"><b>226</b><span>automated tests, all passing</span></div>
   <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
 </div>
 
@@ -230,7 +230,9 @@ recommends one of four decisions. The controller enforces the decision and all l
 </table>
 <p>Stopping conditions bound every run: total time (including a finalization reserve), steps, commands, retries per
 operation, global recovery attempts, and repeated no-progress cycles. Any stop still finalizes the trace and keeps
-<code>game/</code>. In live runs this machinery handled real provider timeouts, malformed JSON (including empty
+<code>game/</code>. Before every verification the controller also snapshots the game source into the trace; if a run
+ends without success, it restores the version that passed the most mandatory criteria and records the decision. The
+outcome stays FAILED or EXHAUSTED: a better partial version never counts as success. In live runs this machinery handled real provider timeouts, malformed JSON (including empty
 <code>{}</code> replies from GLM-5.3, which the planner now absorbs without spending recovery attempts), runtime errors in
 generated code, and missing files.</p>
 
@@ -242,7 +244,8 @@ storage, so generated code cannot modify the agent, the specification or the tra
 process group, which is terminated and confirmed gone after every command, timeout or cancellation. Dependencies install
 into an isolated environment. Credentials stay in the agent process: commands get a filtered environment and cannot read
 <code>agent.env</code>. A start-up self-check stops the run before <code>game/</code> exists if Chromium, the sandbox, a
-free port or Python is missing.</p>
+free port or Python is missing; <code>python -m agent.preflight --probe-model</code> additionally makes one model call
+that must return valid JSON, so a wrong key, endpoint or reasoning setting is caught before the run.</p>
 <p><b>Tracing (Member 6).</b> Every controller event is appended to <code>events.jsonl</code> and is durable before the
 controller continues. The trace also holds checkpoints, every verification report, screenshots with a SHA-256 index,
 model usage per call (role, tokens, latency) and <code>run_report.md</code>, a readable timeline with each action's
@@ -253,24 +256,26 @@ before reporting the delivery as preserved, and <code>python -m agent.delivery</
 <h2><span class="n">7</span>Evaluation</h2>
 
 <h3>7.1 Automated tests</h3>
-<p>207 tests cover the controller (36), configuration (7), planner (6), runtime and sandbox (22), verifier and harness
+<p>226 tests (plus 58 subtests) cover the controller (36), configuration (7), planner (6), runtime and sandbox (22), verifier and harness
 (26, including real Playwright runs against fixture pages), recovery and evaluation (46), tracing (21), and integration
 (43, including an offline end-to-end rehearsal with a scripted model and the real sandbox, browser, recovery and
-tracing). A guard test ensures that the agent package contains no game code.</p>
+tracing), and the final hand-off (19: model probe, source snapshots and best-version restore, rehearsal
+archiving). A guard test ensures that the agent package contains no game code.</p>
 
 <h3>7.2 Live runs with real models</h3>
-<p>We ran the agent autonomously 32 times on seven specifications (collection, dodge, memory cards, maze, terminal
+<p>We ran the agent autonomously 39 times on seven specifications (collection, dodge, memory cards, maze, terminal
 hangman, light switches, turn-based keys) with four models, changing the agent between rounds based on what the traces
 showed.</p>
 <table>
   <tr><th>Model</th><th>Runs</th><th>Succeeded</th><th>Observations</th></tr>
-  <tr><td><b>GLM-5.3 (course model)</b></td><td>9</td><td>8</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
+  <tr><td><b>GLM-5.3 (course model)</b></td><td>16</td><td>14</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
   <tr><td>Claude Sonnet 5.5</td><td>11</td><td>11</td><td>Valid scenarios and spec-faithful games in every run</td></tr>
   <tr><td>GPT-4.1-mini</td><td>8</td><td>5</td><td>Missed rule details; some generated scenarios could not be passed by a correct game</td></tr>
   <tr><td>Qwen3-Coder</td><td>4</td><td>1</td><td>Frequent format errors and unpassable tests</td></tr>
 </table>
 <p class="small">Round 1 used generic checks only, so its successes are weaker evidence; later rounds used spec-derived
-scenarios. Each specification was run once per model and round, so these figures indicate tendencies rather than rates.
+scenarios. Each specification was run once per model and round, and the agent changed between rounds, so these figures indicate
+tendencies rather than rates. GLM-5.3: 9 runs during development and 7 in the final rehearsal (Section 7.3).
 Full data: <code>docs/testing/LIVE_MODEL_TESTS.md</code>.</p>
 
 <h3>7.3 The course model: GLM-5.3</h3>
@@ -289,6 +294,22 @@ reasoning at 8 000 tokens for GLM models. With that setting:</p>
   <tr><td>Maze</td><td>failed, then succeeded</td><td>265 s / 235 s</td><td>20 / 6</td><td>First run hit a harness defect (function field in the state contract) and empty replies; both fixed</td></tr>
 </table>
 <p>The probes and nine runs cost about US$1.7 in total, which also confirmed that the run fits within a presentation slot.</p>
+<p><b>Final rehearsal.</b> After the last changes, all seven specifications were run once more with the course key
+(OpenRouter) and a 20-minute budget, with no human intervention:</p>
+<table>
+  <tr><th>Specification</th><th>Outcome</th><th>Time</th><th>Steps</th><th>Recoveries</th></tr>
+  <tr><td>Collection</td><td>succeeded</td><td>48 s</td><td>20</td><td>0</td></tr>
+  <tr><td>Memory cards</td><td>succeeded</td><td>45 s</td><td>22</td><td>0</td></tr>
+  <tr><td>Terminal hangman</td><td>succeeded</td><td>23 s</td><td>18</td><td>0</td></tr>
+  <tr><td>Light switches</td><td>succeeded</td><td>61 s</td><td>41</td><td>1</td></tr>
+  <tr><td>Turn-based keys</td><td>succeeded</td><td>106 s</td><td>30</td><td>0</td></tr>
+  <tr><td>Maze</td><td>succeeded</td><td>334 s</td><td>128</td><td>5</td></tr>
+  <tr><td>Dodge</td><td>exhausted</td><td>1180 s</td><td>166</td><td>8</td></tr>
+</table>
+<p>The dodge run kept failing timing assertions in model-written scenarios (for example a score that had to be exactly
+0 at the start of a check while the real-time loop was already adding points). At the deadline the controller restored the
+best assessed version (11 mandatory criteria passing) and reported the run as exhausted. The batch cost about US$0.5.
+Full data: <code>docs/testing/GLM_REPEAT_20261019.json</code>.</p>
 
 <h3>7.4 Live run at the presentation</h3>
 <div class="pending">
@@ -303,29 +324,29 @@ reasoning at 8 000 tokens for GLM models. With that setting:</p>
   <li><b>Model-written tests can be wrong.</b> The scenarios come from the same model that writes the game. Filtering
   removes known bad patterns, but a scenario that a correct game cannot pass still leads to repeated repairs until a budget
   runs out. Stronger models write far fewer such tests.</li>
-  <li><b>No rollback to the best version.</b> If a late repair breaks the game and the budget ends, <code>game/</code> keeps
-  the broken version rather than the best verified one.</li>
-  <li><b>Timing-heavy rules converge slowly.</b> Delays and timers needed up to eight verification cycles with GLM-5.3.</li>
+  <li><b>Real-time games are the weakest case.</b> Scenarios assert on wall-clock behaviour, so timers and continuous
+  scoring needed up to eight repair cycles, and the dodge game exhausted its budget in the final rehearsal.</li>
   <li><b>Non-browser games are verified less deeply.</b> Terminal games are played through standard input, but spec-derived
   scenarios apply to browser games only, and pygame input is checked statically.</li>
-  <li><b>Configuration risk on the day.</b> The evaluation key is only provided at the presentation; a different provider
-  could ignore the reasoning cap, and this would only appear once the run starts.</li>
-  <li><b>Small evaluation.</b> Seven specifications and one run per configuration; results are indicative.</li>
+  <li><b>Demo machine not yet rehearsed.</b> The course key (OpenRouter) has been tested, and
+  <code>--probe-model</code> catches configuration errors, but the final presentation machine still needs a full run.</li>
+  <li><b>Small evaluation.</b> Seven specifications and at most two GLM-5.3 runs per specification; results are
+  indicative.</li>
   <li><b>Platform.</b> The command sandbox requires macOS or Linux with bubblewrap; there is no resume after a hard
   interruption.</li>
 </ul>
 
 <!-- ============================== NEXT ============================== -->
 <h2><span class="n">9</span>Next planned improvement</h2>
-<p><b>Keep the best verified version.</b> Before every verification, the runtime will snapshot <code>game/</code> together
-with its workspace revision; the verifier already reports how many criteria pass. At finalization, if the current
-version scores lower than an earlier one, the controller restores the best snapshot and records the decision in the
-trace. This turns a late regression into the best result the run achieved, directly improving the reliability of the
-demonstrated game.</p>
-<p>Two smaller follow-ups: a <b>model connectivity check</b> in the start-up self-check (one tiny request that must
-return valid JSON, so a wrong key, endpoint or reasoning setting is caught before development starts), and <b>standard
-setup hooks</b> per game type (place an item next to the player, open a grid cell, set a score) to reduce unpassable
-model-written scenarios.</p>
+<p><b>Deterministic time for real-time games.</b> The two improvements planned earlier, keeping the best verified
+version and a model connectivity check, are now implemented (Sections 5 and 6). The remaining weak point is real-time
+games, whose scenarios currently race the game loop. The state contract will require a <code>pause</code> hook and a
+<code>step(ms)</code> hook that advances the simulation by a fixed amount, and the harness will run timing assertions on
+a paused game advanced step by step. Assertions such as "the score is still 0" or "an obstacle moves down" then
+become exact and repeatable instead of depending on frame timing, which targets the failure seen in the dodge
+rehearsal.</p>
+<p>A smaller follow-up: <b>standard setup hooks</b> per game type (place an item next to the player, open a grid cell,
+set a score) to reduce unpassable model-written scenarios.</p>
 
 <!-- ============================== AI USE ============================== -->
 <h2><span class="n">10</span>Use of AI assistance</h2>
@@ -352,7 +373,8 @@ that the agent package ships no game files.</p>
   <tr><td><b>4 · ZHOU SIHAN</b></td><td>Verification module: <code>GameVerifier</code>, acceptance criteria, evidence
   ledger and criterion evaluation, the Playwright game harness, verifier tests and design notes.</td></tr>
   <tr><td><b>5 · LIN SIYUAN</b></td><td>Recovery module: failure classification and recovery policy; offline evaluation
-  specifications and run-record report; recovery and recovery-verifier integration tests.</td></tr>
+  specifications and run-record report; recovery and recovery-verifier integration tests; model probe in the self-check,
+  source snapshots and best-version restore; final GLM-5.3 rehearsal and audit of the historical run archive.</td></tr>
   <tr><td><b>6 · LI JIAKUN</b></td><td>Tracing and delivery: durable trace recorder, checkpoints, verification screenshot
   archiving with integrity checks, delivery audit including missing-evidence detection, tracing tests.</td></tr>
 </table>
@@ -363,7 +385,7 @@ that the agent package ships no game files.</p>
   <tr><th style="width:30%">Step</th><th>Command</th></tr>
   <tr><td>Install (once)</td><td><code>pip install -e ".[test]"</code> then <code>python -m playwright install chromium-headless-shell</code></td></tr>
   <tr><td>Configure</td><td><code>agent.env</code> next to the specification: <code>AGENT_MODEL=openrouter/z-ai/glm-5.3</code>, <code>OPENROUTER_API_KEY=…</code>, optional <code>AGENT_MAX_RUNTIME</code></td></tr>
-  <tr><td>Check the machine</td><td><code>python -m agent.preflight</code></td></tr>
+  <tr><td>Check the machine</td><td><code>python -m agent.preflight</code>, then <code>python -m agent.preflight --probe-model</code> (one billed call)</td></tr>
   <tr><td>Run</td><td><code>python -m agent game_design_prompt.md</code></td></tr>
   <tr><td>Start the game</td><td>the command in <code>game/README.md</code>, normally <code>cd game &amp;&amp; python3 -m http.server 8000</code></td></tr>
   <tr><td>Inspect the run</td><td><code>traces/&lt;run_id&gt;/run_report.md</code>; audit with <code>python -m agent.delivery traces/&lt;run_id&gt;</code></td></tr>
