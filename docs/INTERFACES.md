@@ -105,3 +105,17 @@ Each planning, decision, verification, or recovery call consumes a step. Each to
 Retry limits count additional attempts after the first attempt. Recovery attempts are globally bounded. Modules cannot reset counters.
 
 The total deadline includes finalization. Development stops at the finalization reserve; finalization cannot generate more code. SUCCEEDED requires passing mandatory criteria for the current version, an existing game directory, and successful trace preservation. Other outcomes are FAILED, EXHAUSTED, or CANCELLED. The controller never deletes existing artifacts.
+
+
+## Source version preservation extension
+
+LocalRuntime provides controller-only asynchronous create_game_snapshot(context, limits)
+and restore_game_snapshot(snapshot_id, context, limits) hooks. They are not ToolKind
+values and are never offered to planner/verifier. They perform bounded filesystem
+preservation under the infrastructure/finalization time allowance, with trace events;
+no hidden models, commands, development loops, budget resets or success authorization.
+A candidate is saved before each verification cycle and ranked only against a current,
+complete report after at least one observed verifier tool. Unknown process/workspace
+state prevents restore. Dependencies remain current; a revision mismatch invalidates
+old evidence. A non-success terminal outcome remains non-success after restoration.
+Older ports without these hooks remain compatible but cannot provide best-source recovery.

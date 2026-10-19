@@ -1,0 +1,9 @@
+{
+  "test_command": "python -m pytest -q",
+  "tests_passed": 226,
+  "subtests_passed": 58,
+  "duration_seconds": 73.35,
+  "tested_source_commit": "07be8d8",
+  "real_model_preflight": "READY; usable JSON text; strict macOS sandbox and Playwright passed",
+  "final_demo_machine": false
+}

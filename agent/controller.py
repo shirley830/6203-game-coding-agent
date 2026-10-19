@@ -111,6 +111,84 @@ class Controller:
         self._verification_checks = 0
         self._seen_actions: set[str] = set()
         self._retry_action = False
+        self._candidate_version: dict[str, Any] | None = None
+        self._best_version: dict[str, Any] | None = None
+
+    async def _version_call(self, name: str, *args) -> Mapping[str, Any] | None:
+        """Bounded preservation via runtime, not model-accessible development tools.
+
+        These filesystem-only operations use the existing infrastructure/finalization
+        time allowance. They do not launch models or commands or refund budgets.
+        Optional hooks keep older runtime/test ports compatible.
+        """
+        method = getattr(self.dependencies.runtime, name, None)
+        if not callable(method) or self._context is None:
+            return None
+        remaining = self._remaining(infrastructure=True)
+        if remaining <= 0:
+            return None
+        timeout = min(self.config.infrastructure_timeout_seconds, remaining)
+        await self._event("game_version_start", {"operation": name})
+        try:
+            result = await asyncio.wait_for(method(*args, self._context,
+                CallLimits(timeout, 0, 0)), timeout)
+            if (not isinstance(result, Mapping) or not result.get("snapshot_id")
+                    or not result.get("workspace_revision")):
+                raise ValueError("Invalid game-version result")
+        except asyncio.CancelledError:
+            raise
+        except Exception as exc:
+            await self._event("game_version_error", {"operation": name,
+                                                      "error_type": type(exc).__name__})
+            return None
+        await self._event("game_version_result", {"operation": name, "result": result})
+        return result
+
+    async def _remember_game_version(self, report: VerificationReport) -> None:
+        s = self._state
+        candidate = self._candidate_version
+        if (candidate is None or s.suite is None or self._verification_checks == 0
+                or report.spec_digest != s.spec_digest or report.suite_version != s.suite.version
+                or report.workspace_revision != s.workspace_revision
+                or report.workspace_revision != candidate.get("workspace_revision")):
+            return
+        results = {r.criterion_id: r for r in report.results if isinstance(r, CriterionResult)}
+        if len(results) != len(report.results) or set(results) != {c.criterion_id for c in s.suite.criteria}:
+            return
+        passed = {key for key, r in results.items() if r.status == CheckStatus.PASS
+                  and r.evidence_refs and all(isinstance(e, str) and e.strip() for e in r.evidence_refs)}
+        score = (sum(c.mandatory and c.criterion_id in passed for c in s.suite.criteria), len(passed))
+        if self._best_version is None or score > self._best_version["score"]:
+            self._best_version = dict(candidate, score=score, report=report,
+                                      launch_command=s.launch_command, checks=self._verification_checks)
+        await self._event("game_version_evaluated", {
+            "snapshot_id": candidate["snapshot_id"], "mandatory_passes": score[0],
+            "all_passes": score[1], "selected_snapshot_id": self._best_version["snapshot_id"],
+        })
+
+    async def _restore_best_game(self) -> str:
+        s = self._state
+        best = self._best_version
+        if best is None or self._trace_broken or not self._trace_open:
+            return ""
+        if s.workspace_revision is None:
+            await self._event("game_version_restore_skipped", {"reason": "Unknown process/workspace state"})
+            return "; best version preserved in traces, restore skipped because state is uncertain"
+        result = await self._version_call("restore_game_snapshot", best["snapshot_id"])
+        if result is None:
+            # A failed preservation operation cannot leave stale evidence trusted.
+            self._invalidate()
+            return "; best-version restore failed; source snapshots retained in traces"
+        s.workspace_revision = result["workspace_revision"]
+        s.launch_command = best["launch_command"]
+        s.verification_report = (best["report"] if s.workspace_revision == best["workspace_revision"] else None)
+        self._verification_checks = best["checks"]
+        await self._event("game_version_restored", {
+            "snapshot_id": best["snapshot_id"], "mandatory_passes": best["score"][0],
+            "report_matches_revision": s.verification_report is not None,
+        })
+        # Preserve FAILED/EXHAUSTED/CANCELLED; a partial best result never grants success.
+        return "; restored best assessed source version"
 
     @property
     def state_snapshot(self) -> dict[str, Any]:
@@ -441,6 +519,7 @@ class Controller:
             self._state.launch_command = decision.launch_command
             self._state.verification_report = None
             self._verification_checks = 0
+            self._candidate_version = await self._version_call("create_game_snapshot")
             await self._transition(Phase.VERIFYING)
         elif isinstance(decision, RevisePlan) and isinstance(decision.reason, str) and decision.reason.strip():
             await self._transition(Phase.PLANNING)
@@ -463,6 +542,7 @@ class Controller:
             await self._schedule(result, Phase.VERIFYING)
         elif isinstance(result, VerificationReport):
             self._state.verification_report = result
+            await self._remember_game_version(result)
             if not self._report_passes(result):
                 # Tell the planner which criteria failed and why, so REPAIR is targeted.
                 failed = "; ".join(
@@ -556,6 +636,12 @@ class Controller:
     async def _finalize(self) -> RunSummary:
         s = self._state
         outcome, reason = s.pending_outcome, s.stop_reason
+        if outcome != Phase.SUCCEEDED:
+            try:
+                reason += await self._restore_best_game()
+            except (Exception, asyncio.CancelledError):
+                self._invalidate()
+                reason += "; best-version preservation could not finish"
         if outcome == Phase.SUCCEEDED and (not self._report_passes(s.verification_report)
                                           or not self.config.game_dir.is_dir()):
             outcome, reason = Phase.FAILED, "Final success conditions are not satisfied"

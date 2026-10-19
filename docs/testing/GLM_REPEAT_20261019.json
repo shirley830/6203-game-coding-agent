@@ -1,0 +1,280 @@
+{
+  "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+  "model": "openrouter/z-ai/glm-5.3",
+  "baseline_key_usage": {
+    "usage": 0.928537692,
+    "limit": 10,
+    "limit_remaining": 9.071462308
+  },
+  "spend_threshold_usd": 1.0,
+  "spend_policy": "between-run soft threshold; includes concurrent key activity",
+  "runs": [
+    {
+      "spec_id": "dev_01_collect",
+      "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+      "model": "openrouter/z-ai/glm-5.3",
+      "max_runtime_seconds": 1200.0,
+      "started_utc": "2026-10-19T06:47:38.186672+00:00",
+      "manual_development_intervention": false,
+      "key_usage_before": {
+        "usage": 0.928537692,
+        "limit": 10,
+        "limit_remaining": 9.071462308
+      },
+      "exit_code": 0,
+      "ended_utc": "2026-10-19T06:48:27.835725+00:00",
+      "key_usage_after": {
+        "usage": 0.928537692,
+        "limit": 10,
+        "limit_remaining": 9.071462308
+      },
+      "key_usage_delta_usd": 0.0,
+      "outcome": "succeeded",
+      "elapsed_seconds": 47.87109350001265,
+      "steps_used": 20,
+      "commands_used": 1,
+      "recovery_attempts": 0,
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "29057d5e85a04100bab90fee231f6653",
+        "outcome": "succeeded",
+        "event_count": 64,
+        "problems": []
+      },
+      "archive": {
+        "file_count": 31,
+        "sha256": "d6d8e2d99f2887f0e6c342603713ef6a45b1e03ad00d4d61ef0001c59e3ee665"
+      }
+    },
+    {
+      "spec_id": "dev_02_dodge",
+      "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+      "model": "openrouter/z-ai/glm-5.3",
+      "max_runtime_seconds": 1200.0,
+      "started_utc": "2026-10-19T06:48:27.941899+00:00",
+      "manual_development_intervention": false,
+      "key_usage_before": {
+        "usage": 0.928537692,
+        "limit": 10,
+        "limit_remaining": 9.071462308
+      },
+      "exit_code": 3,
+      "ended_utc": "2026-10-19T07:08:09.781221+00:00",
+      "key_usage_after": {
+        "usage": 1.242647391,
+        "limit": 10,
+        "limit_remaining": 8.757352609
+      },
+      "key_usage_delta_usd": 0.31410969899999996,
+      "outcome": "exhausted",
+      "elapsed_seconds": 1180.0331686249992,
+      "steps_used": 166,
+      "commands_used": 6,
+      "recovery_attempts": 8,
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "1a50bb37b53546b2a13a278fd9bf5000",
+        "outcome": "exhausted",
+        "event_count": 534,
+        "problems": []
+      },
+      "archive": {
+        "file_count": 115,
+        "sha256": "2dd410950b6256a8135534873ea9d322a373fe0a4d5ae2fcf38ec94b34a1d2b4"
+      }
+    },
+    {
+      "spec_id": "dev_03_memory",
+      "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+      "model": "openrouter/z-ai/glm-5.3",
+      "max_runtime_seconds": 1200.0,
+      "started_utc": "2026-10-19T07:08:09.963146+00:00",
+      "manual_development_intervention": false,
+      "key_usage_before": {
+        "usage": 1.242647391,
+        "limit": 10,
+        "limit_remaining": 8.757352609
+      },
+      "exit_code": 0,
+      "ended_utc": "2026-10-19T07:08:56.330681+00:00",
+      "key_usage_after": {
+        "usage": 1.264012074,
+        "limit": 10,
+        "limit_remaining": 8.735987926
+      },
+      "key_usage_delta_usd": 0.02136468300000005,
+      "outcome": "succeeded",
+      "elapsed_seconds": 44.55705800000578,
+      "steps_used": 22,
+      "commands_used": 1,
+      "recovery_attempts": 0,
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "6bb88509e60949c6bfcc7c21a5de7c47",
+        "outcome": "succeeded",
+        "event_count": 70,
+        "problems": []
+      },
+      "archive": {
+        "file_count": 31,
+        "sha256": "259ddf8b98da4e6bbd64dcf61852b9756646bd7e7a6c05678511e79ebed0721a"
+      }
+    },
+    {
+      "spec_id": "dev_04_maze",
+      "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+      "model": "openrouter/z-ai/glm-5.3",
+      "max_runtime_seconds": 1200.0,
+      "started_utc": "2026-10-19T07:08:56.461845+00:00",
+      "manual_development_intervention": false,
+      "key_usage_before": {
+        "usage": 1.264012074,
+        "limit": 10,
+        "limit_remaining": 8.735987926
+      },
+      "exit_code": 0,
+      "ended_utc": "2026-10-19T07:14:32.127504+00:00",
+      "key_usage_after": {
+        "usage": 1.362987486,
+        "limit": 10,
+        "limit_remaining": 8.637012514
+      },
+      "key_usage_delta_usd": 0.09897541199999993,
+      "outcome": "succeeded",
+      "elapsed_seconds": 333.8085768749879,
+      "steps_used": 128,
+      "commands_used": 7,
+      "recovery_attempts": 5,
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "54d5d8878fca45c5bf569c376bcc00e7",
+        "outcome": "succeeded",
+        "event_count": 412,
+        "problems": []
+      },
+      "archive": {
+        "file_count": 97,
+        "sha256": "ccab94eb2cdf08fad6ca6fa532ff1b0ecf130bd6f55f1891e7cc47401738eac5"
+      }
+    },
+    {
+      "spec_id": "dev_05_terminal",
+      "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+      "model": "openrouter/z-ai/glm-5.3",
+      "max_runtime_seconds": 1200.0,
+      "started_utc": "2026-10-19T07:14:32.293473+00:00",
+      "manual_development_intervention": false,
+      "key_usage_before": {
+        "usage": 1.362987486,
+        "limit": 10,
+        "limit_remaining": 8.637012514
+      },
+      "exit_code": 0,
+      "ended_utc": "2026-10-19T07:14:56.598323+00:00",
+      "key_usage_after": {
+        "usage": 1.37109149,
+        "limit": 10,
+        "limit_remaining": 8.62890851
+      },
+      "key_usage_delta_usd": 0.008104003999999998,
+      "outcome": "succeeded",
+      "elapsed_seconds": 22.5009302499966,
+      "steps_used": 18,
+      "commands_used": 1,
+      "recovery_attempts": 0,
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "08cf6adb3c484d93b6df92cb4d406f0a",
+        "outcome": "succeeded",
+        "event_count": 58,
+        "problems": []
+      },
+      "archive": {
+        "file_count": 21,
+        "sha256": "4cde4d1f9dd4ea32bbd80d48877f93f44ff25279c3206e01dac330d11701bff1"
+      }
+    },
+    {
+      "spec_id": "holdout_01_switches",
+      "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+      "model": "openrouter/z-ai/glm-5.3",
+      "max_runtime_seconds": 1200.0,
+      "started_utc": "2026-10-19T07:14:56.705841+00:00",
+      "manual_development_intervention": false,
+      "key_usage_before": {
+        "usage": 1.37109149,
+        "limit": 10,
+        "limit_remaining": 8.62890851
+      },
+      "exit_code": 0,
+      "ended_utc": "2026-10-19T07:15:59.740250+00:00",
+      "key_usage_after": {
+        "usage": 1.399739092,
+        "limit": 10,
+        "limit_remaining": 8.600260908
+      },
+      "key_usage_delta_usd": 0.02864760199999994,
+      "outcome": "succeeded",
+      "elapsed_seconds": 61.495573416003026,
+      "steps_used": 41,
+      "commands_used": 2,
+      "recovery_attempts": 1,
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "5a2f5d3843774584a0d18b49b71fa794",
+        "outcome": "succeeded",
+        "event_count": 132,
+        "problems": []
+      },
+      "archive": {
+        "file_count": 52,
+        "sha256": "cb940f1bed1f941bcd5f8ceeb4b32c0b88547127e6f5160f9731042c5ffb83d3"
+      }
+    },
+    {
+      "spec_id": "holdout_02_turns",
+      "source_commit": "07be8d8849489ad532633eb703abb687c30fce72",
+      "model": "openrouter/z-ai/glm-5.3",
+      "max_runtime_seconds": 1200.0,
+      "started_utc": "2026-10-19T07:15:59.876490+00:00",
+      "manual_development_intervention": false,
+      "key_usage_before": {
+        "usage": 1.399739092,
+        "limit": 10,
+        "limit_remaining": 8.600260908
+      },
+      "exit_code": 0,
+      "ended_utc": "2026-10-19T07:17:47.570345+00:00",
+      "key_usage_after": {
+        "usage": 1.440429071,
+        "limit": 10,
+        "limit_remaining": 8.559570929
+      },
+      "key_usage_delta_usd": 0.040689979000000154,
+      "outcome": "succeeded",
+      "elapsed_seconds": 105.823011415996,
+      "steps_used": 30,
+      "commands_used": 1,
+      "recovery_attempts": 0,
+      "delivery_audit": {
+        "complete": true,
+        "run_id": "68a423779b0949c79cc5b31d0e04a4c8",
+        "outcome": "succeeded",
+        "event_count": 94,
+        "problems": []
+      },
+      "archive": {
+        "file_count": 30,
+        "sha256": "891c329387b2fb21288728c73559f31b2bc8dd15a9908e566210190c834d4c0b"
+      }
+    }
+  ],
+  "pending_specs": [],
+  "latest_key_usage": {
+    "usage": 1.440429071,
+    "limit": 10,
+    "limit_remaining": 8.559570929
+  },
+  "batch_key_usage_delta_usd": 0.511891379,
+  "stop_reason": "All requested specs attempted; see individual outcomes"
+}

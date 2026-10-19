@@ -289,3 +289,41 @@ class LocalRuntime:
                 action, status, exc.message, revision, data=exc.data,
                 error_code=exc.code, side_effects_unknown=exc.side_effects_unknown,
             )
+    async def _version_operation(self, context, limits, version=None):
+        """Controller-only infrastructure; cooperative cancellation awaits cleanup."""
+        import asyncio
+        from .versions import GameVersions
+        self._bind(context)
+        store = GameVersions(context.game_dir, context.trace_dir)
+        def perform():
+            if version is None:
+                before = self._workspace.revision()
+                snapshot = store.save(timeout_seconds=limits.timeout_seconds)
+                after = self._workspace.revision()
+                if before != after:
+                    raise RuntimeToolError("VERSION_UNSAFE", "Workspace changed while saving version")
+                return {"snapshot_id": snapshot, "workspace_revision": after}
+            previous = store.restore(version, timeout_seconds=limits.timeout_seconds)
+            return {"snapshot_id": version, "previous_snapshot_id": previous,
+                    "workspace_revision": self._workspace.revision()}
+        task = asyncio.create_task(asyncio.to_thread(perform))
+        cancelled = False
+        while not task.done():
+            try:
+                await asyncio.shield(task)
+            except asyncio.CancelledError:
+                cancelled = True
+        if cancelled:
+            # Retrieve exceptions before propagating cancellation; no hidden worker
+            # may keep changing game/ after the controller believes it stopped.
+            try:
+                task.result()
+            finally:
+                raise asyncio.CancelledError
+        return task.result()
+
+    async def create_game_snapshot(self, context, limits):
+        return await self._version_operation(context, limits)
+
+    async def restore_game_snapshot(self, snapshot_id, context, limits):
+        return await self._version_operation(context, limits, snapshot_id)

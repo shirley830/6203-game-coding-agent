@@ -1,0 +1,14 @@
+{
+  "run_id": "1a50bb37b53546b2a13a278fd9bf5000",
+  "outcome": "exhausted",
+  "best_mandatory_passes": 11,
+  "restored_snapshot_id": "d7542346081c4af899818c247982ba90",
+  "report_matches_revision": true,
+  "independent_manifest_content_check": "passed",
+  "verified_source_entries": [
+    "README.md",
+    "index.html"
+  ],
+  "event_seq": 532,
+  "source_commit": "07be8d8849489ad532633eb703abb687c30fce72"
+}
