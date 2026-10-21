@@ -3,6 +3,10 @@ from dataclasses import replace
 import unittest
 
 from agent.planning import LLMPlanner
+from agent.planning.prompts import (
+    build_decision_prompt,
+    build_plan_prompt,
+)
 from agent.state import (
     ToolResult,
     ToolStatus,
@@ -336,7 +340,28 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
                 make_limits(),
             )
 
+    def test_prompts_include_default_quality_rules(
+        self,
+    ) -> None:
+        plan_prompt = build_plan_prompt(make_view())
+        decision_prompt = build_decision_prompt(make_view())
 
+        self.assertIn(
+            "presentation-ready browser game",
+            plan_prompt,
+        )
+        self.assertIn(
+            "visual polish",
+            plan_prompt,
+        )
+        self.assertIn(
+            "presentation-ready course demo",
+            decision_prompt,
+        )
+        self.assertIn(
+            "looks unfinished",
+            decision_prompt,
+        )
 
 if __name__ == "__main__":
     unittest.main()
