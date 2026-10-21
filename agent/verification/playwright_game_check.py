@@ -536,14 +536,20 @@ _EVAL_JS = """([expr, saved]) => { const g = window.__gameState;
   const s = typeof g === 'function' ? g() : g;
   return (new Function('s', 'saved', 'return (' + expr + ');'))(s, saved); }"""
 
-# Assertions may name only the injected `s` and `saved`, plus language values.
-# A bare `before` (the save slot, not `saved.before`) is a test-script error.
+# Free names may be the injected `s` / `saved`, language values, page globals
+# (`document`, `window`, `globalThis`), or arrow/function parameters.
+# A bare `before` is still a test-script error; `saved.before` is a property.
 _IDENT = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
 _ALLOWED_FREE = frozenset({
     "s", "saved",
     "true", "false", "null", "undefined", "NaN", "Infinity",
     "Math", "Number", "String", "Boolean", "Object", "Array", "JSON", "Date",
     "isNaN", "isFinite", "parseInt", "parseFloat",
+})
+_PAGE_GLOBALS = frozenset({"document", "window", "globalThis"})
+_KEYWORDS = frozenset({
+    "function", "return", "typeof", "instanceof", "new", "void",
+    "in", "of", "if", "else",
 })
 _BALL_DROP_STEP_MS = 50
 _BALL_DROP_MAX_MS = 2000
@@ -569,9 +575,27 @@ _BALL_PAST_BOTTOM_JS = """() => {
 }"""
 
 
+def _bound_names(masked: str) -> set[str]:
+    """Parameter names of arrows and function expressions in one assertion."""
+    names: set[str] = set()
+    for match in re.finditer(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*=>", masked):
+        names.add(match.group(1))
+    for match in re.finditer(r"\(([^()]*)\)\s*=>", masked):
+        names.update(_IDENT.findall(match.group(1)))
+    for match in re.finditer(
+            r"\bfunction\b\s*(?:[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)", masked):
+        names.update(_IDENT.findall(match.group(1)))
+    return names
+
+
 def unbound_assertion_names(expr: str) -> list[str]:
-    """Free identifiers other than ``s``, ``saved``, and language values."""
+    """Free identifiers that are not injected, page globals, or parameters.
+
+    Property names (the identifier after ``.``) are ignored, so ``saved.before``
+    is legal. A bare ``before`` is not.
+    """
     masked = _mask_js_literals(expr)
+    bound = _bound_names(masked)
     found: list[str] = []
     for match in _IDENT.finditer(masked):
         name = match.group(0)
@@ -580,7 +604,8 @@ def unbound_assertion_names(expr: str) -> list[str]:
             previous -= 1
         if previous >= 0 and masked[previous] == ".":
             continue
-        if name in _ALLOWED_FREE or name in found:
+        if (name in _ALLOWED_FREE or name in _PAGE_GLOBALS or name in _KEYWORDS
+                or name in bound or name in found):
             continue
         found.append(name)
     return found
@@ -617,8 +642,8 @@ def _assertion_script_error(expr: str) -> str | None:
     names = unbound_assertion_names(expr)
     if not names:
         return None
-    return ("test_script_error: assertion may only use s and saved.*; "
-            f"unbound name(s): {', '.join(names)}")
+    return ("test_script_error: unbound name(s): "
+            f"{', '.join(names)}")
 
 
 def _is_reference_error(exc: BaseException) -> bool:

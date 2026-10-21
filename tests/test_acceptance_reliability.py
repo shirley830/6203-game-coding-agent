@@ -15,7 +15,9 @@ import unittest
 from agent.state import AgentView, CallLimits, CheckStatus, Criterion, Phase
 from agent.verification import GameVerifier
 from agent.verification.evidence import EvidenceLedger, evaluate_criteria
-from agent.verification.playwright_game_check import _EVAL_JS, _run_spec_scenarios
+from agent.verification.playwright_game_check import (
+    _EVAL_JS, _run_spec_scenarios, unbound_assertion_names,
+)
 
 LIMITS = CallLimits(30, 100, 100)
 CANVAS_SPEC = (
@@ -153,6 +155,13 @@ class ScriptErrorTests(unittest.TestCase):
         self.assertIn("test_script_error", result.detail)
         self.assertNotEqual(result.status, CheckStatus.FAIL)
         self.assertNotEqual(result.status, CheckStatus.PASS)
+
+    def test_page_globals_and_arrow_params_are_legal(self):
+        self.assertEqual(unbound_assertion_names("document.body.innerText"), [])
+        self.assertEqual(
+            unbound_assertion_names("s.bricks.every(x => x === false)"), [])
+        self.assertEqual(unbound_assertion_names("s.lives < saved.before"), [])
+        self.assertEqual(unbound_assertion_names("s.lives < before"), ["before"])
 
 
 class _DropGame:
