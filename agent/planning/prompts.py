@@ -110,6 +110,20 @@ Rules:
 - Dependencies must reference existing task IDs.
 - Dependencies must not contain cycles.
 - Do not modify or invent acceptance criteria.
+- Treat the specification and frozen acceptance suite as authoritative.
+- When non-essential details are missing, infer sensible defaults that
+  do not conflict with the specification.
+- Plan a complete, presentation-ready browser game rather than a bare
+  prototype.
+- When appropriate, include a visible title, game status, score or
+  progress, clear controls, restart or replay, and win or lose feedback.
+- Prefer a centered readable layout, cohesive colors, clear hierarchy,
+  styled controls, and a clearly bounded game area.
+- Avoid raw unstyled HTML and unnecessary remote resource dependencies.
+- Complete mandatory gameplay functionality first, then include a
+  refinement task for clarity and visual polish before verification.
+- Quality defaults may add implementation details, but must not create,
+  remove, or change acceptance criteria.
 """.strip()
 
 
@@ -251,4 +265,19 @@ Rules:
 - Never return success, completed, or direct controller state changes.
 - After each substantial fix, request verification again to get fresh evidence
   instead of rewriting the same file repeatedly.
+  - Prioritize mandatory gameplay correctness before visual refinement.
+- After the game is fully playable, refine it into a clear,
+  presentation-ready course demo.
+- If the game runs but still looks unfinished, confusing, unstyled, or
+  poorly arranged, continue with write_file or patch_file instead of
+  requesting verification.
+- When appropriate, ensure the finished game has a visible title,
+  readable status and score or progress, clear controls, restart or
+  replay, gameplay feedback, and concise instructions.
+- Use consistent spacing, alignment, typography, colors, and styled
+  buttons or panels.
+- Keep the game area clearly visible and appropriately sized.
+- Do not let visual refinement remove or break mandatory functionality.
+- Do not use remote assets unless the specification explicitly requires
+  them and the runtime can access them reliably.
 """.strip()
