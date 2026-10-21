@@ -1,4 +1,10 @@
-"""Parse controller tool observations into per-criterion evidence."""
+"""Parse controller tool observations into per-criterion evidence.
+
+Member 5 (recovery): a criterion whose detail contains ``test_script_error``
+is a broken acceptance assertion (for example a bare ``before`` instead of
+``saved.before``). Its status stays UNKNOWN. Do not REPAIR the game for that
+result. It is not a game FAIL, and it must not be counted as a game PASS.
+"""
 
 from __future__ import annotations
 
@@ -208,6 +214,14 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
                 criterion.criterion_id, CheckStatus.SKIP,
                 tuple(ledger.tool_ops[-1:]) or ("note:acceptance",), "informational, not a test"))
             continue
+        if criterion.criterion_id == "C-ACCEPTANCE-INCOMPLETE":
+            # Fewer than 3 valid requirements. Generic checks must not make this a pass.
+            results.append(CriterionResult(
+                criterion.criterion_id, CheckStatus.FAIL,
+                tuple(ledger.tool_ops[-1:]) or ("note:incomplete-acceptance",),
+                "incomplete acceptance: 未完整验收. Fewer than 3 valid requirements "
+                "were parsed, so this run is not fully accepted."))
+            continue
         refs = list(ledger.refs_by_criterion.get(criterion.criterion_id, []))
         # Always attach at least one cycle-level tool ref when tools ran.
         if not refs and ledger.tool_ops:
@@ -277,12 +291,16 @@ def evaluate_criteria(criteria: tuple[Criterion, ...], ledger: EvidenceLedger) -
                     "need harness state-change evidence"
                 )
 
+        detail = "; ".join(dict.fromkeys(p for p in detail_parts if p))[:800]
+        if "test_script_error" in detail:
+            # Not a game defect and not a pass. Member 5 must not REPAIR the game.
+            status = CheckStatus.UNKNOWN
         results.append(
             CriterionResult(
                 criterion_id=criterion.criterion_id,
                 status=status,
                 evidence_refs=tuple(refs) if refs else (f"missing:{criterion.criterion_id}",),
-                detail="; ".join(dict.fromkeys(p for p in detail_parts if p))[:800],
+                detail=detail,
             )
         )
     return tuple(results)

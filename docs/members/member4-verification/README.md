@@ -146,6 +146,7 @@ These tests mock tool results and **do not** require a real browser. Live harnes
 | Member 2 | Provide a documented `launch_command` via `RequestVerification` and generate launch docs under `game/`. |
 | Member 3 | Execute verification `run_command` with process-group cleanup; observe that argv may include an absolute path to the harness script. |
 | Member 1 | Inject `Dependencies.verifier = GameVerifier(...)` and keep `agent.state` / controller unchanged. |
+| Member 5 | If a criterion detail contains `test_script_error` (status stays `unknown`), do **not** REPAIR the game. The assertion script used a name that was not injected (`s` and `saved.*` only), for example a bare `before`. That result is not a game FAIL and not a game PASS. |
 | Member 6 | Optional: store harness screenshots under trace output refs if the runtime forwards `output_refs`. |
 
 ## Status

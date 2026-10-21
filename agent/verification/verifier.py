@@ -31,8 +31,9 @@ from agent.state import (
 from .criteria import build_acceptance_suite
 from .evidence import EvidenceLedger, evaluate_criteria
 from .spec_criteria import (
-    SYSTEM_PROMPT, SpecAcceptance, build_prompt, criteria_from, harness_payload,
-    is_non_browser_spec, parse_spec_acceptance,
+    MIN_REQUIREMENTS, SYSTEM_PROMPT, InsufficientRequirements, SpecAcceptance,
+    build_prompt, criteria_from, harness_payload, is_non_browser_spec,
+    parse_spec_acceptance,
 )
 
 # Preferred entry files to read after inspect (relative to game/).
@@ -122,6 +123,17 @@ class GameVerifier:
                 timeout_seconds=limits.timeout_seconds,
             )
             acceptance = parse_spec_acceptance(reply, view.spec_text)
+        except InsufficientRequirements as exc:
+            # Generic checks may still run, but they must not make the run a full pass.
+            self.acceptance_note = (
+                "incomplete acceptance: "
+                f"only {exc.kept} valid requirements (need at least {MIN_REQUIREMENTS})"
+                + (f"; {'; '.join(exc.notes)}" if exc.notes else "")
+            )
+            return AcceptanceSuite(
+                generic.version,
+                generic.criteria + (self._incomplete_criterion(), self._note_criterion()),
+            )
         except Exception as exc:  # noqa: BLE001 - one attempt, then a safe fallback
             # Verification must not depend on this call; keep the generic suite.
             self.acceptance_note = f"generic criteria (spec derivation failed: {type(exc).__name__}: {str(exc)[:300]})"
@@ -140,6 +152,18 @@ class GameVerifier:
         return Criterion("C-ACCEPTANCE-INFO",
                          ("Informational only, nothing to implement: " + self.acceptance_note)[:900],
                          "technical", mandatory=False)
+
+    def _incomplete_criterion(self) -> Criterion:
+        # Mandatory and always failed by evaluate_criteria. Generic checks stay
+        # in the suite as auxiliary evidence, but this stops a full pass.
+        return Criterion(
+            "C-ACCEPTANCE-INCOMPLETE",
+            ("Mandatory failure: incomplete acceptance (未完整验收). "
+             "Fewer than 3 valid requirements were parsed, so this run must not "
+             "count as fully accepted. " + self.acceptance_note)[:900],
+            "technical",
+            mandatory=True,
+        )
 
     async def next_check(
         self, view: AgentView, limits: CallLimits,

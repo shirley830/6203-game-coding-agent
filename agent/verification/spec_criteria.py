@@ -10,6 +10,8 @@ Before planning, one model call turns the specification into:
 The result is frozen into the AcceptanceSuite like every other criterion, so the
 generator cannot change it. If the model call or validation fails, the caller
 falls back to the generic suite: verification never depends on this succeeding.
+Fewer than 3 valid requirements is not that fallback: the caller must add a
+mandatory incomplete-acceptance criterion so the run cannot fully pass.
 """
 
 from __future__ import annotations
@@ -112,6 +114,19 @@ class Contract(_Strict):
 
 MIN_REQUIREMENTS = 3
 _MOUSE_WORDS = re.compile(r"\b(mouse|click|clicks|clicking|tap|taps|pointer|touch|drag)\b", re.I)
+
+
+class InsufficientRequirements(ValueError):
+    """Fewer than MIN_REQUIREMENTS scenarios survived validation.
+
+    ``prepare_acceptance`` must treat this as incomplete acceptance (a mandatory
+    failure), not as a generic suite that can still fully pass.
+    """
+
+    def __init__(self, kept: int, notes: list[str]) -> None:
+        self.kept = kept
+        self.notes = list(notes)
+        super().__init__(f"only {kept} valid requirements; " + "; ".join(notes)[:400])
 
 
 class SpecAcceptance(_Strict):
@@ -309,7 +324,7 @@ def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAccep
         if len(kept) == 10:
             break
     if len(kept) < MIN_REQUIREMENTS:
-        raise ValueError(f"only {len(kept)} valid requirements; " + "; ".join(notes)[:400])
+        raise InsufficientRequirements(len(kept), notes)
     return SpecAcceptance(state_contract=contract, requirements=kept, notes=notes)
 
 
