@@ -265,7 +265,7 @@ Rules:
 - Never return success, completed, or direct controller state changes.
 - After each substantial fix, request verification again to get fresh evidence
   instead of rewriting the same file repeatedly.
-  - Prioritize mandatory gameplay correctness before visual refinement.
+- Prioritize mandatory gameplay correctness before visual refinement.
 - After the game is fully playable, refine it into a clear,
   presentation-ready course demo.
 - If the game runs but still looks unfinished, confusing, unstyled, or
