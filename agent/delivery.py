@@ -73,6 +73,19 @@ def audit_delivery(trace_dir: str | Path) -> dict[str, Any]:
         except (OSError, ValueError) as exc:
             problems.append(f"Cannot read summary.json: {exc}")
 
+    # A finalized run should always include its human-readable timeline.
+    # It is not necessary for the report to claim success: failed runs
+    # require an explanation just as much as successful ones.
+    run_report = root / "run_report.md"
+    if not run_report.is_file() or run_report.is_symlink():
+        problems.append("Missing or unsafe run_report.md")
+    else:
+        try:
+            if not run_report.read_text(encoding="utf-8").strip():
+                problems.append("Empty run_report.md")
+        except (OSError, UnicodeError) as exc:
+            problems.append(f"Cannot read run_report.md: {exc}")
+
     if not events:
         problems.append("No saved trace events")
     else:
@@ -170,6 +183,87 @@ def audit_delivery(trace_dir: str | Path) -> dict[str, Any]:
     if summary is not None:
         for reference in sorted(_screenshot_refs(summary.get("verification", {})) - archived_any):
             problems.append(f"Missing final verification screenshot: {reference}")
+
+    # Check Member 3's runtime output references against Member 6's archive.
+    # Some runs have no stdout/stderr: only require files that are actually
+    # referenced by action_result events. A deliberate skip for a non-image
+    # output is incomplete delivery, not proof that it was preserved.
+    expected_outputs: set[tuple[int, str]] = set()
+    for event in events:
+        if event.get("kind") != "action_result":
+            continue
+        payload = event.get("payload")
+        result = payload.get("result") if isinstance(payload, dict) else None
+        if not isinstance(result, dict):
+            continue
+        refs = result.get("output_refs") or []
+        if not isinstance(refs, list):
+            problems.append(f"Malformed output_refs at event {event.get('seq')}")
+            continue
+        for ref in refs:
+            if isinstance(ref, str):
+                expected_outputs.add((event["seq"], ref))
+            else:
+                problems.append(f"Invalid output reference at event {event.get('seq')}")
+
+    output_manifest = root / "outputs" / "index.jsonl"
+    indexed_outputs: set[tuple[int, str]] = set()
+    if not output_manifest.is_file():
+        if expected_outputs:
+            problems.append("Missing outputs/index.jsonl for referenced runtime outputs")
+    else:
+        output_root = (root / "outputs").resolve()
+        try:
+            for line_number, line in enumerate(output_manifest.read_text(encoding="utf-8").splitlines(), 1):
+                record = json.loads(line)
+                if not isinstance(record, dict):
+                    problems.append(f"Invalid output index record at line {line_number}")
+                    continue
+                seq = record.get("seq")
+                ref = record.get("ref")
+                if not isinstance(seq, int) or not isinstance(ref, str):
+                    problems.append(f"Invalid output reference in index at line {line_number}")
+                    continue
+                key = (seq, ref)
+                if key in indexed_outputs:
+                    problems.append(f"Duplicate output index reference at line {line_number}")
+                indexed_outputs.add(key)
+
+                if "copy" in record:
+                    relative = record.get("copy")
+                    expected_hash = record.get("sha256")
+                    if not isinstance(relative, str) or not isinstance(expected_hash, str):
+                        problems.append(f"Invalid copied output record at line {line_number}")
+                        continue
+                    source = root / relative
+                    destination = source.resolve()
+                    if (not destination.is_relative_to(output_root) or not source.is_file()
+                            or source.is_symlink()):
+                        problems.append(f"Missing or unsafe archived output at line {line_number}")
+                        continue
+                    if destination.stat().st_size > 20 * 1024 * 1024:
+                        problems.append(f"Oversized archived output at line {line_number}")
+                        continue
+                    actual_hash = hashlib.sha256(destination.read_bytes()).hexdigest()
+                    if actual_hash != expected_hash:
+                        problems.append(f"Archived output hash mismatch at line {line_number}")
+                elif "skipped" in record:
+                    # Screenshot bytes belong in evidence/ rather than outputs/.
+                    if record.get("skipped") == "screenshot archived under evidence/":
+                        screenshot = f"screenshot:{Path(ref).name}"
+                        if screenshot not in archived_by_seq.get(seq, set()):
+                            problems.append(f"Missing archived runtime screenshot at event {seq}: {screenshot}")
+                    else:
+                        problems.append(f"Unarchived runtime output at event {seq}: {ref}")
+                else:
+                    problems.append(f"Output index lacks copy/skipped at line {line_number}")
+        except (OSError, ValueError, TypeError) as exc:
+            problems.append(f"Cannot check outputs/index.jsonl: {exc}")
+
+    for seq, ref in sorted(expected_outputs - indexed_outputs):
+        problems.append(f"Missing indexed runtime output at event {seq}: {ref}")
+    for seq, ref in sorted(indexed_outputs - expected_outputs):
+        problems.append(f"Unexpected indexed runtime output at event {seq}: {ref}")
 
     return {
         "complete": not problems,
