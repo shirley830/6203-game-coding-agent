@@ -103,6 +103,15 @@ Rules:
 - Include 3 to 8 concrete tasks, each small enough for one or two files.
 - Every task must reference one or more criterion IDs.
 - Cover every mandatory acceptance criterion.
+- Translate every mandatory criterion into one or more concrete,
+  independently testable implementation tasks.
+- Implement the complete core gameplay loop and rule-critical state
+  transitions before optional interface refinement.
+- Prefer a simple local implementation with minimal dependencies and a
+  reliable launch path.
+- Ensure gameplay-critical objects such as the player, paddle, ball,
+  food, hazards, and interactive controls are clearly distinguishable
+  from the background.
 - Include a task that writes README.md with the launch command.
 - If C-CONTRACT is present, include a task that implements window.__gameState
   and window.__gameTest exactly as the contract describes.
@@ -258,6 +267,12 @@ Rules:
 - launch_command must be a non-empty argv array of non-empty strings that
   starts the generated game from game/.
 - Request verification only after every plan task is implemented.
+- Before final verification, confirm that the complete core gameplay
+  loop has been implemented, including scoring, failure, success, and
+  restart behaviour when required by the specification.
+- Treat gameplay-critical objects that are difficult to see against
+  the background as unfinished presentation work and improve their
+  contrast without changing the required gameplay.
 - After a verification failure, read the failing criteria details (the failed
   scenario step and the state after it) and the page errors above, fix the real
   defect in the game logic, then request verification again. Never add
