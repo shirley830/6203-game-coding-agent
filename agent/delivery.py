@@ -202,7 +202,10 @@ def audit_delivery(trace_dir: str | Path) -> dict[str, Any]:
             continue
         for ref in refs:
             if isinstance(ref, str):
-                expected_outputs.add((event["seq"], ref))
+                if isinstance(event.get("seq"), int):
+                    expected_outputs.add((event["seq"], ref))
+                else:
+                    problems.append("Missing event sequence for runtime output reference")
             else:
                 problems.append(f"Invalid output reference at event {event.get('seq')}")
 
