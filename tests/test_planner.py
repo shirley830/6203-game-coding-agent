@@ -362,6 +362,26 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             "looks unfinished",
             decision_prompt,
         )
+        self.assertIn(
+            "independently testable implementation tasks",
+            plan_prompt,
+        )
+        self.assertIn(
+            "minimal dependencies",
+            plan_prompt,
+        )
+        self.assertIn(
+            "clearly distinguishable",
+            plan_prompt,
+        )
+        self.assertIn(
+            "complete core gameplay loop",
+            decision_prompt,
+        )
+        self.assertIn(
+            "difficult to see",
+            decision_prompt,
+        )
 
 if __name__ == "__main__":
     unittest.main()
