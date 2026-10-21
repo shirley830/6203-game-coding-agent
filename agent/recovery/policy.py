@@ -9,6 +9,7 @@ from agent.state import (
     AgentView, CallLimits, FailureRecord, Phase, RecoveryDecision, RecoveryKind, to_jsonable,
 )
 from .classify import ErrorClass, classify_failure
+from .signals import verifier_fault_reason
 
 
 # Every Nth recovery during repeated verification failure escalates to REPLAN.
@@ -69,6 +70,9 @@ class RuleBasedRecovery:
         if error == ErrorClass.CLEANUP_FAILED:
             return choose(abort, "Process cleanup failed; Contract v1 has no cleanup tool. "
                           "Do not restart, inspect via another command, or modify files while processes may survive.")
+        fault_reason = verifier_fault_reason(failure, view)
+        if fault_reason is not None:
+            return choose(abort, fault_reason)
         if error == ErrorClass.VERIFIER_DEFECT:
             return choose(abort, "Verifier infrastructure/acceptance preparation is defective; "
                           "preserve evidence and game source. Do not repair the game to satisfy "

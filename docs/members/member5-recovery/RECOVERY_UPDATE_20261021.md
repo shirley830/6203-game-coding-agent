@@ -1,5 +1,7 @@
 # Member 5 通用恢复改进（2026-10-21，待集成）
 
+> 2026-10-22 更新：已增加对 Member 4 现有 UNKNOWN + test_script_error 和 C-ACCEPTANCE-INCOMPLETE 信号的兼容，不再必须等待新增错误代码。详见 [验收信号对接说明](VERIFIER_SIGNAL_BRIDGE_20261022.md)。以下保留 10 月 21 日的设计与限制记录。
+
 ## 范围
 
 仅修改 agent/recovery/classify.py、agent/recovery/policy.py，新增 tests/test_recovery_progress.py 和本文。未修改 controller.py、state.py、Planner、Verifier、Runtime 或游戏产物。独立分支 member5-generic-recovery 基于 main 提交，供 Member 1 审核集成；未改正在用于试玩的本机测试副本。
