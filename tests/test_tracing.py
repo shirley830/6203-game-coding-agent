@@ -218,6 +218,99 @@ class TestFileTraceRecorder(unittest.IsolatedAsyncioTestCase):
         report = audit_delivery(self.context.trace_dir)
         self.assertTrue(report["complete"], report["problems"])
 
+    async def _finished_run_with_outputs(self, output_paths):
+        await self.tracer.append_event(self.event(1, "action_result", {
+            "result": {
+                "action_id": "runtime-action-1",
+                "output_refs": [str(path) for path in output_paths],
+            },
+        }))
+        await self.tracer.finalize(self.summary())
+        await self.tracer.append_event(self.event(2, "transition", {"to": "succeeded"}))
+        return audit_delivery(self.context.trace_dir)
+
+    def _make_runtime_output(self, name, data):
+        directory = self.root / ".agent-runtime" / self.context.run_id
+        directory.mkdir(parents=True, exist_ok=True)
+        result = directory / name
+        result.write_bytes(data)
+        return result
+
+    async def test_delivery_audit_requires_run_report(self):
+        report = await self._finished_run_with_outputs([])
+        self.assertTrue(report["complete"], report["problems"])
+        (self.context.trace_dir / "run_report.md").unlink()
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("run_report.md" in p for p in report["problems"]))
+
+    async def test_delivery_audit_rejects_empty_run_report(self):
+        await self._finished_run_with_outputs([])
+        (self.context.trace_dir / "run_report.md").write_text("")
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertIn("Empty run_report.md", report["problems"])
+
+    async def test_delivery_audit_accepts_copied_stdout_and_stderr(self):
+        stdout = self._make_runtime_output("stdout.txt", b"Game launched")
+        stderr = self._make_runtime_output("stderr.txt", b"No error")
+        report = await self._finished_run_with_outputs([stdout, stderr])
+        self.assertTrue(report["complete"], report["problems"])
+        rows = [
+            json.loads(line)
+            for line in (self.context.trace_dir / "outputs" / "index.jsonl").read_text().splitlines()
+        ]
+        self.assertEqual(len(rows), 2)
+        for row in rows:
+            self.assertTrue((self.context.trace_dir / row["copy"]).is_file())
+            self.assertEqual(len(row["sha256"]), 64)
+
+    async def test_delivery_audit_detects_missing_copied_stderr(self):
+        stderr = self._make_runtime_output("stderr.txt", b"runtime error details")
+        report = await self._finished_run_with_outputs([stderr])
+        self.assertTrue(report["complete"], report["problems"])
+        index = json.loads((self.context.trace_dir / "outputs" / "index.jsonl").read_text().strip())
+        (self.context.trace_dir / index["copy"]).unlink()
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("Missing or unsafe archived output" in p for p in report["problems"]))
+
+    async def test_delivery_audit_detects_tampered_copied_stdout(self):
+        stdout = self._make_runtime_output("stdout.txt", b"original")
+        await self._finished_run_with_outputs([stdout])
+        index = json.loads((self.context.trace_dir / "outputs" / "index.jsonl").read_text().strip())
+        (self.context.trace_dir / index["copy"]).write_bytes(b"changed")
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("Archived output hash mismatch" in p for p in report["problems"]))
+
+    async def test_delivery_audit_detects_missing_runtime_output_index(self):
+        stdout = self._make_runtime_output("stdout.txt", b"some output")
+        await self._finished_run_with_outputs([stdout])
+        (self.context.trace_dir / "outputs" / "index.jsonl").unlink()
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("Missing outputs/index.jsonl" in p for p in report["problems"]))
+
+    async def test_delivery_audit_rejects_unarchived_nonimage_output(self):
+        outside = self.root / "outside.txt"
+        outside.write_bytes(b"not in runtime storage")
+        report = await self._finished_run_with_outputs([outside])
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("Unarchived runtime output" in p for p in report["problems"]))
+
+    async def test_delivery_audit_rejects_mismatched_output_index(self):
+        stdout = self._make_runtime_output("stdout.txt", b"output data")
+        await self._finished_run_with_outputs([stdout])
+        index_path = self.context.trace_dir / "outputs" / "index.jsonl"
+        row = json.loads(index_path.read_text().strip())
+        row["seq"] = 999
+        index_path.write_text(json.dumps(row) + "\n")
+        report = audit_delivery(self.context.trace_dir)
+        self.assertFalse(report["complete"])
+        self.assertTrue(any("Missing indexed runtime output" in p for p in report["problems"]))
+        self.assertTrue(any("Unexpected indexed runtime output" in p for p in report["problems"]))
+
     async def test_existing_run_is_not_overwritten(self):
         another = FileTraceRecorder()
         with self.assertRaises(FileExistsError):
