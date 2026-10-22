@@ -12,6 +12,11 @@ Stdout includes a single line:
 Exit codes:
   0 = harness completed (individual checks may still fail inside JSON)
   1 = harness infrastructure failure (Playwright missing, timeout, etc.)
+
+Member 5 (recovery): a requirement with status "unknown" and detail containing
+``test_script_error`` is a broken assertion script (a bare name such as
+``before`` was used instead of ``s`` / ``saved.*``). Do not REPAIR the game for
+that result. It is not a game FAIL, and it is not a game PASS.
 """
 
 from __future__ import annotations
@@ -531,6 +536,161 @@ _EVAL_JS = """([expr, saved]) => { const g = window.__gameState;
   const s = typeof g === 'function' ? g() : g;
   return (new Function('s', 'saved', 'return (' + expr + ');'))(s, saved); }"""
 
+# Free names may be the injected `s` / `saved`, language values, page globals
+# (`document`, `window`, `globalThis`), or arrow/function parameters.
+# A bare `before` is still a test-script error; `saved.before` is a property.
+_IDENT = re.compile(r"[A-Za-z_$][A-Za-z0-9_$]*")
+_ALLOWED_FREE = frozenset({
+    "s", "saved",
+    "true", "false", "null", "undefined", "NaN", "Infinity",
+    "Math", "Number", "String", "Boolean", "Object", "Array", "JSON", "Date",
+    "isNaN", "isFinite", "parseInt", "parseFloat",
+    "Set", "Map", "WeakSet", "WeakMap", "RegExp", "Symbol", "BigInt", "Error",
+})
+_PAGE_GLOBALS = frozenset({"document", "window", "globalThis"})
+_KEYWORDS = frozenset({
+    "function", "return", "typeof", "instanceof", "new", "void",
+    "in", "of", "if", "else", "const", "let", "var", "for", "while", "do",
+    "break", "continue", "switch", "case", "default", "this", "delete",
+})
+_BALL_DROP_STEP_MS = 50
+_BALL_DROP_MAX_MS = 2000
+_BALL_DROP_SETTLE_MS = 50
+# Life is deducted only after the ball centre crosses the bottom (b.y - BALL_R > H).
+_BALL_PAST_BOTTOM_JS = """() => {
+  const g = window.__gameState;
+  const s = typeof g === 'function' ? g() : g;
+  if (!s) return false;
+  const b = s.ball || s.b;
+  if (!b || typeof b.y !== 'number') return false;
+  const r = typeof b.r === 'number' ? b.r
+    : typeof b.radius === 'number' ? b.radius
+    : typeof s.BALL_R === 'number' ? s.BALL_R
+    : typeof s.ballRadius === 'number' ? s.ballRadius
+    : null;
+  const height = typeof s.H === 'number' ? s.H
+    : typeof s.height === 'number' ? s.height
+    : typeof s.canvasHeight === 'number' ? s.canvasHeight
+    : null;
+  if (r === null || height === null) return false;
+  return (b.y - r) > height;
+}"""
+
+
+def _bound_names(masked: str) -> set[str]:
+    """Parameter names of arrows and function expressions in one assertion."""
+    names: set[str] = set()
+    for match in re.finditer(r"(?<![\w$.])([A-Za-z_$][\w$]*)\s*=>", masked):
+        names.add(match.group(1))
+    for match in re.finditer(r"\(([^()]*)\)\s*=>", masked):
+        names.update(_IDENT.findall(match.group(1)))
+    for match in re.finditer(
+            r"\bfunction\b\s*(?:[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)", masked):
+        names.update(_IDENT.findall(match.group(1)))
+    # Variables declared inside an arrow or function body: const y = ..., let [a, b] = ...
+    for match in re.finditer(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)", masked):
+        names.add(match.group(1))
+    for match in re.finditer(r"\b(?:const|let|var)\s*[{\[]([^}\]]*)[}\]]", masked):
+        names.update(_IDENT.findall(match.group(1)))
+    return names
+
+
+def unbound_assertion_names(expr: str) -> list[str]:
+    """Free identifiers that are not injected, page globals, or parameters.
+
+    Property names (the identifier after ``.``) are ignored, so ``saved.before``
+    is legal. A bare ``before`` is not.
+    """
+    masked = _mask_js_literals(expr)
+    bound = _bound_names(masked)
+    found: list[str] = []
+    for match in _IDENT.finditer(masked):
+        name = match.group(0)
+        previous = match.start() - 1
+        while previous >= 0 and masked[previous] in " \t\n\r":
+            previous -= 1
+        if previous >= 0 and masked[previous] == ".":
+            continue
+        if (name in _ALLOWED_FREE or name in _PAGE_GLOBALS or name in _KEYWORDS
+                or name in bound or name in found):
+            continue
+        found.append(name)
+    return found
+
+
+def _mask_js_literals(expr: str) -> str:
+    out: list[str] = []
+    index = 0
+    length = len(expr)
+    while index < length:
+        char = expr[index]
+        if char in "\"'`":
+            quote = char
+            out.append(" ")
+            index += 1
+            while index < length:
+                if expr[index] == "\\":
+                    out.append("  ")
+                    index += 2
+                    continue
+                if expr[index] == quote:
+                    out.append(" ")
+                    index += 1
+                    break
+                out.append(" ")
+                index += 1
+            continue
+        out.append(char)
+        index += 1
+    return "".join(out)
+
+
+def _assertion_script_error(expr: str) -> str | None:
+    names = unbound_assertion_names(expr)
+    if not names:
+        return None
+    return ("test_script_error: unbound name(s): "
+            f"{', '.join(names)}")
+
+
+def _is_reference_error(exc: BaseException) -> bool:
+    text = f"{type(exc).__name__}: {exc}"
+    return "ReferenceError" in text or "is not defined" in text
+
+
+def _is_ball_drop_setup(hook_name: str) -> bool:
+    compact = re.sub(r"[^A-Za-z0-9]", "", hook_name).lower()
+    return "aimballbelowpaddle" in compact or ("ball" in compact and "below" in compact)
+
+
+def _wait_until_ball_past_bottom(page: Any) -> None:
+    """Poll until ``b.y - BALL_R > H``, then one short settle. Capped."""
+    waited = 0
+    while waited < _BALL_DROP_MAX_MS:
+        if page.evaluate(_BALL_PAST_BOTTOM_JS):
+            page.wait_for_timeout(_BALL_DROP_SETTLE_MS)
+            return
+        page.wait_for_timeout(_BALL_DROP_STEP_MS)
+        waited += _BALL_DROP_STEP_MS
+
+
+def _evaluate_assertion(page: Any, expr: str, saved: dict[str, Any]) -> Any:
+    problem = _assertion_script_error(expr)
+    if problem:
+        raise _TestScriptError(problem)
+    try:
+        return page.evaluate(_EVAL_JS, [expr, saved])
+    except _TestScriptError:
+        raise
+    except Exception as exc:  # noqa: BLE001 - unbound names arrive as ReferenceError
+        if _is_reference_error(exc):
+            raise _TestScriptError(f"test_script_error: {type(exc).__name__}: {exc}") from exc
+        raise
+
+
+class _TestScriptError(Exception):
+    """The assertion script is invalid. This is not a game failure."""
+
 _DOM_BOARD_JS = """() => {
   if (document.querySelector('[data-cell],[data-col],[data-x],[data-index]')) return true;
   return [...document.querySelectorAll('body *')].some(e => {
@@ -602,12 +762,23 @@ def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | N
             return f"window.__gameTest.{step['call']} is not defined (state contract)"
         page.evaluate("([fn, args]) => window.__gameTest[fn](...args)",
                       [step["call"], step.get("args", [])])
+        # aimBallBelowPaddle() only parks the ball on screen. A life is lost
+        # once the centre crosses the bottom, which the fixed 120ms pause may miss.
+        if _is_ball_drop_setup(str(step["call"])):
+            _wait_until_ball_past_bottom(page)
     elif "wait" in step:
         page.wait_for_timeout(int(step["wait"]))
     elif "save" in step:
-        saved[step["save"]] = page.evaluate(_EVAL_JS, [step["expr"], saved])
+        try:
+            saved[step["save"]] = _evaluate_assertion(page, step["expr"], saved)
+        except _TestScriptError as exc:
+            return str(exc)
     elif "expect" in step:
-        if not page.evaluate(_EVAL_JS, [step["expect"], saved]):
+        try:
+            held = _evaluate_assertion(page, step["expect"], saved)
+        except _TestScriptError as exc:
+            return str(exc)
+        if not held:
             return f"expectation false: {step['expect']}"
     if any(name in step for name in ("key", "hold", "click", "click_at", "click_cell", "call")):
         page.wait_for_timeout(120)  # let animation frames apply the input
@@ -666,6 +837,8 @@ def _run_spec_scenarios(page: Any, spec: dict[str, Any], evidence_dir: Path,
                 if error:
                     failure = f"step {number} {_describe_step(step)}: {error}"
                     break
+        except _TestScriptError as exc:
+            failure = str(exc)
         except Exception as exc:  # noqa: BLE001 - a broken scenario is a failed criterion
             failure = f"{type(exc).__name__}: {str(exc).splitlines()[0][:200]}"
         shot = evidence_dir / f"req-{re.sub('[^A-Za-z0-9_-]', '_', cid)}.png"
@@ -682,7 +855,9 @@ def _run_spec_scenarios(page: Any, spec: dict[str, Any], evidence_dir: Path,
                 snapshot_text = json.dumps(page.evaluate(_STATE_JS))[:300]
             except Exception:
                 pass
-            blocks[cid] = _check("fail", f"{failure}; state after: {snapshot_text}",
+            # test_script_error is not a game FAIL. Member 5 must not REPAIR the game.
+            status = "unknown" if "test_script_error" in failure else "fail"
+            blocks[cid] = _check(status, f"{failure}; state after: {snapshot_text}",
                                  evidence_refs=[f"screenshot:{shot.name}"])
     return contract_block, blocks
 

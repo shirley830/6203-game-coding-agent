@@ -31,8 +31,9 @@ from agent.state import (
 from .criteria import build_acceptance_suite
 from .evidence import EvidenceLedger, evaluate_criteria
 from .spec_criteria import (
-    SYSTEM_PROMPT, SpecAcceptance, build_prompt, criteria_from, harness_payload,
-    is_non_browser_spec, parse_spec_acceptance,
+    MIN_REQUIREMENTS, SYSTEM_PROMPT, InsufficientRequirements, SpecAcceptance,
+    build_prompt, criteria_from, harness_payload, is_non_browser_spec,
+    parse_spec_acceptance,
 )
 
 # Preferred entry files to read after inspect (relative to game/).
@@ -122,6 +123,17 @@ class GameVerifier:
                 timeout_seconds=limits.timeout_seconds,
             )
             acceptance = parse_spec_acceptance(reply, view.spec_text)
+        except InsufficientRequirements as exc:
+            # Generic checks decide the run; an informational FAIL keeps the gap visible.
+            self.acceptance_note = (
+                "incomplete acceptance: "
+                f"only {exc.kept} valid requirements (need at least {MIN_REQUIREMENTS})"
+                + (f"; {'; '.join(exc.notes)}" if exc.notes else "")
+            )
+            return AcceptanceSuite(
+                generic.version,
+                generic.criteria + (self._incomplete_criterion(), self._note_criterion()),
+            )
         except Exception as exc:  # noqa: BLE001 - one attempt, then a safe fallback
             # Verification must not depend on this call; keep the generic suite.
             self.acceptance_note = f"generic criteria (spec derivation failed: {type(exc).__name__}: {str(exc)[:300]})"
@@ -140,6 +152,20 @@ class GameVerifier:
         return Criterion("C-ACCEPTANCE-INFO",
                          ("Informational only, nothing to implement: " + self.acceptance_note)[:900],
                          "technical", mandatory=False)
+
+    def _incomplete_criterion(self) -> Criterion:
+        # Always FAIL in evaluate_criteria, but not mandatory: game edits cannot
+        # repair missing requirements, so blocking the gate would only burn the
+        # time budget. The generic checks decide the outcome; this result keeps
+        # the gap visible in the report and the trace.
+        return Criterion(
+            "C-ACCEPTANCE-INCOMPLETE",
+            ("Informational, nothing to implement: incomplete acceptance (未完整验收). "
+             "Fewer than 3 valid spec-derived requirements were parsed, so only the "
+             "generic checks decide this run. " + self.acceptance_note)[:900],
+            "technical",
+            mandatory=False,
+        )
 
     async def next_check(
         self, view: AgentView, limits: CallLimits,

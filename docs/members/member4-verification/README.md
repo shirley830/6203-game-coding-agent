@@ -146,6 +146,8 @@ These tests mock tool results and **do not** require a real browser. Live harnes
 | Member 2 | Provide a documented `launch_command` via `RequestVerification` and generate launch docs under `game/`. |
 | Member 3 | Execute verification `run_command` with process-group cleanup; observe that argv may include an absolute path to the harness script. |
 | Member 1 | Inject `Dependencies.verifier = GameVerifier(...)` and keep `agent.state` / controller unchanged. |
+| Member 5 | If a criterion detail contains `test_script_error` (status stays `unknown`), do **not** REPAIR the game. An unbound name such as a bare `before` is still a test-script error, not a game FAIL and not a game PASS. `document` / `window` and arrow-function parameters are legal assertion names. |
+| Everyone | Requirements whose assertions use undefined names are dropped before freezing, so a runtime `test_script_error` should be rare. Fewer than 3 valid requirements adds an informational `C-ACCEPTANCE-INCOMPLETE` (FAIL, not mandatory): it is reported but the generic checks decide the outcome. `Set`, `Map`, `const`/`let` declarations and destructuring are legal in assertions. |
 | Member 6 | Optional: store harness screenshots under trace output refs if the runtime forwards `output_refs`. |
 
 ## Status
