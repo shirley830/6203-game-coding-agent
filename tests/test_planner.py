@@ -351,7 +351,11 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             plan_prompt,
         )
         self.assertIn(
-            "visual polish",
+            "presentation-ready",
+            plan_prompt,
+        )
+        self.assertIn(
+            "never a separate .css file",
             plan_prompt,
         )
         self.assertIn(
@@ -359,7 +363,11 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             decision_prompt,
         )
         self.assertIn(
-            "looks unfinished",
+            "Never delay a verification request for further visual polishing",
+            decision_prompt,
+        )
+        self.assertNotIn(
+            "instead of\n  requesting verification",
             decision_prompt,
         )
         self.assertIn(
