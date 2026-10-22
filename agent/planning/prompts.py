@@ -10,9 +10,11 @@ DEFAULT_LAUNCH_COMMAND = ("python3", "-m", "http.server", "8000", "--bind", "127
 
 TECHNICAL_GUIDANCE = f"""
 Target platform (unless the specification explicitly demands otherwise):
-- A self-contained browser game: game/index.html plus local .js/.css files,
+- A self-contained browser game: game/index.html (with ALL styling in one
+  <style> block inside it, never a separate .css file) plus local .js files,
   vanilla JavaScript and an HTML5 <canvas>. No CDN, no npm, no build step,
-  no remote assets; draw graphics programmatically.
+  no remote assets; draw graphics programmatically. Every file the page
+  references must exist in game/.
 - Launch command: {json.dumps(list(DEFAULT_LAUNCH_COMMAND))}, run from game/,
   then open http://127.0.0.1:8000/ in a browser.
 - Keyboard handlers are attached to window/document so the game reacts to
@@ -103,6 +105,15 @@ Rules:
 - Include 3 to 8 concrete tasks, each small enough for one or two files.
 - Every task must reference one or more criterion IDs.
 - Cover every mandatory acceptance criterion.
+- Translate every mandatory criterion into one or more concrete,
+  independently testable implementation tasks.
+- Implement the complete core gameplay loop and rule-critical state
+  transitions before optional interface refinement.
+- Prefer a simple local implementation with minimal dependencies and a
+  reliable launch path.
+- Ensure gameplay-critical objects such as the player, paddle, ball,
+  food, hazards, and interactive controls are clearly distinguishable
+  from the background.
 - Include a task that writes README.md with the launch command.
 - If C-CONTRACT is present, include a task that implements window.__gameState
   and window.__gameTest exactly as the contract describes.
@@ -110,6 +121,22 @@ Rules:
 - Dependencies must reference existing task IDs.
 - Dependencies must not contain cycles.
 - Do not modify or invent acceptance criteria.
+- Treat the specification and frozen acceptance suite as authoritative.
+- When non-essential details are missing, infer sensible defaults that
+  do not conflict with the specification.
+- Plan a complete, presentation-ready browser game rather than a bare
+  prototype.
+- When appropriate, include a visible title, game status, score or
+  progress, clear controls, restart or replay, and win or lose feedback.
+- Prefer a centered readable layout, cohesive colors, clear hierarchy,
+  styled controls, and a clearly bounded game area.
+- Avoid raw unstyled HTML and unnecessary remote resource dependencies.
+- Build the visual design into the implementation tasks themselves (styles
+  inline in index.html) so the first complete version is already
+  presentation-ready; do not add a separate visual polish task, because the
+  time budget is short and the run ends as soon as verification passes.
+- Quality defaults may add implementation details, but must not create,
+  remove, or change acceptance criteria.
 """.strip()
 
 
@@ -244,6 +271,12 @@ Rules:
 - launch_command must be a non-empty argv array of non-empty strings that
   starts the generated game from game/.
 - Request verification only after every plan task is implemented.
+- Before final verification, confirm that the complete core gameplay loop
+  has been implemented, including scoring, failure, success, and restart
+  behaviour when required by the specification.
+- Treat gameplay-critical objects that are difficult to see against
+  the background as unfinished presentation work and improve their
+  contrast without changing the required gameplay.
 - After a verification failure, read the failing criteria details (the failed
   scenario step and the state after it) and the page errors above, fix the real
   defect in the game logic, then request verification again. Never add
@@ -251,4 +284,19 @@ Rules:
 - Never return success, completed, or direct controller state changes.
 - After each substantial fix, request verification again to get fresh evidence
   instead of rewriting the same file repeatedly.
+- Prioritize mandatory gameplay correctness before visual refinement.
+- Write the first complete version as a clear,
+  presentation-ready course demo, so no extra polishing round is needed.
+- Never delay a verification request for further visual polishing: a passing
+  verification ends the run, and the time budget allows only a few cycles.
+  Fix visibility problems in the same edit that fixes a failing check.
+- When appropriate, ensure the finished game has a visible title,
+  readable status and score or progress, clear controls, restart or
+  replay, gameplay feedback, and concise instructions.
+- Use consistent spacing, alignment, typography, colors, and styled
+  buttons or panels.
+- Keep the game area clearly visible and appropriately sized.
+- Do not let visual refinement remove or break mandatory functionality.
+- Do not use remote assets unless the specification explicitly requires
+  them and the runtime can access them reliably.
 """.strip()
