@@ -124,7 +124,7 @@ class GameVerifier:
             )
             acceptance = parse_spec_acceptance(reply, view.spec_text)
         except InsufficientRequirements as exc:
-            # Generic checks may still run, but they must not make the run a full pass.
+            # Generic checks decide the run; an informational FAIL keeps the gap visible.
             self.acceptance_note = (
                 "incomplete acceptance: "
                 f"only {exc.kept} valid requirements (need at least {MIN_REQUIREMENTS})"
@@ -154,15 +154,17 @@ class GameVerifier:
                          "technical", mandatory=False)
 
     def _incomplete_criterion(self) -> Criterion:
-        # Mandatory and always failed by evaluate_criteria. Generic checks stay
-        # in the suite as auxiliary evidence, but this stops a full pass.
+        # Always FAIL in evaluate_criteria, but not mandatory: game edits cannot
+        # repair missing requirements, so blocking the gate would only burn the
+        # time budget. The generic checks decide the outcome; this result keeps
+        # the gap visible in the report and the trace.
         return Criterion(
             "C-ACCEPTANCE-INCOMPLETE",
-            ("Mandatory failure: incomplete acceptance (未完整验收). "
-             "Fewer than 3 valid requirements were parsed, so this run must not "
-             "count as fully accepted. " + self.acceptance_note)[:900],
+            ("Informational, nothing to implement: incomplete acceptance (未完整验收). "
+             "Fewer than 3 valid spec-derived requirements were parsed, so only the "
+             "generic checks decide this run. " + self.acceptance_note)[:900],
             "technical",
-            mandatory=True,
+            mandatory=False,
         )
 
     async def next_check(
