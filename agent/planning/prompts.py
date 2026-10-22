@@ -10,9 +10,11 @@ DEFAULT_LAUNCH_COMMAND = ("python3", "-m", "http.server", "8000", "--bind", "127
 
 TECHNICAL_GUIDANCE = f"""
 Target platform (unless the specification explicitly demands otherwise):
-- A self-contained browser game: game/index.html plus local .js/.css files,
+- A self-contained browser game: game/index.html (with ALL styling in one
+  <style> block inside it, never a separate .css file) plus local .js files,
   vanilla JavaScript and an HTML5 <canvas>. No CDN, no npm, no build step,
-  no remote assets; draw graphics programmatically.
+  no remote assets; draw graphics programmatically. Every file the page
+  references must exist in game/.
 - Launch command: {json.dumps(list(DEFAULT_LAUNCH_COMMAND))}, run from game/,
   then open http://127.0.0.1:8000/ in a browser.
 - Keyboard handlers are attached to window/document so the game reacts to
@@ -129,8 +131,10 @@ Rules:
 - Prefer a centered readable layout, cohesive colors, clear hierarchy,
   styled controls, and a clearly bounded game area.
 - Avoid raw unstyled HTML and unnecessary remote resource dependencies.
-- Complete mandatory gameplay functionality first, then include a
-  refinement task for clarity and visual polish before verification.
+- Build the visual design into the implementation tasks themselves (styles
+  inline in index.html) so the first complete version is already
+  presentation-ready; do not add a separate visual polish task, because the
+  time budget is short and the run ends as soon as verification passes.
 - Quality defaults may add implementation details, but must not create,
   remove, or change acceptance criteria.
 """.strip()
@@ -267,9 +271,9 @@ Rules:
 - launch_command must be a non-empty argv array of non-empty strings that
   starts the generated game from game/.
 - Request verification only after every plan task is implemented.
-- Before final verification, confirm that the complete core gameplay
-  loop has been implemented, including scoring, failure, success, and
-  restart behaviour when required by the specification.
+- Before final verification, confirm that the complete core gameplay loop
+  has been implemented, including scoring, failure, success, and restart
+  behaviour when required by the specification.
 - Treat gameplay-critical objects that are difficult to see against
   the background as unfinished presentation work and improve their
   contrast without changing the required gameplay.
@@ -281,11 +285,11 @@ Rules:
 - After each substantial fix, request verification again to get fresh evidence
   instead of rewriting the same file repeatedly.
 - Prioritize mandatory gameplay correctness before visual refinement.
-- After the game is fully playable, refine it into a clear,
-  presentation-ready course demo.
-- If the game runs but still looks unfinished, confusing, unstyled, or
-  poorly arranged, continue with write_file or patch_file instead of
-  requesting verification.
+- Write the first complete version as a clear,
+  presentation-ready course demo, so no extra polishing round is needed.
+- Never delay a verification request for further visual polishing: a passing
+  verification ends the run, and the time budget allows only a few cycles.
+  Fix visibility problems in the same edit that fixes a failing check.
 - When appropriate, ensure the finished game has a visible title,
   readable status and score or progress, clear controls, restart or
   replay, gameplay feedback, and concise instructions.
