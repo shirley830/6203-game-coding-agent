@@ -10,6 +10,9 @@ Before planning, one model call turns the specification into:
 The result is frozen into the AcceptanceSuite like every other criterion, so the
 generator cannot change it. If the model call or validation fails, the caller
 falls back to the generic suite: verification never depends on this succeeding.
+Fewer than 3 valid requirements also falls back to the generic suite, plus an
+informational incomplete-acceptance result that is reported but does not block
+the gate. Assertions that use undefined names are dropped before freezing.
 """
 
 from __future__ import annotations
@@ -112,6 +115,19 @@ class Contract(_Strict):
 
 MIN_REQUIREMENTS = 3
 _MOUSE_WORDS = re.compile(r"\b(mouse|click|clicks|clicking|tap|taps|pointer|touch|drag)\b", re.I)
+
+
+class InsufficientRequirements(ValueError):
+    """Fewer than MIN_REQUIREMENTS scenarios survived validation.
+
+    ``prepare_acceptance`` must treat this as incomplete acceptance (a mandatory
+    failure), not as a generic suite that can still fully pass.
+    """
+
+    def __init__(self, kept: int, notes: list[str]) -> None:
+        self.kept = kept
+        self.notes = list(notes)
+        super().__init__(f"only {kept} valid requirements; " + "; ".join(notes)[:400])
 
 
 class SpecAcceptance(_Strict):
@@ -268,6 +284,17 @@ def _normalize_hook_calls(raw: Any, hooks: set[str]) -> Any:
     return {**raw, "steps": steps}
 
 
+def _unbound_names(requirement: Requirement) -> list[str]:
+    from .playwright_game_check import unbound_assertion_names
+
+    names: list[str] = []
+    for step in requirement.steps:
+        for expr in (step.expect, step.expr):
+            if expr:
+                names.extend(n for n in unbound_assertion_names(expr) if n not in names)
+    return names
+
+
 def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAcceptance:
     """Validate each requirement on its own and keep the valid ones.
 
@@ -301,6 +328,12 @@ def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAccep
         if not mouse_game and any(step.click_at or step.click_cell for step in requirement.steps):
             notes.append(f"dropped {label}: canvas clicks in a specification without mouse input")
             continue
+        unbound = _unbound_names(requirement)
+        if unbound:
+            # Caught before freezing: a broken assertion would otherwise make the
+            # whole run unpassable (the harness reports it as test_script_error).
+            notes.append(f"dropped {label}: assertion uses undefined name(s) {unbound}")
+            continue
         if requirement.id in seen:
             notes.append(f"dropped {label}: duplicate id")
             continue
@@ -309,7 +342,7 @@ def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAccep
         if len(kept) == 10:
             break
     if len(kept) < MIN_REQUIREMENTS:
-        raise ValueError(f"only {len(kept)} valid requirements; " + "; ".join(notes)[:400])
+        raise InsufficientRequirements(len(kept), notes)
     return SpecAcceptance(state_contract=contract, requirements=kept, notes=notes)
 
 
