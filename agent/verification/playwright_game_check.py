@@ -545,11 +545,13 @@ _ALLOWED_FREE = frozenset({
     "true", "false", "null", "undefined", "NaN", "Infinity",
     "Math", "Number", "String", "Boolean", "Object", "Array", "JSON", "Date",
     "isNaN", "isFinite", "parseInt", "parseFloat",
+    "Set", "Map", "WeakSet", "WeakMap", "RegExp", "Symbol", "BigInt", "Error",
 })
 _PAGE_GLOBALS = frozenset({"document", "window", "globalThis"})
 _KEYWORDS = frozenset({
     "function", "return", "typeof", "instanceof", "new", "void",
-    "in", "of", "if", "else",
+    "in", "of", "if", "else", "const", "let", "var", "for", "while", "do",
+    "break", "continue", "switch", "case", "default", "this", "delete",
 })
 _BALL_DROP_STEP_MS = 50
 _BALL_DROP_MAX_MS = 2000
@@ -584,6 +586,11 @@ def _bound_names(masked: str) -> set[str]:
         names.update(_IDENT.findall(match.group(1)))
     for match in re.finditer(
             r"\bfunction\b\s*(?:[A-Za-z_$][\w$]*)?\s*\(([^()]*)\)", masked):
+        names.update(_IDENT.findall(match.group(1)))
+    # Variables declared inside an arrow or function body: const y = ..., let [a, b] = ...
+    for match in re.finditer(r"\b(?:const|let|var)\s+([A-Za-z_$][\w$]*)", masked):
+        names.add(match.group(1))
+    for match in re.finditer(r"\b(?:const|let|var)\s*[{\[]([^}\]]*)[}\]]", masked):
         names.update(_IDENT.findall(match.group(1)))
     return names
 

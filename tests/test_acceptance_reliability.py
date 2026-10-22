@@ -61,21 +61,18 @@ def _two_requirement_reply() -> str:
 
 
 class InsufficientRulesTests(unittest.IsolatedAsyncioTestCase):
-    async def test_fewer_than_three_requirements_cannot_fully_pass(self):
+    async def test_fewer_than_three_requirements_is_flagged_but_not_blocking(self):
         verifier = GameVerifier(client=_Reply(_two_requirement_reply()))
         suite = await verifier.prepare_acceptance(_view(), LIMITS)
         ids = [c.criterion_id for c in suite.criteria]
-        # Generic checks stay as auxiliary evidence.
         for generic_id in ("C-LAUNCH", "C-FUNCTIONAL", "C-INTERACTION", "C-TECHNICAL"):
             self.assertIn(generic_id, ids)
         info = next(c for c in suite.criteria if c.criterion_id == "C-ACCEPTANCE-INFO")
         self.assertFalse(info.mandatory)
-
-        mandatory = [c for c in suite.criteria if c.mandatory]
-        self.assertTrue(any(
-            "未完整验收" in c.description or "incomplete acceptance" in c.description.lower()
-            for c in mandatory
-        ), [c.criterion_id for c in suite.criteria])
+        incomplete = next(c for c in suite.criteria if c.criterion_id == "C-ACCEPTANCE-INCOMPLETE")
+        # Game edits cannot fix missing requirements, so the gap must not block the gate.
+        self.assertFalse(incomplete.mandatory)
+        self.assertIn("incomplete acceptance", incomplete.description.lower())
 
         ledger = EvidenceLedger()
         ledger.harness = {"checks": {
@@ -84,17 +81,34 @@ class InsufficientRulesTests(unittest.IsolatedAsyncioTestCase):
         }, "requirements": {}, "page_errors": []}
         ledger.tool_ops.append("tool:run_command:x")
         results = {r.criterion_id: r for r in evaluate_criteria(tuple(suite.criteria), ledger)}
-        mandatory_results = [results[c.criterion_id] for c in mandatory]
-        self.assertFalse(
-            all(r.status == CheckStatus.PASS for r in mandatory_results),
-            [(r.criterion_id, r.status, r.detail) for r in mandatory_results],
-        )
-        incomplete = [r for r in mandatory_results if r.status != CheckStatus.PASS]
-        self.assertTrue(incomplete)
-        self.assertTrue(all(
-            "incomplete acceptance" in r.detail.lower() or "未完整验收" in r.detail
-            for r in incomplete
-        ), [r.detail for r in incomplete])
+        # Still reported as a failed (informational) result, visible in the trace...
+        self.assertEqual(results["C-ACCEPTANCE-INCOMPLETE"].status, CheckStatus.FAIL)
+        self.assertIn("incomplete acceptance", results["C-ACCEPTANCE-INCOMPLETE"].detail.lower())
+        # ...while the mandatory generic checks alone decide the outcome.
+        mandatory = [c for c in suite.criteria if c.mandatory]
+        self.assertTrue(all(results[c.criterion_id].status == CheckStatus.PASS for c in mandatory),
+                        [(c.criterion_id, results[c.criterion_id].status) for c in mandatory])
+
+    def test_broken_assertion_is_dropped_before_freezing(self):
+        from agent.verification.spec_criteria import parse_spec_acceptance
+        reply = json.dumps({
+            "state_contract": {"state_fields": {"score": "number"}, "test_hooks": {}},
+            "requirements": [
+                {"id": f"R{i}", "category": "functional", "description": f"rule {i}",
+                 "steps": [{"key": "ArrowLeft"}, {"expect": "s.score >= 0"}]} for i in range(1, 4)
+            ] + [
+                {"id": "R9", "category": "functional", "description": "uses an undefined name",
+                 "steps": [{"key": "ArrowLeft"}, {"expect": "before === s.score"}]},
+                {"id": "R10", "category": "functional", "description": "valid Set and const",
+                 "steps": [{"key": "ArrowLeft"},
+                           {"expect": "new Set([1, 2]).size === 2 && [1].every(x => { const y = x; return y > 0; })"}]},
+            ],
+        })
+        acceptance = parse_spec_acceptance(reply, "arrow keys move")
+        ids = [r.id for r in acceptance.requirements]
+        self.assertNotIn("R9", ids)
+        self.assertIn("R10", ids)
+        self.assertTrue(any("R9" in note and "before" in note for note in acceptance.notes), acceptance.notes)
 
 
 class _ScriptPage:
