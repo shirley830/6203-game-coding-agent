@@ -1,11 +1,15 @@
 """Pure recovery recommendations; controller owns actions, retries and budgets."""
 
+import hashlib
+import json
 import math
+from collections import OrderedDict
 
 from agent.state import (
-    AgentView, CallLimits, FailureRecord, Phase, RecoveryDecision, RecoveryKind,
+    AgentView, CallLimits, FailureRecord, Phase, RecoveryDecision, RecoveryKind, to_jsonable,
 )
 from .classify import ErrorClass, classify_failure
+from .signals import verifier_fault_reason
 
 
 # Every Nth recovery during repeated verification failure escalates to REPLAN.
@@ -13,12 +17,43 @@ REPLAN_AFTER_RECOVERIES = 6
 
 
 class RuleBasedRecovery:
-    """Stateless asynchronous RecoveryPort implementation.
+    """Asynchronous RecoveryPort with bounded, per-run no-progress memory.
 
     No subprocesses, disk writes, network calls, sleeps, or internal retry loops.
     It intentionally does not implement rollback: Team Contract v1 has no
     rollback decision/tool, and trace checkpoints are not filesystem snapshots.
     """
+
+    def __init__(self):
+        # No AgentState mutation; never mix evidence between independent runs.
+        self._progress = OrderedDict()
+
+    def _no_progress(self, failure: FailureRecord, view: AgentView) -> int:
+        if not hasattr(self, "_progress"):
+            self._progress = OrderedDict()
+        if view.workspace_revision is None:
+            self._progress.pop(view.run_id, None)
+            return 0
+        action = failure.action
+        operation = (failure.operation_key if action is None else
+                     (action.kind.value, to_jsonable(action.arguments)))
+        fingerprint = json.dumps((failure.category, failure.phase.value,
+                                  operation, failure.message,
+                                  view.workspace_revision), sort_keys=True)
+        fingerprint = hashlib.sha256(fingerprint.encode()).hexdigest()
+        previous = self._progress.pop(view.run_id, None)
+        attempt = view.recovery_attempts
+        streak = 1
+        if previous is not None:
+            old_attempt, old_fingerprint, old_streak = previous
+            if attempt == old_attempt and fingerprint == old_fingerprint:
+                streak = old_streak  # duplicate recommendation, not another attempt
+            elif attempt == old_attempt + 1 and fingerprint == old_fingerprint:
+                streak = old_streak + 1
+        self._progress[view.run_id] = (attempt, fingerprint, streak)
+        if len(self._progress) > 128:
+            self._progress.popitem(last=False)
+        return streak
 
     async def recommend_recovery(
         self, failure: FailureRecord, view: AgentView, limits: CallLimits,
@@ -35,6 +70,13 @@ class RuleBasedRecovery:
         if error == ErrorClass.CLEANUP_FAILED:
             return choose(abort, "Process cleanup failed; Contract v1 has no cleanup tool. "
                           "Do not restart, inspect via another command, or modify files while processes may survive.")
+        fault_reason = verifier_fault_reason(failure, view)
+        if fault_reason is not None:
+            return choose(abort, fault_reason)
+        if error == ErrorClass.VERIFIER_DEFECT:
+            return choose(abort, "Verifier infrastructure/acceptance preparation is defective; "
+                          "preserve evidence and game source. Do not repair the game to satisfy "
+                          "a broken test or weaken frozen criteria; verifier integration needs correction.")
         if error == ErrorClass.PERMANENT:
             return choose(abort, f"Permanent environment/input/contract failure ({failure.category}); "
                           "do not retry, weaken isolation, or request live human intervention.")
@@ -64,6 +106,23 @@ class RuleBasedRecovery:
                               "controller accounts for each attempt and enforces retry limits.")
             return choose(abort, "Cannot establish safe retry semantics for this module operation.")
 
+        if error == ErrorClass.PROPOSAL and failure.phase == Phase.VERIFYING:
+            return choose(abort, "Verifier proposed an invalid/disallowed operation; "
+                          "fix verifier integration rather than alter frozen acceptance criteria.")
+
+        if error in {ErrorClass.VERIFICATION, ErrorClass.EXECUTION,
+                     ErrorClass.MALFORMED_PROPOSAL, ErrorClass.PROPOSAL}:
+            streak = self._no_progress(failure, view)
+            if streak >= 5:
+                return choose(abort, "Same failure on an unchanged workspace persists after replanning; "
+                              "stop the no-progress loop and preserve evidence. No success is claimed.")
+            if streak >= 3:
+                return choose(RecoveryKind.REPLAN, "Same failure recurred without a workspace change; "
+                              "replan instead of repeating the ineffective repair. Keep frozen criteria.")
+        else:
+            if hasattr(self, "_progress"):
+                self._progress.pop(view.run_id, None)
+
         if error == ErrorClass.MALFORMED_PROPOSAL:
             if failure.operation_key == "planner.create_plan":
                 return choose(RecoveryKind.REPLAN, "Model returned an invalid plan document; "
@@ -81,9 +140,6 @@ class RuleBasedRecovery:
         if error == ErrorClass.PROPOSAL:
             if failure.operation_key == "planner.create_plan":
                 return choose(RecoveryKind.REPLAN, "Plan violates the frozen acceptance/task contract; regenerate the plan.")
-            if failure.phase == Phase.VERIFYING:
-                return choose(abort, "Verifier proposed an invalid/disallowed operation; "
-                              "fix verifier integration rather than alter frozen acceptance criteria.")
             return choose(RecoveryKind.REPAIR, "Regenerate the invalid development proposal using declared tools, "
                           "game-relative paths, argv arrays and INSTALL_DEPENDENCIES for installation.")
 

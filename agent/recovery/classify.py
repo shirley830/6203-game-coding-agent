@@ -12,6 +12,7 @@ class ErrorClass(str, Enum):
     PROPOSAL = "proposal"
     EXECUTION = "execution"
     VERIFICATION = "verification"
+    VERIFIER_DEFECT = "verifier_defect"
     TRANSIENT_MODULE = "transient_module"
     MALFORMED_PROPOSAL = "malformed_proposal"
     MODULE = "module"
@@ -62,6 +63,12 @@ def classify_failure(failure: FailureRecord) -> ErrorClass:
         return ErrorClass.PERMANENT
     if failure.side_effects_unknown or code in UNCERTAIN_CODES:
         return ErrorClass.UNCERTAIN
+    # Explicit provenance only: game output may contain the same exception names.
+    if (failure.phase.value in {"initializing", "verifying"}
+            and failure.operation_key.startswith("verifier.")
+            and code in {"VERIFIER_SCRIPT_ERROR", "ACCEPTANCE_PARSE_ERROR",
+                         "VERIFIER_CONTRACT_ERROR"}):
+        return ErrorClass.VERIFIER_DEFECT
     if code == "verification":
         return ErrorClass.VERIFICATION
     if code in PROPOSAL_CODES:
@@ -78,6 +85,9 @@ def classify_failure(failure: FailureRecord) -> ErrorClass:
         name = failure.message.partition(":")[0].strip()
         if name in {"PermissionError", "AuthenticationError", "UnauthorizedError"}:
             return ErrorClass.PERMANENT
+        if (failure.operation_key.startswith("verifier.")
+                and name in {"NameError", "SyntaxError", "UnboundLocalError"}):
+            return ErrorClass.VERIFIER_DEFECT
         if name in TRANSIENT_MODULE_ERRORS:
             return ErrorClass.TRANSIENT_MODULE
         if failure.operation_key.startswith("planner.") and name in MALFORMED_OUTPUT_ERRORS:
