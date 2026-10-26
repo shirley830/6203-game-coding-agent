@@ -1,6 +1,6 @@
 # Testing overview
 
-Current status (2026-10-26): **274 tests (plus 58 subtests), all passing** on macOS / Python 3.11
+Current status (2026-10-26): **282 tests (plus 58 subtests), all passing** on macOS / Python 3.11
 (`python -m pytest -q`, about 80 s). Browser tests are skipped automatically
 when Playwright Chromium is not installed.
 

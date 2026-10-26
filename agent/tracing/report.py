@@ -41,6 +41,10 @@ def render_run_report(events: list[dict[str, Any]], summary: dict[str, Any],
         f"{summary.get('recovery_attempts')} recovery attempts, {summary.get('elapsed_seconds', 0):.1f}s",
         "",
     ]
+    if summary.get("levels"):
+        from agent.result_levels import render_levels
+
+        lines += ["## Result levels", "", "```", *render_levels(summary["levels"]), "```", ""]
 
     criteria: list[dict[str, Any]] = []
     plans: list[dict[str, Any]] = []

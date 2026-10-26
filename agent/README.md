@@ -18,6 +18,20 @@ python -m agent game_design_prompt.md
 `game/` and `traces/` are created next to the specification (or under `--run-root`). The exit code is 0 when the run
 succeeded. Start the finished game with the command written in `game/README.md`.
 
+At the end the agent prints three result levels, also stored as `levels` in `summary.json` and at the top of
+`run_report.md`:
+
+```
+Result: 未完整验收 acceptance incomplete (generic checks only)
+  1. Launch (启动):          pass
+  2. Specific rules (具体规则): 0 specific rules (未完整验收): only the generic checks ran
+  3. Delivery (交付):        complete
+```
+
+`fully_accepted` (完整成功) needs a succeeded run, a passing launch check, every spec-derived rule (REQ-*) passed and
+a complete delivery. A run that succeeded on the generic checks alone is `acceptance_incomplete`, never full
+success. The levels do not change the outcome or the exit code, and they cannot detect a wrong test that passes.
+
 ## Configuration
 
 | Setting | Where | Default |

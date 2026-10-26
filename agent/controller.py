@@ -12,6 +12,7 @@ from typing import Any, Protocol, TypeVar
 from uuid import uuid4
 
 from .config import AgentConfig
+from .result_levels import result_levels
 from .state import (
     AcceptanceSuite, AgentState, AgentView, CallLimits, CheckStatus, Criterion,
     CriterionResult, DeliveryReport, ExecutionContext, FailureRecord, Phase,
@@ -629,9 +630,12 @@ class Controller:
     def _summary(self, outcome: Phase, reason: str) -> RunSummary:
         assert self._context is not None
         s = self._state
+        levels = result_levels(outcome, s.suite, s.verification_report,
+                               self._context.game_dir, s.launch_command)
         return RunSummary(s.run_id, outcome, reason, self._context.game_dir,
                           self._context.trace_dir, s.launch_command, s.verification_report,
-                          s.steps_used, s.commands_used, s.recovery_attempts, self._elapsed())
+                          s.steps_used, s.commands_used, s.recovery_attempts, self._elapsed(),
+                          levels)
 
     async def _finalize(self) -> RunSummary:
         s = self._state

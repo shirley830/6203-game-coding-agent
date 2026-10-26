@@ -269,6 +269,8 @@ class RunSummary:
     commands_used: int
     recovery_attempts: int
     elapsed_seconds: float
+    # Launch / specific rules / delivery, see agent/result_levels.py.
+    levels: Mapping[str, Any] | None = None
 
 
 @dataclass(frozen=True)

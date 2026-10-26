@@ -272,6 +272,8 @@ def audit_delivery(trace_dir: str | Path) -> dict[str, Any]:
         "complete": not problems,
         "run_id": summary.get("run_id") if summary else None,
         "outcome": summary.get("outcome") if summary else None,
+        # Complete logs are not complete acceptance: pass the verdict through.
+        "verdict": (summary.get("levels") or {}).get("verdict") if summary else None,
         "event_count": len(events),
         "problems": problems,
     }

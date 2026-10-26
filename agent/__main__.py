@@ -13,6 +13,7 @@ from collections.abc import Sequence
 from .config import AgentConfig
 from .controller import Controller, Dependencies
 from .envfile import load_env_file
+from .result_levels import render_levels
 from .state import Phase, to_jsonable
 
 
@@ -114,6 +115,9 @@ def main(argv: Sequence[str] | None = None) -> int:
         print("Run interrupted; existing game/ and traces/ will not be deleted.", file=sys.stderr)
         return 130
     print(json.dumps(to_jsonable(summary), ensure_ascii=False, indent=2))
+    if summary.levels:
+        # Outcome alone can hide a generic-only pass; show what was actually proven.
+        print("\n".join(render_levels(dict(summary.levels))), file=sys.stderr)
     return EXIT_CODES[summary.outcome]
 
 
