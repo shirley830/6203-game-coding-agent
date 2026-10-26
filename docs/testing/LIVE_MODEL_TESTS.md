@@ -206,7 +206,7 @@ account usage); single runs ranged from about $0.01 to $0.41.
 ## 5d. Final GLM-5.3 rehearsal (2026-10-19)
 
 After the model probe and best-version restore were added (PR #7), Member 5 ran all seven specifications once more
-with the course key on OpenRouter, a 20-minute budget and no human intervention.
+with GLM-5.3 on OpenRouter (Member 5's own key; the evaluation key is issued only before the presentation), a 20-minute budget and no human intervention.
 
 | Spec | Outcome | Time | Steps | Recoveries |
 |---|---|---|---|---|
@@ -223,6 +223,30 @@ running). At the deadline the controller restored the best assessed version (11 
 was still reported as exhausted. The batch cost about US$0.5. Raw data: `GLM_REPEAT_20261019.json`,
 `BEST_VERSION_RESTORE_20261019.json`; checklist: `HANDOFF_20261019.md`. These seven runs used a newer agent than the 32
 runs above, so they are reported separately rather than merged into one success rate.
+
+## 5e. Course model Kimi K3 (2026-10-26)
+
+In October 2026 the course switched to Kimi K3 (`openrouter/moonshotai/kimi-k3`). The probe returned valid JSON in about
+one second. Kimi K3 bills reasoning as output at US$20 per million tokens, so it gets the default 8000-token reasoning
+cap. Three specifications were rehearsed with the presentation limit (`AGENT_MAX_RUNTIME=420`, 400 s of work), using a
+team member's key, with the agent changed between rounds:
+
+| Round | Change before the round | Minesweeper | Grid snake | Turn-based keys | Cost |
+|---|---|---|---|---|---|
+| 1 | Model switch only (`43e3e4a`) | succeeded, 368 s | exhausted, 11/13 | exhausted, 13/15 | $1.70 |
+| 2 | Repairs patch changed lines (`4d93734`) | exhausted, 13/14 | succeeded, 331 s | succeeded, 77 s | $0.65 |
+| 3 | Current file texts in decisions; step reasoning cap 3000 (`4e8fdf0`) | succeeded, 165 s | succeeded, 299 s | succeeded, 338 s | $0.64 |
+
+Findings from the traces:
+
+- Waiting for the model was 330-370 s of each 400 s run in round 1. Single calls rewrote whole files (10 000-12 000
+  output tokens, about 100 s each).
+- After a failed check the model re-read files one at a time because it only saw the last file it read; one minesweeper
+  repair spent about 200 s on four `read_file` decisions, each preceded by 47-81 s of reasoning.
+- Round 3 removed both: no file was read again, each run used 3 file writes and 1-3 patches, and model time fell to
+  141-290 s. Grid snake (real-time) had never passed within 7 minutes before round 2.
+- Model speed varies between runs (minesweeper: 368 s, exhausted, 165 s), so these are the effects of each change, not
+  a success rate. Minesweeper and grid snake are new specifications written for these rehearsals.
 
 ## 6. Limitations of this evaluation
 
