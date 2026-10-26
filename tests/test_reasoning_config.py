@@ -1,4 +1,5 @@
-"""Reasoning-model configuration (GLM-5.3 spent its whole output budget reasoning)."""
+"""Reasoning-model configuration (GLM-5.3 spent its whole output budget reasoning;
+Kimi K3 bills reasoning as output, so it is capped too)."""
 
 import os
 from types import SimpleNamespace
@@ -13,6 +14,7 @@ class ReasoningBudgetTests(unittest.TestCase):
     def test_glm_capped_by_default_others_untouched(self):
         with patch.dict(os.environ, {"AGENT_REASONING_MAX_TOKENS": ""}):
             self.assertEqual(reasoning_budget("openrouter/z-ai/glm-5.3"), 8000)
+            self.assertEqual(reasoning_budget("openrouter/moonshotai/kimi-k3"), 8000)
             self.assertIsNone(reasoning_budget("openrouter/anthropic/claude-sonnet-5.5"))
 
     def test_environment_overrides_and_disables(self):

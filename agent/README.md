@@ -22,10 +22,10 @@ succeeded. Start the finished game with the command written in `game/README.md`.
 
 | Setting | Where | Default |
 |---|---|---|
-| Model | `AGENT_MODEL` in `agent.env` | course model `openrouter/z-ai/glm-5.3` |
+| Model | `AGENT_MODEL` in `agent.env` | course model `openrouter/moonshotai/kimi-k3` |
 | API key | `OPENROUTER_API_KEY` in `agent.env` | none (required) |
 | Total run time | `AGENT_MAX_RUNTIME` or `--max-runtime` (seconds) | 1800 |
-| Reasoning cap | `AGENT_REASONING_MAX_TOKENS` | 8000 for GLM models |
+| Reasoning cap | `AGENT_REASONING_MAX_TOKENS` | 8000 for GLM and Kimi models |
 | Other budgets | `--max-steps`, `--max-commands`, `--max-retries`, `--max-recovery-attempts`, `--command-timeout` | 200, 80, 5, 20, 90 s |
 
 `python -m agent --help` lists every option.

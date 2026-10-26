@@ -11,7 +11,7 @@ Environment variables (read here, never stored in state, prompts or traces):
 - ``AGENT_API_BASE``    optional custom endpoint for the course-provided API.
 - ``AGENT_MAX_TOKENS``  optional output limit per model call (default 32000).
 - ``AGENT_REASONING_MAX_TOKENS``  reasoning cap for reasoning models (default 8000
-                        for GLM, unset otherwise; "0" disables).
+                        for GLM and Kimi, unset otherwise; "0" disables).
 - ``AGENT_STRICT_SANDBOX``  ``0`` disables the OS command sandbox (not recommended).
 - ``AGENT_SKIP_PREFLIGHT``  ``1`` skips the startup self-check (not recommended).
 
@@ -54,15 +54,18 @@ def _playwright_environment() -> dict[str, str]:
 def reasoning_budget(model: str) -> int | None:
     """Reasoning-token cap sent to the provider, or None to leave it unset.
 
-    AGENT_REASONING_MAX_TOKENS overrides ("0" disables). By default only GLM
-    models get a cap (8000): reasoning is mandatory there, and uncapped it used
-    the entire output budget and returned no text. Other models keep their
-    default behaviour (for some, sending the parameter would enable thinking).
+    AGENT_REASONING_MAX_TOKENS overrides ("0" disables). By default the course
+    reasoning models get a cap of 8000: GLM-5.3 (uncapped it used the entire
+    output budget and returned no text) and Kimi K3, the course model from
+    October 2026, where reasoning is billed as output at $20 per million tokens
+    and the cap bounds both cost and latency. Other models keep their default
+    behaviour (for some, sending the parameter would enable thinking).
     """
     configured = os.environ.get("AGENT_REASONING_MAX_TOKENS", "").strip()
     if configured:
         return int(configured) or None
-    return 8000 if "glm" in model.lower() else None
+    name = model.lower()
+    return 8000 if ("glm" in name or "kimi" in name) else None
 
 
 def create_dependencies(config: AgentConfig) -> Dependencies:
