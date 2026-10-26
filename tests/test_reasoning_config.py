@@ -6,7 +6,7 @@ from types import SimpleNamespace
 import unittest
 from unittest.mock import AsyncMock, patch
 
-from agent.integrations import reasoning_budget
+from agent.integrations import decision_reasoning_budget, reasoning_budget
 from agent.planning import LiteLLMClient
 
 
@@ -16,6 +16,16 @@ class ReasoningBudgetTests(unittest.TestCase):
             self.assertEqual(reasoning_budget("openrouter/z-ai/glm-5.3"), 8000)
             self.assertEqual(reasoning_budget("openrouter/moonshotai/kimi-k3"), 8000)
             self.assertIsNone(reasoning_budget("openrouter/anthropic/claude-sonnet-5.5"))
+
+    def test_step_decisions_use_a_lower_cap(self):
+        with patch.dict(os.environ, {"AGENT_REASONING_MAX_TOKENS": "",
+                                     "AGENT_DECISION_REASONING_MAX_TOKENS": ""}):
+            self.assertEqual(decision_reasoning_budget("openrouter/moonshotai/kimi-k3"), 3000)
+            self.assertIsNone(decision_reasoning_budget("openrouter/anthropic/claude-sonnet-5.5"))
+        with patch.dict(os.environ, {"AGENT_DECISION_REASONING_MAX_TOKENS": "1500"}):
+            self.assertEqual(decision_reasoning_budget("openrouter/moonshotai/kimi-k3"), 1500)
+        with patch.dict(os.environ, {"AGENT_DECISION_REASONING_MAX_TOKENS": "0"}):
+            self.assertIsNone(decision_reasoning_budget("openrouter/moonshotai/kimi-k3"))
 
     def test_environment_overrides_and_disables(self):
         with patch.dict(os.environ, {"AGENT_REASONING_MAX_TOKENS": "4000"}):

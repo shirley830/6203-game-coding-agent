@@ -146,6 +146,20 @@ def _format_files(files: Mapping[str, int]) -> str:
     return "\n".join(f"- {path} ({size} bytes)" for path, size in sorted(files.items()))
 
 
+def _format_texts(texts: Mapping[str, str], files: Mapping[str, int]) -> str:
+    shown = [(path, text) for path, text in sorted(texts.items()) if not files or path in files]
+    if not shown:
+        return "(none known yet)"
+    parts, total = [], 0
+    for path, text in shown:
+        if total + len(text) > 80000:
+            parts.append(f"===== {path} (not shown: prompt size limit; read_file it if needed) =====")
+            continue
+        total += len(text)
+        parts.append(f"===== {path} =====\n{text}")
+    return "\n\n".join(parts)
+
+
 def _format_last_result(view: AgentView) -> str:
     result = view.last_result
     if result is None:
@@ -169,6 +183,7 @@ def build_decision_prompt(
     view: AgentView,
     *,
     files: Mapping[str, int] | None = None,
+    texts: Mapping[str, str] | None = None,
     history: Sequence[str] = (),
     notes: Sequence[str] = (),
     environment: Sequence[str] = (),
@@ -206,6 +221,9 @@ MACHINE ENVIRONMENT (from the startup self-check; only plan commands that exist)
 
 FILES CURRENTLY IN game/:
 {_format_files(files or {})}
+
+CURRENT FILE CONTENTS (exact and up to date; do not read_file these again):
+{_format_texts(texts or {}, files or {})}
 
 RECENT ACTIONS (oldest first):
 {history_text}
@@ -265,9 +283,10 @@ Rules:
 - Write each file once in full with write_file. For later fixes, prefer
   patch_file with a unified diff that changes only the affected lines (keep
   two or three unchanged lines around each change); output is the slowest
-  part of a run, so rewriting a whole file for a small fix wastes time. If the
-  file's current text is not shown above, read_file it first. Use write_file
-  again only when most of the file must change or a patch was rejected.
+  part of a run, so rewriting a whole file for a small fix wastes time. Copy
+  the context lines exactly from CURRENT FILE CONTENTS. Only read_file a file
+  that is not shown there. Use write_file again only when most of the file
+  must change or a patch was rejected.
 - Commands use an argv array, never a shell command string.
 - Do not invoke bash, sh, PowerShell, or cmd, and do not start long-running
   servers with run_command (the verifier starts the game itself).

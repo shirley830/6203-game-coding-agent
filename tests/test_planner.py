@@ -395,5 +395,59 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             decision_prompt,
         )
 
+class FileContentMemoryTests(unittest.IsolatedAsyncioTestCase):
+    """Decisions see current file texts, kept up to date across patches."""
+
+    async def test_written_and_patched_text_is_shown_in_later_prompts(self):
+        plan = Plan(plan_id="plan-001", tasks=(Task(
+            task_id="task-001", description="Create the game",
+            requirement_ids=("launch-001", "functional-001", "interaction-001")),))
+        prompts: list[str] = []
+
+        class Recording(FakeLLMClient):
+            async def generate(self, *, system_prompt, user_prompt, timeout_seconds):
+                prompts.append(user_prompt)
+                return await super().generate(system_prompt=system_prompt,
+                                              user_prompt=user_prompt,
+                                              timeout_seconds=timeout_seconds)
+
+        client = Recording([
+            json.dumps({"decision": "tool_action", "action_id": "x", "kind": "write_file",
+                        "arguments": {"path": "game.js", "content": "let speed = 1;\nrun();\n"},
+                        "rationale": "first version"}),
+            json.dumps({"decision": "tool_action", "action_id": "y", "kind": "patch_file",
+                        "arguments": {"path": "game.js",
+                                      "patch": "@@ -1,2 +1,2 @@\n-let speed = 1;\n+let speed = 2;\n run();\n"},
+                        "rationale": "fix speed"}),
+            json.dumps({"decision": "tool_action", "action_id": "z", "kind": "inspect_workspace",
+                        "arguments": {}, "rationale": "look"}),
+        ])
+        planner = LLMPlanner(client)
+        view = make_view(plan=plan, phase=Phase.DECIDING)
+        first = await planner.next_decision(view, make_limits())
+        view = replace(view, last_result=ToolResult(first.action_id, ToolStatus.OK, "Wrote", "r2",
+                                                    {"bytes": 22}))
+        second = await planner.next_decision(view, make_limits())
+        self.assertIn("===== game.js =====\nlet speed = 1;", prompts[1])
+        view = replace(view, last_result=ToolResult(second.action_id, ToolStatus.OK, "Patched", "r3",
+                                                     {"bytes": 22}))
+        await planner.next_decision(view, make_limits())
+        self.assertIn("===== game.js =====\nlet speed = 2;", prompts[2])
+        self.assertNotIn("let speed = 1;", prompts[2].split("CURRENT FILE CONTENTS")[1].split("RECENT ACTIONS")[0])
+
+    async def test_decisions_can_use_a_separate_client(self):
+        plan = Plan(plan_id="plan-001", tasks=(Task(
+            task_id="task-001", description="Create the game",
+            requirement_ids=("launch-001", "functional-001", "interaction-001")),))
+        main = FakeLLMClient([])
+        decisions = FakeLLMClient([json.dumps({"decision": "tool_action", "action_id": "x",
+                                               "kind": "inspect_workspace", "arguments": {},
+                                               "rationale": "look"})])
+        planner = LLMPlanner(main, decision_client=decisions)
+        action = await planner.next_decision(make_view(plan=plan, phase=Phase.DECIDING), make_limits())
+        self.assertEqual(action.kind, ToolKind.INSPECT_WORKSPACE)
+        self.assertEqual(decisions.responses, [])
+
+
 if __name__ == "__main__":
     unittest.main()

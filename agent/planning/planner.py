@@ -19,6 +19,9 @@ from .prompts import build_decision_prompt, build_plan_prompt
 
 
 HISTORY_LIMIT = 25
+# Current file texts shown in every decision prompt, so the model never spends a
+# slow decision on read_file (Kimi K3 rehearsals lost ~200 s re-reading files).
+FILE_TEXT_LIMIT = 40000
 # After the first verification, this many consecutive edits without asking for
 # verification triggers one: live runs showed weaker models rewriting the same
 # file dozens of times without fresh feedback until the budget ran out.
@@ -49,8 +52,12 @@ class LLMPlanner:
     it back into every decision prompt. Memory never changes controller state.
     """
 
-    def __init__(self, client: LLMClient, *, environment_notes: list[str] | None = None) -> None:
+    def __init__(self, client: LLMClient, *, environment_notes: list[str] | None = None,
+                 decision_client: LLMClient | None = None) -> None:
         self.client = client
+        # Step-by-step decisions may use a separately configured client (for
+        # example a lower reasoning cap); planning keeps the main client.
+        self.decision_client = decision_client or client
         # Facts about this machine from the startup self-check (e.g. no node).
         self.environment_notes = list(environment_notes or [])
         self._sequence = 0
@@ -107,7 +114,7 @@ class LLMPlanner:
                 f"planner: {self._edits_since_verification} edits since the last verification; "
                 "requesting verification for fresh feedback")
             return self._guard_verification(RequestVerification(view.launch_command))
-        model_response = await self.client.generate(
+        model_response = await self.decision_client.generate(
             system_prompt=(
                 "You are the decision component of an autonomous "
                 "game coding agent. You write complete, working game code. "
@@ -115,7 +122,7 @@ class LLMPlanner:
                 "Do not execute tools, change controller state, or hide retries."
             ),
             user_prompt=build_decision_prompt(
-                view, files=self._files, history=list(self._history),
+                view, files=self._files, texts=self._texts, history=list(self._history),
                 notes=list(self._notes),
                 environment=self.environment_notes,
             ),
@@ -183,21 +190,35 @@ class LLMPlanner:
         if action.kind == ToolKind.WRITE_FILE and isinstance(path, str):
             content = action.arguments.get("content", "")
             self._files[path] = len(content.encode("utf-8"))
-            if len(content) <= 20000:
+            if len(content) <= FILE_TEXT_LIMIT:
                 self._texts[path] = content
         elif action.kind == ToolKind.PATCH_FILE and isinstance(path, str):
             self._files[path] = int(result.data.get("bytes", self._files.get(path, 0)) or 0)
-            self._texts.pop(path, None)
+            self._texts[path] = self._patched_text(path, action.arguments.get("patch"))
+            if self._texts[path] is None:
+                self._texts.pop(path, None)
         elif action.kind == ToolKind.READ_FILE and isinstance(path, str):
             text = result.data.get("text")
             if isinstance(text, str):
                 self._files[path] = len(text.encode("utf-8"))
-                if len(text) <= 20000:
+                if len(text) <= FILE_TEXT_LIMIT:
                     self._texts[path] = text
         elif action.kind == ToolKind.INSPECT_WORKSPACE:
             entries = result.data.get("entries")
             if isinstance(entries, (list, tuple)):
                 self._refresh_files(entries)
+
+    def _patched_text(self, path: str, patch: object) -> str | None:
+        """Apply the accepted patch to the remembered text (same pure function as the runtime)."""
+        from agent.tools.files import apply_unified_diff
+        old = self._texts.get(path)
+        if old is None or not isinstance(patch, str):
+            return None
+        try:
+            new = apply_unified_diff(old, patch)
+        except Exception:  # noqa: BLE001 - unknown result: the model reads it instead
+            return None
+        return new if len(new) <= FILE_TEXT_LIMIT else None
 
     def _refresh_files(self, entries: object) -> None:
         files: dict[str, int] = {}

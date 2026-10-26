@@ -12,6 +12,8 @@ Environment variables (read here, never stored in state, prompts or traces):
 - ``AGENT_MAX_TOKENS``  optional output limit per model call (default 32000).
 - ``AGENT_REASONING_MAX_TOKENS``  reasoning cap for reasoning models (default 8000
                         for GLM and Kimi, unset otherwise; "0" disables).
+- ``AGENT_DECISION_REASONING_MAX_TOKENS``  lower reasoning cap for step decisions
+                        (default min(reasoning cap, 3000); "0" disables).
 - ``AGENT_STRICT_SANDBOX``  ``0`` disables the OS command sandbox (not recommended).
 - ``AGENT_SKIP_PREFLIGHT``  ``1`` skips the startup self-check (not recommended).
 
@@ -68,6 +70,20 @@ def reasoning_budget(model: str) -> int | None:
     return 8000 if ("glm" in name or "kimi" in name) else None
 
 
+def decision_reasoning_budget(model: str) -> int | None:
+    """Lower reasoning cap for step-by-step decisions (write, patch, verify).
+
+    Planning and acceptance keep reasoning_budget(). Kimi K3 spent 60-80 s
+    reasoning before trivial decisions; 3000 tokens bounds that. Override with
+    AGENT_DECISION_REASONING_MAX_TOKENS ("0" disables the cap).
+    """
+    configured = os.environ.get("AGENT_DECISION_REASONING_MAX_TOKENS", "").strip()
+    if configured:
+        return int(configured) or None
+    base = reasoning_budget(model)
+    return None if base is None else min(base, 3000)
+
+
 def create_dependencies(config: AgentConfig) -> Dependencies:
     model = os.environ.get("AGENT_MODEL", "").strip()
     if not model:
@@ -92,6 +108,8 @@ def create_dependencies(config: AgentConfig) -> Dependencies:
     # Same model, two roles, accounted separately in traces/<run_id>/model_usage.jsonl.
     client = LiteLLMClient(role="planner", **settings)
     acceptance_client = LiteLLMClient(role="acceptance", **settings)
+    decision_client = LiteLLMClient(role="planner", **{
+        **settings, "reasoning_max_tokens": decision_reasoning_budget(model)})
     runtime = LocalRuntime(RuntimeSettings(
         strict_os_sandbox=strict,
         injected_environment=browser_environment,
@@ -99,7 +117,7 @@ def create_dependencies(config: AgentConfig) -> Dependencies:
         output_preview_bytes=64 * 1024,
     ))
     return Dependencies(
-        planner=LLMPlanner(client, environment_notes=notes),
+        planner=LLMPlanner(client, environment_notes=notes, decision_client=decision_client),
         runtime=runtime,
         # Same model, separate role: derives spec scenarios before planning.
         verifier=GameVerifier(client=acceptance_client),
