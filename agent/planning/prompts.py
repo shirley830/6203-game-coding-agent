@@ -262,7 +262,12 @@ Rules:
 - Return exactly one decision.
 - File paths are relative to game/. Do not prefix them with game/.
 - Do not use absolute paths or '..'.
-- Prefer write_file with the complete new content over patch_file.
+- Write each file once in full with write_file. For later fixes, prefer
+  patch_file with a unified diff that changes only the affected lines (keep
+  two or three unchanged lines around each change); output is the slowest
+  part of a run, so rewriting a whole file for a small fix wastes time. If the
+  file's current text is not shown above, read_file it first. Use write_file
+  again only when most of the file must change or a patch was rejected.
 - Commands use an argv array, never a shell command string.
 - Do not invoke bash, sh, PowerShell, or cmd, and do not start long-running
   servers with run_command (the verifier starts the game itself).

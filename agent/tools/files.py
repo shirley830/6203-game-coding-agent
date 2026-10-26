@@ -189,7 +189,69 @@ class WorkspaceFiles:
 
 
 def apply_unified_diff(original: str, patch: str) -> str:
-    """Apply one all-or-nothing unified diff to text."""
+    """Apply one all-or-nothing unified diff to text.
+
+    The strict reader is tried first. Models often get hunk line numbers or
+    counts slightly wrong, so a rejected hunk is then located by its content:
+    its context and removed lines must appear exactly once (searching forward
+    from the previous hunk). Nothing is written unless every hunk applies.
+    """
+    try:
+        return _apply_unified_diff_strict(original, patch)
+    except RuntimeToolError as strict_error:
+        if "one file" in strict_error.message or "+++ header" in strict_error.message:
+            raise
+        return _apply_unified_diff_by_content(original, patch)
+
+
+def _apply_unified_diff_by_content(original: str, patch: str) -> str:
+    lines = [line for line in patch.splitlines() if line != "\\ No newline at end of file"]
+    while lines and lines[0].startswith(("--- ", "+++ ")):
+        lines.pop(0)
+    hunks: list[tuple[int | None, list[str], list[str]]] = []
+    for line in lines:
+        if line.startswith("@@"):
+            match = _HUNK_HEADER.match(line)
+            hunks.append((int(match.group(1)) - 1 if match else None, [], []))
+            continue
+        if not hunks:
+            raise RuntimeToolError("PATCH_INVALID", "Patch contains no hunks")
+        marker, value = (line[0], line[1:]) if line else (" ", "")
+        if marker not in " +-":
+            raise RuntimeToolError("PATCH_INVALID", f"Invalid patch line: {line}")
+        if marker in " -":
+            hunks[-1][1].append(value)
+        if marker in " +":
+            hunks[-1][2].append(value)
+    if not hunks:
+        raise RuntimeToolError("PATCH_INVALID", "Patch contains no hunks")
+    source = original.splitlines()
+    cursor = 0
+    for hint, old, new in hunks:
+        if not old:
+            raise RuntimeToolError(
+                "PATCH_CONFLICT", "A hunk without context cannot be placed; include unchanged lines")
+        wanted = [line.rstrip() for line in old]
+        starts = [i for i in range(cursor, len(source) - len(old) + 1)
+                  if [line.rstrip() for line in source[i:i + len(old)]] == wanted]
+        if not starts:
+            raise RuntimeToolError(
+                "PATCH_CONFLICT", "Patch context does not match the file; read_file and send a "
+                "new patch, or rewrite the file with write_file")
+        if len(starts) > 1 and (hint is None or hint not in starts):
+            raise RuntimeToolError(
+                "PATCH_CONFLICT", "Patch context matches several places; include more unchanged lines")
+        start = hint if len(starts) > 1 else starts[0]
+        source[start:start + len(old)] = new
+        cursor = start + len(new)
+    result = "\n".join(source)
+    if original.endswith("\n"):
+        result += "\n"
+    return result
+
+
+def _apply_unified_diff_strict(original: str, patch: str) -> str:
+    """Strict reader: hunk headers must match the file exactly."""
 
     patch_lines = patch.splitlines()
     index = 0

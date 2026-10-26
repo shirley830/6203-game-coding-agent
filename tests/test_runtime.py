@@ -91,9 +91,18 @@ class RuntimeTests(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(result.error_code, "PATCH_CONFLICT")
         self.assertEqual(target.read_text(), "original\n")
 
-    def test_unified_diff_rejects_partial_hunk_counts(self):
-        with self.assertRaisesRegex(Exception, "counts"):
-            apply_unified_diff("a\n", "@@ -1,2 +1 @@\n-a\n+b\n")
+    def test_unified_diff_tolerates_wrong_counts_and_line_numbers(self):
+        # Models often miscount hunk headers; the change is placed by its content.
+        self.assertEqual(apply_unified_diff("a\n", "@@ -1,2 +1 @@\n-a\n+b\n"), "b\n")
+        text = "one\ntwo\nthree\nfour\n"
+        self.assertEqual(apply_unified_diff(text, "@@ -9,3 +9,3 @@\n two\n-three\n+THREE\n four\n"),
+                         "one\ntwo\nTHREE\nfour\n")
+
+    def test_unified_diff_rejects_missing_or_ambiguous_context(self):
+        with self.assertRaisesRegex(Exception, "does not match"):
+            apply_unified_diff("a\nb\n", "@@ -5 +5 @@\n-zzz\n+y\n")
+        with self.assertRaisesRegex(Exception, "several places"):
+            apply_unified_diff("x\ny\nx\n", "@@ -9 +9 @@\n-x\n+z\n")
 
     async def test_runtime_independently_rejects_traversal_and_symlink(self):
         await self.prepare()

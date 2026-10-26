@@ -390,6 +390,10 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             "difficult to see",
             decision_prompt,
         )
+        self.assertIn(
+            "prefer\n  patch_file",
+            decision_prompt,
+        )
 
 if __name__ == "__main__":
     unittest.main()
