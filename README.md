@@ -105,16 +105,16 @@ The exact command is always in `game/README.md`; `traces/<run_id>/run_report.md`
 
 <table>
 <tr>
-<td width="50%"><img src="assets/gallery/collect.svg" width="100%" alt="Collection game generated live: Claude Sonnet 5.5, 8 spec scenarios, 14 of 14 criteria, 215 seconds"></td>
-<td width="50%"><img src="assets/gallery/memory.svg" width="100%" alt="Memory cards game generated live: mouse only, 8 spec scenarios, 14 of 14 on the first try, 125 seconds"></td>
+<td width="50%"><img src="assets/gallery/collect.gif" width="100%" alt="Collection game generated live: Claude Sonnet 5.5, 8 spec scenarios, 14 of 14 criteria, 215 seconds"></td>
+<td width="50%"><img src="assets/gallery/memory.gif" width="100%" alt="Memory cards game generated live: mouse only, 8 spec scenarios, 14 of 14 on the first try, 125 seconds"></td>
 </tr>
 <tr>
-<td width="50%"><img src="assets/gallery/turns.svg" width="100%" alt="Turn-based key collection game generated live: 9 spec scenarios, 15 of 15, 199 seconds"></td>
+<td width="50%"><img src="assets/gallery/turns.gif" width="100%" alt="Turn-based key collection game generated live: 9 spec scenarios, 15 of 15, 199 seconds"></td>
 <td width="50%"><img src="assets/gallery/hangman.svg" width="100%" alt="Terminal hangman generated live in Python: process mode, 4 of 4, 77 seconds"></td>
 </tr>
 </table>
 
-<p align="center"><sub>Screenshots and a terminal transcript of games the agent generated from <code>evaluation/specs/</code>; every number comes from that run's trace.</sub></p>
+<p align="center"><sub>The real games the agent generated from <code>evaluation/specs/</code>, recorded while playing themselves, and a terminal transcript; every number comes from that run's trace.</sub></p>
 
 <a name="how-it-works"></a>
 <img src="assets/sections/03-how-it-works.svg" width="100%" alt="03 · How it works">
