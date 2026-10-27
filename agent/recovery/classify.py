@@ -51,6 +51,15 @@ MALFORMED_OUTPUT_ERRORS = frozenset({
 })
 
 
+# Provider says the key has no credit left (OpenRouter HTTP 402). Retrying cannot help.
+_OUT_OF_CREDIT = ("requires more credits", "insufficient credits", "insufficient_quota", '"code":402')
+
+
+def is_out_of_credit(failure: FailureRecord) -> bool:
+    message = failure.message.lower().replace(" ", "")
+    return failure.category == "module" and any(m.replace(" ", "") in message for m in _OUT_OF_CREDIT)
+
+
 def classify_failure(failure: FailureRecord) -> ErrorClass:
     """Use category codes first; exception prefixes only for module failures.
 
@@ -99,7 +108,8 @@ def classify_failure(failure: FailureRecord) -> ErrorClass:
                 else ErrorClass.PERMANENT)
     if code == "module":
         name = failure.message.partition(":")[0].strip()
-        if name in {"PermissionError", "AuthenticationError", "UnauthorizedError"}:
+        if (name in {"PermissionError", "AuthenticationError", "UnauthorizedError"}
+                or is_out_of_credit(failure)):
             return ErrorClass.PERMANENT
         if (failure.operation_key.startswith("verifier.")
                 and name in {"NameError", "SyntaxError", "UnboundLocalError"}):

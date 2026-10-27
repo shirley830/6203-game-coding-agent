@@ -74,6 +74,19 @@ class ParsingTests(unittest.TestCase):
         implied = parse_decision(json.dumps({"criterion_id": "REQ-R1",
                                              "reason": "the setup already wins the game"}))
         self.assertIsInstance(implied, DisputeCheck)
+        long = parse_decision(json.dumps({"decision": "dispute_check", "criterion_id": "REQ-R3",
+                                          "reason": "flood " * 400}))
+        self.assertEqual(len(long.reason), 1500)
+
+    def test_out_of_credit_stops_with_a_clear_reason(self):
+        import asyncio
+        message = ('APIError: litellm.APIError: OpenrouterException - {"error":{"message":"This request '
+                   'requires more credits, or fewer max_tokens.","code":402}}')
+        failure = FailureRecord("planner.next_decision", Phase.DECIDING, "module", message)
+        view = AgentView("run", Phase.RECOVERING, "", "", "r1", None, None, 1, (), None, None, 1, 1, 0, 1.0)
+        decision = asyncio.run(RuleBasedRecovery().recommend_recovery(failure, view, limits()))
+        self.assertEqual(decision.kind, RecoveryKind.ABORT)
+        self.assertIn("no credit left", decision.reason)
 
     def test_revision_keep_replace_and_rejections(self):
         acceptance = parse_spec_acceptance(json.dumps(ACCEPTANCE), SPEC)

@@ -210,7 +210,7 @@ def parse_decision(
         return RevisePlan(reason=payload.reason)
 
     if isinstance(payload, DisputeCheckOutput):
-        return DisputeCheck(criterion_id=payload.criterion_id, reason=payload.reason)
+        return DisputeCheck(criterion_id=payload.criterion_id, reason=payload.reason[:1500])
 
     raise TypeError("Unsupported planner decision")
 

@@ -60,7 +60,9 @@ class RevisePlanOutput(StrictModel):
 class DisputeCheckOutput(StrictModel):
     decision: Literal["dispute_check"]
     criterion_id: str = Field(min_length=1, max_length=60)
-    reason: str = Field(min_length=10, max_length=1500)
+    # Long arguments are truncated by the parser, not rejected (a 2026-10-27 run
+    # lost a recovery attempt to a 1600-character dispute).
+    reason: str = Field(min_length=10)
 
 
 DecisionOutput = Annotated[

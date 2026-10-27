@@ -8,7 +8,7 @@ from collections import OrderedDict
 from agent.state import (
     AgentView, CallLimits, FailureRecord, Phase, RecoveryDecision, RecoveryKind, to_jsonable,
 )
-from .classify import ErrorClass, classify_failure
+from .classify import ErrorClass, classify_failure, is_out_of_credit
 from .signals import verifier_fault_reason
 
 
@@ -83,6 +83,10 @@ class RuleBasedRecovery:
                           "A failed spec-derived check is disputed; re-examine that one check against "
                           "the specification, keep the old version in the trace, then verify the "
                           "unchanged game again. Never drop or weaken the rule under test.")
+        if error == ErrorClass.PERMANENT and is_out_of_credit(failure):
+            return choose(abort, "The model provider refused the call: the API key has no credit left "
+                          "(HTTP 402). Top up or raise the key's limit, then start a new run; "
+                          "game and evidence are preserved.")
         if error == ErrorClass.PERMANENT:
             return choose(abort, f"Permanent environment/input/contract failure ({failure.category}); "
                           "do not retry, weaken isolation, or request live human intervention.")
