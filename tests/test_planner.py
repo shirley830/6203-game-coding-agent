@@ -394,7 +394,32 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             "prefer\n  patch_file",
             decision_prompt,
         )
-
+        
+        self.assertIn(
+            "original specification as the source of truth",
+            plan_prompt,
+        )
+        self.assertIn(
+            "override, weaken, remove, or invent requirements",
+            plan_prompt,
+        )
+        self.assertIn(
+            "test-only behaviour",
+            plan_prompt,
+        )
+        self.assertIn(
+            "Verification results are diagnostic evidence",
+            decision_prompt,
+        )
+        self.assertIn(
+            "merely to make the conflicting test pass",
+            decision_prompt,
+        )
+        self.assertIn(
+            "Never remove, weaken, or reinterpret",
+            decision_prompt,
+        )
+        
 class FileContentMemoryTests(unittest.IsolatedAsyncioTestCase):
     """Decisions see current file texts, kept up to date across patches."""
 
