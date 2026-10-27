@@ -6,6 +6,7 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 import hashlib
 import json
+import re
 from pathlib import Path, PurePosixPath
 import time
 from typing import Any, Protocol, TypeVar
@@ -20,6 +21,9 @@ from .state import (
     RunSummary, Task, TERMINAL_PHASES, ToolAction, ToolKind, ToolResult,
     ToolStatus, TraceEvent, VerificationReport, to_jsonable,
 )
+
+# Member 4 harness marker for a broken assertion script (see _verification_category).
+_SCRIPT_ERROR = re.compile(r"\btest_script_error\s*:")
 
 
 class PlannerPort(Protocol):
@@ -552,10 +556,27 @@ class Controller:
                     if isinstance(r, CriterionResult) and r.status != CheckStatus.PASS)
                 raise self._failure("verifier.next_check", "Verification failed, evidence is missing, or the report is stale"
                                     + (f". Failed criteria: {failed}" if failed else ""),
-                                    category="verification")
+                                    category=self._verification_category(result))
             await self._finish_request(Phase.SUCCEEDED, "Current game passed mandatory acceptance checks")
         else:
             raise self._failure("verifier.next_check", "Verifier returned an invalid result")
+
+    def _verification_category(self, report: VerificationReport) -> str:
+        """"test_script_error" only when the verifier itself marked a frozen mandatory
+        criterion UNKNOWN with a test_script_error detail (Member 4 harness signal).
+
+        Recovery then stops without editing the game (Member 5). Every other
+        failed report, including a FAIL whose text mentions the marker, stays
+        "verification" and remains repairable.
+        """
+        suite = self._state.suite
+        mandatory = {c.criterion_id for c in suite.criteria if c.mandatory} if suite else set()
+        confirmed = any(
+            isinstance(r, CriterionResult) and r.criterion_id in mandatory
+            and r.status == CheckStatus.UNKNOWN
+            and _SCRIPT_ERROR.search(str(r.detail)) is not None
+            for r in report.results)
+        return "test_script_error" if confirmed else "verification"
 
     async def _record_failure(self, failure: FailureRecord) -> None:
         self._state.last_failure = failure

@@ -45,3 +45,7 @@ Member 4 分支在两次生成均失败后保留 `C-ACCEPTANCE-INCOMPLETE`，但
 - git diff --check 通过。没有使用 Key 或运行新的付费游戏测试。
 
 本次未更新本机演示入口，也未将其他成员分支合入生产环境。交付分支为 `member5-acceptance-signals`，只包含恢复模块、专属测试和本技术说明；需要 Member 1 集成双方改动后，再做真实模型游戏联调。
+
+## Member 1 接入（2026-10-27）
+
+生产 Controller 已接入结构化映射：只有冻结验收中 mandatory 条目为 UNKNOWN 且 detail 含 `test_script_error:` 时，`FailureRecord.category` 才设为 `test_script_error`；FAIL 或非 mandatory 条目不映射。测试见 `tests/test_script_error_mapping.py`。
