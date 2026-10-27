@@ -41,7 +41,7 @@ when Playwright Chromium is not installed.
   `test_integration_tasks.py`): real runtime, sandbox, Playwright verifier,
   recovery and tracing with a scripted model; a broken game fails verification,
   is repaired, and succeeds.
-* **Live model runs**: 62 runs with five real models, including the course models Kimi K3 and (earlier) GLM-5.3, see
+* **Live model runs**: 66 runs with five real models, including the course models Kimi K3 and (earlier) GLM-5.3, see
   [LIVE_MODEL_TESTS.md](LIVE_MODEL_TESTS.md).
 
 ## Fixtures

@@ -84,8 +84,8 @@ specification <i>before</i> any code exists and checked by actually playing the 
 
 <div class="kpis">
   <div class="kpi"><b>9 / 10</b><span>runs fully accepted in the latest Kimi K3 retest (course model, 6 specifications)</span></div>
-  <div class="kpi"><b>62</b><span>autonomous runs with five real models</span></div>
-  <div class="kpi"><b>314</b><span>automated tests, all passing</span></div>
+  <div class="kpi"><b>66</b><span>autonomous runs with five real models</span></div>
+  <div class="kpi"><b>319</b><span>automated tests, all passing</span></div>
   <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
 </div>
 
@@ -300,22 +300,22 @@ including <code>run_report.md</code> and every runtime output an action referenc
 <h2><span class="n">7</span>Evaluation</h2>
 
 <h3>7.1 Automated tests</h3>
-<p>314 tests cover the controller, configuration and model settings, planner, runtime and sandbox, verifier and harness
+<p>319 tests cover the controller, configuration and model settings, planner, runtime and sandbox, verifier and harness
 (including real Playwright runs against fixture pages), recovery and evaluation, tracing and delivery audit, integration
 (including an offline end-to-end rehearsal with a scripted model and the real sandbox, browser, recovery and tracing),
 the Member 5 hand-off, and the acceptance signals added after the Kimi K3 retests: result levels, broken test scripts,
-disputed checks and their bounded re-derivation. A guard test ensures that the agent package contains no game
+disputed checks and their bounded re-derivation, and the time budget of a decision. A guard test ensures that the agent package contains no game
 code.</p>
 
 <h3>7.2 Live runs with real models</h3>
-<p>We ran the agent autonomously 62 times with five models: 48 runs on nine specifications during development
+<p>We ran the agent autonomously 66 times with five models: 48 runs on nine specifications during development
 (collection, dodge, memory cards, maze, terminal hangman, light switches, turn-based keys, grid snake and minesweeper)
-and 14 Kimi K3 runs on six specifications (Member 5's four, which include our minesweeper, and two never seen before), changing the
+and 18 Kimi K3 runs on six specifications (Member 5's four, which include our minesweeper, and two never seen before), changing the
 agent between rounds based on what the traces showed.</p>
 <table>
   <tr><th>Model</th><th>Runs</th><th>Succeeded</th><th>Observations</th></tr>
-  <tr><td><b>Kimi K3 (course model)</b></td><td>23</td><td>18</td><td>Three rehearsal rounds, then two retests of the
-  shared acceptance fixes with the 7-minute limit; 9 of 10 runs fully accepted in the last one (Section 7.4)</td></tr>
+  <tr><td><b>Kimi K3 (course model)</b></td><td>27</td><td>22</td><td>Three rehearsal rounds, two retests of the shared
+  acceptance fixes (9 of 10 fully accepted) and a speed check (4 of 4) with the 7-minute limit (Section 7.4)</td></tr>
   <tr><td>GLM-5.3 (course model until October 2026)</td><td>16</td><td>14</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
   <tr><td>Claude Sonnet 5.5</td><td>11</td><td>11</td><td>Valid scenarios and spec-faithful games in every run</td></tr>
   <tr><td>GPT-4.1-mini</td><td>8</td><td>5</td><td>Missed rule details; some generated scenarios could not be passed by a correct game</td></tr>
@@ -386,7 +386,7 @@ all with the 7-minute limit:</p>
   <tr><th>Specification</th><th>Run</th><th>Result</th><th>Specific rules</th><th>Time</th><th>Recoveries</th><th>Disputed check</th><th>Cost</th></tr>
   <tr><td rowspan="2">Detailed memory cards</td><td>1</td><td>fully accepted</td><td>9/9</td><td>213&nbsp;s</td><td>2</td><td>REQ-R7 replaced: clicked a row that does not exist</td><td>US$0.19</td></tr>
   <tr><td>2</td><td>fully accepted</td><td>7/7</td><td>304&nbsp;s</td><td>2</td><td>REQ-R6 replaced: same coordinate error</td><td>US$0.34</td></tr>
-  <tr><td rowspan="2">Minesweeper</td><td>1</td><td>exhausted</td><td>7/10</td><td>400&nbsp;s</td><td>1</td><td>none; one 23 000-token rewrite took 204 s</td><td>US$0.48</td></tr>
+  <tr><td rowspan="2">Minesweeper</td><td>1</td><td>exhausted</td><td>7/10</td><td>400&nbsp;s</td><td>1</td><td>none; one decision took 204 s</td><td>US$0.48</td></tr>
   <tr><td>2</td><td>fully accepted</td><td>9/9</td><td>280&nbsp;s</td><td>3</td><td>REQ-R3 replaced: setup flood-revealed the board and won</td><td>US$0.36</td></tr>
   <tr><td rowspan="2">Detailed whack-a-mole</td><td>1</td><td>fully accepted</td><td>10/10</td><td>230&nbsp;s</td><td>1</td><td>none</td><td>US$0.28</td></tr>
   <tr><td>2</td><td>fully accepted</td><td>10/10</td><td>262&nbsp;s</td><td>2</td><td>REQ-R3 replaced: expected no mole after the 300&nbsp;ms respawn</td><td>US$0.21</td></tr>
@@ -403,6 +403,23 @@ the earlier retest. Four further runs and the end of one more stopped at once be
 limit (HTTP 402); they are excluded and were re-run with a new key, and the agent now reports this case as
 "out of credit". A retest earlier the same day, before disputed checks existed, fully accepted three of the four
 Member 5 specifications; its minesweeper run spent the whole budget on the flood-reveal check.</p>
+<p><b>Speed check.</b> The one failure above spent 204 s of its 400 s budget on a single decision whose only result was
+to request the first verification: Kimi K3 reasoned far beyond the 3 000-token cap before that trivial step. Two
+changes followed. Once <code>README.md</code> with the launch command is written and every file the page loads
+exists, the planner requests the first verification itself, without a model call; and every decision prompt shows the
+remaining work time, asking for the smallest patch only when less than 150 s are left. Four more runs on the same
+specifications, again with the 7-minute limit:</p>
+<table>
+  <tr><th>Specification</th><th>Result</th><th>Specific rules</th><th>Time</th><th>Recoveries</th><th>Disputed check</th><th>Cost</th></tr>
+  <tr><td>Detailed memory cards</td><td>fully accepted</td><td>9/9</td><td>76&nbsp;s</td><td>0</td><td>none</td><td>US$0.08</td></tr>
+  <tr><td>Minesweeper</td><td>fully accepted</td><td>8/8</td><td>94&nbsp;s</td><td>0</td><td>none</td><td>US$0.09</td></tr>
+  <tr><td>Minesweeper</td><td>fully accepted</td><td>7/7</td><td>360&nbsp;s</td><td>6</td><td>REQ-R1 and REQ-R2 replaced: both setups flood-revealed the board and won</td><td>US$0.32</td></tr>
+  <tr><td>Detailed whack-a-mole</td><td>fully accepted</td><td>9/9</td><td>133&nbsp;s</td><td>1</td><td>none</td><td>US$0.12</td></tr>
+</table>
+<p>All four were fully accepted, three of them in under 140 s, for US$0.61 in total; every first verification started
+without a model call, and no step decision took more than 60 s (planning once took 111 s). The two replaced minesweeper checks keep their
+expectations and change only the mine layout. They also show that the tester still writes such setups despite the
+prompt rule, so the bounded re-derivation, not the prompt, is what keeps these runs from failing.</p>
 
 <h3>7.5 Live run at the presentation</h3>
 <div class="pending">
@@ -420,7 +437,8 @@ Member 5 specifications; its minesweeper run spent the whole budget on the flood
   and every replacement must test the same rule.</li>
   <li><b>Model speed decides many runs.</b> Waiting for the model is most of a run, and its speed varies: the same
   minesweeper specification took 368 s, ran out of time, and took 165 s in three Kimi K3 rounds, and in the last retest
-  a single 23 000-token rewrite took 204 s of a 400 s run.</li>
+  a single decision took 204 s of a 400 s run; requesting the first verification without a model call and showing
+  the time left brought the next four runs to 76-360 s.</li>
   <li><b>Real-time games are the weakest case.</b> Scenarios assert on wall-clock behaviour, so timers and continuous
   scoring needed up to eight repair cycles, and the dodge and snake games exhausted their budget in several rehearsals.</li>
   <li><b>Non-browser games are verified less deeply.</b> Terminal games are played through standard input, but spec-derived
@@ -468,8 +486,8 @@ that the agent package ships no game files.</p>
     <li><b>Hardening:</b> start-up self-check, <code>agent.env</code> with credential isolation, retry backoff, and configurable run limits.</li>
     <li><b>Verification and model support:</b> spec-derived acceptance scenarios and the state contract, process-mode checks for terminal and pygame games, the GLM-5.3 reasoning cap, and empty-reply handling.</li>
     <li><b>Kimi K3:</b> switched the agent to the new course model and shortened repair cycles (patch-based repairs, current file texts in decisions, a lower reasoning cap for steps).</li>
-    <li><b>Acceptance integration:</b> three result levels (launch, specific rules, delivery), the structured <code>test_script_error</code> signal, disputed checks with a bounded re-derivation, the out-of-credit stop, and provider-reported cost.</li>
-    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, and two retests of the shared acceptance fixes.</li>
+    <li><b>Acceptance integration:</b> three result levels (launch, specific rules, delivery), the structured <code>test_script_error</code> signal, disputed checks with a bounded re-derivation, the out-of-credit stop, provider-reported cost, and the first verification without a model call.</li>
+    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, two retests of the shared acceptance fixes, and a speed check.</li>
     <li><b>Integration:</b> merged the six members' branches into <code>main</code>, built the production dependency factory, fixed cross-module defects, and reviewed and merged the final handoff.</li>
     <li><b>Documentation:</b> README and illustrations, testing guides, and this report.</li>
     <li><b>Presentation:</b> prepared the presentation slides.</li>

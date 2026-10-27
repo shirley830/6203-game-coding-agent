@@ -266,7 +266,7 @@ tester rule that a setup must not end the game early, and provider-reported cost
 |---|---|---|---|---|---|---|---|
 | Detailed memory cards | 1 | fully accepted | 9/9 | 213 s | 2 | REQ-R7 replaced (clicked row 3 of a 3-row grid) | $0.19 |
 | Detailed memory cards | 2 | fully accepted | 7/7 | 304 s | 2 | REQ-R6 replaced (same coordinate error) | $0.34 |
-| Minesweeper | 1 | exhausted | 7/10 | 400 s | 1 | none; one 23 000-token rewrite took 204 s | $0.48 |
+| Minesweeper | 1 | exhausted | 7/10 | 400 s | 1 | none; one decision took 204 s | $0.48 |
 | Minesweeper | 2 | fully accepted | 9/9 | 280 s | 3 | REQ-R3 replaced (setup flood-revealed the board and won) | $0.36 |
 | Detailed whack-a-mole | 1 | fully accepted | 10/10 | 230 s | 1 | none | $0.28 |
 | Detailed whack-a-mole | 2 | fully accepted | 10/10 | 262 s | 2 | REQ-R3 replaced (expected no mole after the 300 ms respawn) | $0.21 |
@@ -281,6 +281,25 @@ tester rule that a setup must not end the game early, and provider-reported cost
 - The generated games use a standard flood reveal and count a missed mole in the last second.
 - Four more runs, and the end of the first whack-a-mole run 2, stopped at once on HTTP 402 (the key's spending limit).
   They are excluded and were re-run with a new key; the agent now stops such runs with an "out of credit" reason.
+
+## 5g. Speed check (2026-10-27, `dd39246`)
+
+The minesweeper failure above spent 204 s of 400 s on one decision (23 469 output tokens, far beyond the 3000-token
+reasoning cap) whose only result was to request the first verification. Changes: the planner requests the first
+verification itself once README.md with the launch command is written and every file the page loads exists, and every
+decision prompt shows the remaining work time (with under 150 s left: smallest patch only).
+
+| Specification | Result | Specific rules | Time | Recoveries | Disputed check | Cost |
+|---|---|---|---|---|---|---|
+| Detailed memory cards | fully accepted | 9/9 | 76 s | 0 | none | $0.08 |
+| Minesweeper | fully accepted | 8/8 | 94 s | 0 | none | $0.09 |
+| Minesweeper | fully accepted | 7/7 | 360 s | 6 | REQ-R1, REQ-R2 replaced (setups flood-revealed the board and won) | $0.32 |
+| Detailed whack-a-mole | fully accepted | 9/9 | 133 s | 1 | none | $0.12 |
+
+- 4 of 4 fully accepted; $0.61 in total. Every first verification started without a model call; apart from planning
+  in the slow minesweeper run (111 s), no model call took more than 60 s.
+- Both replacements keep the expectations and change only the mine layout (reviewed by hand). The tester still writes
+  flood-winning setups despite the prompt rule; the bounded re-derivation is what keeps these runs passing.
 
 ## 6. Limitations of this evaluation
 

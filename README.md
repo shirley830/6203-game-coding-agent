@@ -26,7 +26,7 @@
 <img src="assets/glance.svg" width="100%" alt="At a glance. In: one unseen spec. Process: freeze tests, plan, write code, play it in a browser, repair. Out: a playable game and a complete trace.">
 
 <table>
-<tr><td><b>Status</b></td><td>All six modules integrated · 319 tests passing · 62 live runs on 5 models · course model Kimi K3 (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
+<tr><td><b>Status</b></td><td>All six modules integrated · 319 tests passing · 66 live runs on 5 models · course model Kimi K3 (<a href="docs/testing/LIVE_MODEL_TESTS.md">results</a>)</td></tr>
 <tr><td><b>Success means</b></td><td>Every mandatory criterion passes on the current code, with evidence; nothing else counts</td></tr>
 <tr><td><b>Never</b></td><td>Mocks in the production path, edits to <code>agent/</code> or the spec during a run, deleting earlier <code>game/</code> or <code>traces/</code></td></tr>
 <tr><td><b>Submission</b></td><td><a href="agent/">agent/</a> (with <a href="agent/README.md">README</a>) · <code>game/</code> and <code>traces/</code> from the assessed run at the presentation · <a href="report.pdf">report.pdf</a></td></tr>
@@ -297,7 +297,7 @@ Every module call and tool attempt consumes a step, including rejected proposals
 <a name="testing"></a>
 <img src="assets/sections/09-testing.svg" width="100%" alt="09 · Testing">
 
-<img src="assets/testing.svg" width="100%" alt="Testing: 319 tests, 62 live model runs with 5 models; succeeded: Kimi K3 (the course model) 18 of 23, GLM-5.3 14 of 16, Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.">
+<img src="assets/testing.svg" width="100%" alt="Testing: 319 tests, 66 live model runs with 5 models; succeeded: Kimi K3 (the course model) 22 of 27, GLM-5.3 14 of 16, Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.">
 
 ```bash
 python -m pytest -q
