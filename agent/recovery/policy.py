@@ -74,7 +74,7 @@ class RuleBasedRecovery:
         if fault_reason is not None:
             return choose(abort, fault_reason)
         if error == ErrorClass.VERIFIER_DEFECT:
-            return choose(abort, "Verifier infrastructure/acceptance preparation is defective; "
+            return choose(abort, f"Verifier infrastructure/acceptance preparation is defective ({failure.category}); "
                           "preserve evidence and game source. Do not repair the game to satisfy "
                           "a broken test or weaken frozen criteria; verifier integration needs correction.")
         if error == ErrorClass.PERMANENT:

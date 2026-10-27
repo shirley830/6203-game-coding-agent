@@ -61,6 +61,14 @@ def classify_failure(failure: FailureRecord) -> ErrorClass:
         return ErrorClass.CLEANUP_FAILED
     if code in PERMANENT_CODES:
         return ErrorClass.PERMANENT
+    # Member 1 may promote a confirmed verifier UNKNOWN/script marker to this
+    # category. It is a test defect, never an instruction to repair the game.
+    # A tool action or another module cannot claim this verifier-only signal.
+    # Even uncertain side effects require stopping here, not another game edit.
+    if (code == "test_script_error" and failure.phase.value == "verifying"
+            and failure.operation_key == "verifier.next_check"
+            and failure.action is None):
+        return ErrorClass.VERIFIER_DEFECT
     if failure.side_effects_unknown or code in UNCERTAIN_CODES:
         return ErrorClass.UNCERTAIN
     # Explicit provenance only: game output may contain the same exception names.
