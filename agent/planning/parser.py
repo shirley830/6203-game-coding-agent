@@ -4,6 +4,7 @@ from pydantic import TypeAdapter
 
 from agent.state import (
     AcceptanceSuite,
+    DisputeCheck,
     Plan,
     RequestVerification,
     RevisePlan,
@@ -14,6 +15,7 @@ from agent.state import (
 
 from .schemas import (
     DecisionOutput,
+    DisputeCheckOutput,
     PlanOutput,
     RequestVerificationOutput,
     RevisePlanOutput,
@@ -54,11 +56,13 @@ _DECISION_ALIASES = {
     "tool": "tool_action", "action": "tool_action", "tool_call": "tool_action",
     "verify": "request_verification", "verification": "request_verification",
     "revise": "revise_plan", "replan": "revise_plan",
+    "dispute": "dispute_check", "test_conflict": "dispute_check",
 }
 _DECISION_FIELDS = {
     "tool_action": {"decision", "action_id", "kind", "arguments", "rationale"},
     "request_verification": {"decision", "launch_command"},
     "revise_plan": {"decision", "reason"},
+    "dispute_check": {"decision", "criterion_id", "reason"},
 }
 
 
@@ -82,6 +86,8 @@ def normalize_decision(payload: object) -> object:
             decision = "tool_action"
         elif "launch_command" in data:
             decision = "request_verification"
+        elif "criterion_id" in data and "reason" in data:
+            decision = "dispute_check"
         elif "reason" in data:
             decision = "revise_plan"
     if decision not in _DECISION_FIELDS:
@@ -183,7 +189,7 @@ def parse_plan(
 
 def parse_decision(
     model_response: str,
-) -> ToolAction | RequestVerification | RevisePlan:
+) -> ToolAction | RequestVerification | RevisePlan | DisputeCheck:
     adapter = TypeAdapter(DecisionOutput)
     payload = adapter.validate_python(normalize_decision(json.loads(extract_json_object(model_response))))
 
@@ -202,6 +208,9 @@ def parse_decision(
 
     if isinstance(payload, RevisePlanOutput):
         return RevisePlan(reason=payload.reason)
+
+    if isinstance(payload, DisputeCheckOutput):
+        return DisputeCheck(criterion_id=payload.criterion_id, reason=payload.reason)
 
     raise TypeError("Unsupported planner decision")
 

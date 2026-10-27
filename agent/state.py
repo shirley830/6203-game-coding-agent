@@ -89,6 +89,8 @@ class RecoveryKind(str, Enum):
     REPAIR = "repair"
     REPLAN = "replan"
     ABORT = "abort"
+    # Re-derive one disputed spec-derived check, then re-verify the unchanged game.
+    REVISE_ACCEPTANCE = "revise_acceptance"
 
 
 @dataclass(frozen=True)
@@ -149,6 +151,17 @@ class RequestVerification:
 
 @dataclass(frozen=True)
 class RevisePlan:
+    reason: str
+
+
+@dataclass(frozen=True)
+class DisputeCheck:
+    """The planner argues that a failed spec-derived check contradicts the specification.
+
+    The controller turns it into a ``test_conflict`` failure; the check is then
+    re-derived once with this reason as evidence. The game is not edited.
+    """
+    criterion_id: str
     reason: str
 
 

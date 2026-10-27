@@ -16,7 +16,7 @@ from .config import AgentConfig
 from .result_levels import result_levels
 from .state import (
     AcceptanceSuite, AgentState, AgentView, CallLimits, CheckStatus, Criterion,
-    CriterionResult, DeliveryReport, ExecutionContext, FailureRecord, Phase,
+    CriterionResult, DisputeCheck, DeliveryReport, ExecutionContext, FailureRecord, Phase,
     Plan, RecoveryDecision, RecoveryKind, RequestVerification, RevisePlan,
     RunSummary, Task, TERMINAL_PHASES, ToolAction, ToolKind, ToolResult,
     ToolStatus, TraceEvent, VerificationReport, to_jsonable,
@@ -24,6 +24,8 @@ from .state import (
 
 # Member 4 harness marker for a broken assertion script (see _verification_category).
 _SCRIPT_ERROR = re.compile(r"\btest_script_error\s*:")
+# Disputed spec-derived checks: each may be re-derived once, at most this many per run.
+MAX_ACCEPTANCE_REVISIONS = 2
 
 
 class PlannerPort(Protocol):
@@ -118,6 +120,11 @@ class Controller:
         self._retry_action = False
         self._candidate_version: dict[str, Any] | None = None
         self._best_version: dict[str, Any] | None = None
+        # test_conflict bookkeeping (see _revise_acceptance).
+        self._failed_report: VerificationReport | None = None
+        self._fail_signatures: dict[str, tuple[str, str | None]] = {}
+        self._conflict: tuple[str, str, str] | None = None
+        self._revised: list[dict[str, Any]] = []
 
     async def _version_call(self, name: str, *args) -> Mapping[str, Any] | None:
         """Bounded preservation via runtime, not model-accessible development tools.
@@ -528,6 +535,8 @@ class Controller:
             await self._transition(Phase.VERIFYING)
         elif isinstance(decision, RevisePlan) and isinstance(decision.reason, str) and decision.reason.strip():
             await self._transition(Phase.PLANNING)
+        elif isinstance(decision, DisputeCheck):
+            self._dispute(decision)
         else:
             raise self._failure("planner.next_decision", "Unrecognized decision")
 
@@ -554,9 +563,13 @@ class Controller:
                     f"{r.criterion_id}={getattr(r.status, 'value', r.status)}: {str(r.detail)[:400]}"
                     for r in result.results
                     if isinstance(r, CriterionResult) and r.status != CheckStatus.PASS)
+                category = self._verification_category(result)
+                if category == "verification":
+                    category = self._repeated_failure_conflict(result)
+                self._failed_report = result
                 raise self._failure("verifier.next_check", "Verification failed, evidence is missing, or the report is stale"
                                     + (f". Failed criteria: {failed}" if failed else ""),
-                                    category=self._verification_category(result))
+                                    category=category)
             await self._finish_request(Phase.SUCCEEDED, "Current game passed mandatory acceptance checks")
         else:
             raise self._failure("verifier.next_check", "Verifier returned an invalid result")
@@ -577,6 +590,106 @@ class Controller:
             and _SCRIPT_ERROR.search(str(r.detail)) is not None
             for r in report.results)
         return "test_script_error" if confirmed else "verification"
+
+    def _revisable(self, criterion_id: str) -> bool:
+        suite = self._state.suite
+        return (criterion_id.startswith("REQ-") and len(self._revised) < MAX_ACCEPTANCE_REVISIONS
+                and all(r["criterion_id"] != criterion_id for r in self._revised)
+                and suite is not None
+                and any(c.criterion_id == criterion_id and c.mandatory for c in suite.criteria))
+
+    @staticmethod
+    def _failure_signature(detail: str) -> str:
+        """The failing step and expectation, without the state dump that follows it."""
+        return " ".join(str(detail).split("state after")[0].split())[:400]
+
+    def _dispute(self, decision: DisputeCheck) -> None:
+        """Planner says a failed check contradicts the specification: re-derive it once."""
+        report = self._failed_report
+        failed = {r.criterion_id: r for r in (report.results if report else ())
+                  if isinstance(r, CriterionResult) and r.status in {CheckStatus.FAIL, CheckStatus.UNKNOWN}}
+        cid = decision.criterion_id
+        if cid not in failed or not self._revisable(cid) or not str(decision.reason).strip():
+            # Not a crash: the planner gets the reason and decides again (repair).
+            raise self._failure("planner.next_decision",
+                                f"Dispute of {cid} rejected: only a failed REQ-* check of the last "
+                                "verification can be disputed, once per check and at most "
+                                f"{MAX_ACCEPTANCE_REVISIONS} per run. Fix the game instead.")
+        self._conflict = (cid, str(decision.reason), str(failed[cid].detail))
+        raise self._failure("planner.next_decision", f"Check {cid} disputed by the planner: "
+                            f"{' '.join(str(decision.reason).split())[:600]}", category="test_conflict")
+
+    def _repeated_failure_conflict(self, report: VerificationReport) -> str:
+        """Same check failing the same way after the game changed: question the check once."""
+        revision = self._state.workspace_revision
+        conflict = None
+        current: dict[str, tuple[str, str | None]] = {}
+        for r in report.results:
+            if not isinstance(r, CriterionResult) or r.status != CheckStatus.FAIL:
+                continue
+            signature = self._failure_signature(r.detail)
+            current[r.criterion_id] = (signature, revision)
+            previous = self._fail_signatures.get(r.criterion_id)
+            if (conflict is None and previous is not None and previous[0] == signature
+                    and previous[1] != revision and self._revisable(r.criterion_id)):
+                conflict = (r.criterion_id,
+                            "It failed in exactly the same way before and after the game was changed, "
+                            "so the check itself may contradict the specification.", str(r.detail))
+        self._fail_signatures = current
+        if conflict is None:
+            return "verification"
+        self._conflict = conflict
+        return "test_conflict"
+
+    async def _revise_acceptance(self) -> None:
+        """Re-derive one disputed check, then verify the unchanged game again.
+
+        The verifier keeps the old version; the event log records both. "keep"
+        or an unusable reply sends the planner back to fixing the game.
+        """
+        s = self._state
+        conflict, self._conflict = self._conflict, None
+        method = getattr(self.dependencies.verifier, "revise_requirement", None)
+        if conflict is None or not callable(method):
+            await self._finish_request(Phase.FAILED, "A check was disputed but cannot be re-derived; "
+                                       "game and evidence preserved")
+            return
+        cid, reason, evidence = conflict
+        result = await self._invoke("verifier.revise_requirement", lambda limits:
+            method(self._view(), cid, evidence, reason, limits))
+        verdict = result.get("verdict") if isinstance(result, Mapping) else None
+        why = str(result.get("reason", "")) if isinstance(result, Mapping) else ""
+        self._revised.append({"criterion_id": cid, "verdict": verdict or "error", "reason": why[:600],
+                              "dispute": reason[:600]})
+        suite = result.get("suite") if verdict == "replace" else None
+        old = s.suite
+        if (isinstance(suite, AcceptanceSuite) and old is not None and suite.version != old.version
+                and [c.criterion_id for c in suite.criteria] == [c.criterion_id for c in old.criteria]
+                and [c.mandatory for c in suite.criteria] == [c.mandatory for c in old.criteria]):
+            self._validate_suite(suite)
+            before = next(c.description for c in old.criteria if c.criterion_id == cid)
+            after = next(c.description for c in suite.criteria if c.criterion_id == cid)
+            await self._event("acceptance_revised", {"criterion_id": cid, "reason": why[:600],
+                                                     "dispute": reason[:600], "old_suite": old.version,
+                                                     "new_suite": suite.version, "old": before,
+                                                     "new": after})
+            s.suite = suite
+            s.verification_report = None
+            s.pending_action = None
+            self._verification_checks = 0
+            self._fail_signatures.pop(cid, None)
+            await self._transition(Phase.VERIFYING)
+            return
+        await self._event("acceptance_kept", {"criterion_id": cid, "verdict": verdict or "error",
+                                              "reason": why[:600]})
+        # The planner sees this as the latest failure: the check stands, fix the game.
+        s.last_failure = FailureRecord("verifier.revise_requirement", Phase.RECOVERING, "verification",
+                                       f"Check {cid} was re-examined against the specification and kept "
+                                       f"({verdict or 'error'}): {why[:400]}. Fix the game so it passes; "
+                                       "do not dispute this check again.")
+        s.verification_report = None
+        s.pending_action = None
+        await self._transition(Phase.DECIDING)
 
     async def _record_failure(self, failure: FailureRecord) -> None:
         self._state.last_failure = failure
@@ -627,6 +740,8 @@ class Controller:
             s.verification_report = None
             s.pending_action = None
             await self._transition(Phase.PLANNING)
+        elif decision.kind == RecoveryKind.REVISE_ACCEPTANCE:
+            await self._revise_acceptance()
 
     async def _retry_backoff(self, attempt: int, operation_key: str) -> None:
         """Wait before a retry so a brief API outage or rate limit can clear.
@@ -652,7 +767,7 @@ class Controller:
         assert self._context is not None
         s = self._state
         levels = result_levels(outcome, s.suite, s.verification_report,
-                               self._context.game_dir, s.launch_command)
+                               self._context.game_dir, s.launch_command, self._revised)
         return RunSummary(s.run_id, outcome, reason, self._context.game_dir,
                           self._context.trace_dir, s.launch_command, s.verification_report,
                           s.steps_used, s.commands_used, s.recovery_attempts, self._elapsed(),

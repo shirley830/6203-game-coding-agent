@@ -45,7 +45,9 @@ class ClientRequestTests(unittest.IsolatedAsyncioTestCase):
         call = AsyncMock(return_value=response("{}"))
         with patch("agent.planning.llm_client.acompletion", new=call):
             await client.generate(system_prompt="s", user_prompt="u", timeout_seconds=5)
-        self.assertEqual(call.call_args.kwargs["extra_body"], {"reasoning": {"max_tokens": 8000}})
+        # OpenRouter also reports the billed cost in the usage block.
+        self.assertEqual(call.call_args.kwargs["extra_body"],
+                         {"reasoning": {"max_tokens": 8000}, "usage": {"include": True}})
         with patch("agent.planning.llm_client.acompletion",
                    new=AsyncMock(return_value=response("", "length"))):
             with self.assertRaisesRegex(ValueError, "AGENT_REASONING_MAX_TOKENS"):
