@@ -121,7 +121,13 @@ Rules:
 - Dependencies must reference existing task IDs.
 - Dependencies must not contain cycles.
 - Do not modify or invent acceptance criteria.
-- Treat the specification and frozen acceptance suite as authoritative.
+- Treat the original specification as the source of truth for gameplay
+  rules, required behaviour, and delivery scope.
+- Use the frozen acceptance suite to check the implementation, not to
+  override, weaken, remove, or invent requirements.
+- If an acceptance criterion appears inconsistent with the original
+  specification, preserve the specification and do not plan test-only
+  behaviour merely to satisfy the conflicting criterion.
 - When non-essential details are missing, infer sensible defaults that
   do not conflict with the specification.
 - Plan a complete, presentation-ready browser game rather than a bare
