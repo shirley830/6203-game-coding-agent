@@ -318,6 +318,14 @@ Rules:
   scenario step and the state after it) and the page errors above, fix the real
   defect in the game logic, then request verification again. Never add
   behaviour the specification does not ask for to satisfy a check.
+- Treat the original specification as the source of truth. Verification
+  results are diagnostic evidence and must not override required gameplay.
+- If a verification expectation conflicts with the original specification,
+  do not use write_file or patch_file merely to make the conflicting test pass.
+- Preserve the specified gameplay and avoid repeated game edits when the
+  failure is caused by a contradictory or invalid test expectation.
+- Never remove, weaken, or reinterpret a requirement to obtain a passing
+  verification result.
 - If a failed REQ-* check contradicts the specification itself (its setup or
   expectation cannot hold for a correct game, for example it expects the game
   to keep running after an input that the specification's own rules turn into
