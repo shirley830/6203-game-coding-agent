@@ -32,6 +32,11 @@ Result: 未完整验收 acceptance incomplete (generic checks only)
 a complete delivery. A run that succeeded on the generic checks alone is `acceptance_incomplete`, never full
 success. The levels do not change the outcome or the exit code, and they cannot detect a wrong test that passes.
 
+When the verifier marks a mandatory criterion UNKNOWN with `test_script_error:` (a broken test script, not a game
+defect), the controller reports the failure with category `test_script_error`. Recovery then stops the run as failed
+and keeps the game and evidence; it never edits the game to satisfy a broken test. Other failed checks stay
+repairable.
+
 ## Configuration
 
 | Setting | Where | Default |

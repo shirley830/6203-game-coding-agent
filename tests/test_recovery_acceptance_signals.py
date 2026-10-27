@@ -111,8 +111,9 @@ class ControllerSignalContractTests(unittest.IsolatedAsyncioTestCase):
             return result, scenario, recovery.records
 
     async def test_existing_controller_and_member4_marker_stop_game_repair(self):
+        # The production Controller now emits the structured category itself (Member 1).
         result, scenario, records = await self.run_flow(typed=False, script=True)
-        self.assertEqual(records[0][0].category, "verification")
+        self.assertEqual(records[0][0].category, "test_script_error")
         self.assertEqual(records[0][1].kind, RecoveryKind.ABORT)
         self.assertEqual(result.outcome, Phase.FAILED)
         self.assertEqual(result.recovery_attempts, 1)
