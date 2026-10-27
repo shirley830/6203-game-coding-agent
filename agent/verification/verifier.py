@@ -32,7 +32,7 @@ from .criteria import build_acceptance_suite
 from .evidence import EvidenceLedger, evaluate_criteria
 from .spec_criteria import (
     MIN_REQUIREMENTS, SYSTEM_PROMPT, InsufficientRequirements, SpecAcceptance,
-    build_prompt, criteria_from, harness_payload, is_non_browser_spec,
+    _field_error_text, build_prompt, criteria_from, harness_payload, is_non_browser_spec,
     parse_spec_acceptance,
 )
 
@@ -117,27 +117,13 @@ class GameVerifier:
             self.acceptance_note = ("generic criteria: the specification asks for a non-browser "
                                     "game, verified in process mode (start, no crash, input)")
             return AcceptanceSuite(generic.version, generic.criteria + (self._note_criterion(),))
-        try:
-            reply = await self._client.generate(
-                system_prompt=SYSTEM_PROMPT, user_prompt=build_prompt(view.spec_text),
-                timeout_seconds=limits.timeout_seconds,
-            )
-            acceptance = parse_spec_acceptance(reply, view.spec_text)
-        except InsufficientRequirements as exc:
-            # Generic checks decide the run; an informational FAIL keeps the gap visible.
-            self.acceptance_note = (
-                "incomplete acceptance: "
-                f"only {exc.kept} valid requirements (need at least {MIN_REQUIREMENTS})"
-                + (f"; {'; '.join(exc.notes)}" if exc.notes else "")
-            )
+        acceptance = await self._derive_spec_acceptance(view.spec_text, limits)
+        if acceptance is None:
+            # Still short of real requirements. Do not drop rules to force a pass.
             return AcceptanceSuite(
                 generic.version,
                 generic.criteria + (self._incomplete_criterion(), self._note_criterion()),
             )
-        except Exception as exc:  # noqa: BLE001 - one attempt, then a safe fallback
-            # Verification must not depend on this call; keep the generic suite.
-            self.acceptance_note = f"generic criteria (spec derivation failed: {type(exc).__name__}: {str(exc)[:300]})"
-            return AcceptanceSuite(generic.version, generic.criteria + (self._note_criterion(),))
         self._spec_acceptance = acceptance
         self.acceptance_note = (f"{len(acceptance.requirements)} spec-derived requirements"
                                 + (f"; {'; '.join(acceptance.notes)}" if acceptance.notes else ""))
@@ -145,6 +131,38 @@ class GameVerifier:
             version=generic.version + "-spec",
             criteria=generic.criteria + criteria_from(acceptance) + (self._note_criterion(),),
         )
+
+    async def _derive_spec_acceptance(self, spec_text: str, limits: CallLimits) -> SpecAcceptance | None:
+        """Parse one reply. If it is unusable, generate at most one more time."""
+        prompt = build_prompt(spec_text)
+        problem = ""
+        insufficient: InsufficientRequirements | None = None
+        for _attempt in range(2):
+            user_prompt = prompt
+            if problem:
+                user_prompt = (prompt + "\n\nThe previous JSON could not be used. Return one full "
+                               "JSON object and fix these field errors:\n" + problem)
+            try:
+                reply = await self._client.generate(
+                    system_prompt=SYSTEM_PROMPT, user_prompt=user_prompt,
+                    timeout_seconds=limits.timeout_seconds,
+                )
+                return parse_spec_acceptance(reply, spec_text)
+            except InsufficientRequirements as exc:
+                insufficient = exc
+                problem = _field_error_text(exc) or str(exc)
+            except Exception as exc:  # noqa: BLE001 - bounded retry, then incomplete acceptance
+                insufficient = None
+                problem = f"{type(exc).__name__}: {_field_error_text(exc) or str(exc)}"
+        if insufficient is not None:
+            self.acceptance_note = (
+                "incomplete acceptance: "
+                f"only {insufficient.kept} valid requirements (need at least {MIN_REQUIREMENTS})"
+                + (f"; {'; '.join(insufficient.notes)}" if insufficient.notes else "")
+            )
+        else:
+            self.acceptance_note = f"incomplete acceptance: spec derivation failed: {problem[:500]}"
+        return None
 
     def _note_criterion(self) -> Criterion:
         # Informational and non-mandatory: records in the trace how the suite
