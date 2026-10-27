@@ -1,4 +1,5 @@
 from collections import deque
+import re
 from pathlib import PurePosixPath
 
 from agent.state import (
@@ -29,6 +30,8 @@ FILE_TEXT_LIMIT = 40000
 MAX_EDITS_BEFORE_VERIFICATION = 8
 # Consecutive empty decision objects absorbed before normal recovery takes over.
 MAX_EMPTY_REPLIES = 2
+# Local files a page loads (src/href), checked before the first verification.
+_LOCAL_REF = re.compile(r'''(?:src|href)\s*=\s*["']([^"'#?]+)''', re.I)
 
 
 def _is_empty_decision(model_response: str) -> bool:
@@ -72,6 +75,8 @@ class LLMPlanner:
         self._packages: list[str] = []
         self._empty_replies = 0
         self._seen_failure: object | None = None
+        self._last_ok_edit: str | None = None
+        self._auto_verified = False
 
     async def create_plan(
         self,
@@ -115,6 +120,14 @@ class LLMPlanner:
                 f"planner: {self._edits_since_verification} edits since the last verification; "
                 "requesting verification for fresh feedback")
             return self._guard_verification(RequestVerification(view.launch_command))
+        launch = self._first_verification_ready(view)
+        if launch is not None:
+            # A Kimi K3 run spent 204 s of its 400 s reasoning before this obvious
+            # step; the game, its files and README are complete, so verify now.
+            self._auto_verified = True
+            self._history.append("planner: game files and README.md complete; requesting the first "
+                                 "verification without a model call")
+            return self._guard_verification(RequestVerification(launch))
         model_response = await self.decision_client.generate(
             system_prompt=(
                 "You are the decision component of an autonomous "
@@ -183,6 +196,7 @@ class LLMPlanner:
                     self._packages.append(package)
         if result.status == ToolStatus.OK and action.kind in _EDIT_KINDS:
             self._edits_since_verification += 1
+            self._last_ok_edit = action.arguments.get("path")
         label = self._describe(action)
         self._history.append(f"{action.action_id} {label} -> {result.status.value}: {summary}")
         if result.status != ToolStatus.OK:
@@ -260,6 +274,28 @@ class LLMPlanner:
         return registered
 
     # ----------------------------------------------------------- guards
+
+    def _first_verification_ready(self, view: AgentView) -> tuple[str, ...] | None:
+        """Launch command for the first verification, when it needs no decision.
+
+        Only before any verification, right after README.md was written with
+        the standard launch command, and when every local file the page loads
+        exists. Anything else is left to the model.
+        """
+        from .prompts import DEFAULT_LAUNCH_COMMAND
+
+        if self._auto_verified or view.launch_command or self._last_ok_edit != "README.md":
+            return None
+        readme = self._texts.get("README.md") or ""
+        page = self._texts.get("index.html")
+        if " ".join(DEFAULT_LAUNCH_COMMAND) in readme and page is not None:
+            missing = [ref for ref in _LOCAL_REF.findall(page)
+                       if "://" not in ref and not ref.startswith(("data:", "mailto:", "javascript:"))
+                       and ref.strip("./") and ref.lstrip("./") not in self._files]
+            return None if missing else DEFAULT_LAUNCH_COMMAND
+        if "python3 main.py" in readme and "main.py" in self._files:
+            return ("python3", "main.py")
+        return None
 
     def _guard_verification(
         self, decision: RequestVerification,

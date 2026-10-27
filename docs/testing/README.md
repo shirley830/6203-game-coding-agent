@@ -1,6 +1,6 @@
 # Testing overview
 
-Current status (2026-10-27): **314 tests, all passing** on macOS / Python 3.11
+Current status (2026-10-27): **319 tests, all passing** on macOS / Python 3.11
 (`python -m pytest -q`, about 80 s). Browser tests are skipped automatically
 when Playwright Chromium is not installed.
 
@@ -33,6 +33,7 @@ when Playwright Chromium is not installed.
 | `test_result_levels.py` | 8 | Member 1 | Launch / specific rules / delivery levels; a generic-only pass is never shown as full success |
 | `test_script_error_mapping.py` | 4 | Member 1 | Controller maps only a confirmed verifier script error to `test_script_error` |
 | `test_test_conflict.py` | 12 | Member 1 | Disputed checks: `dispute_check`, repeated-failure detection, one bounded re-derivation (keep / replace), out-of-credit stop, provider cost |
+| `test_time_budget.py` | 5 | Member 1 | First verification without a model call once the game and README are complete; remaining work time in every decision |
 
 ## End-to-end evidence
 

@@ -179,6 +179,17 @@ def _format_last_result(view: AgentView) -> str:
     return rendered
 
 
+def _remaining_text(view: AgentView) -> str:
+    remaining = getattr(view, "remaining_seconds", None)
+    if remaining is None:
+        return ""
+    text = f", about {remaining:.0f}s of work time left"
+    if remaining < 150:
+        text += (" (SHORT: make only the smallest patch_file change the failing check needs, "
+                 "then request verification; never rewrite a whole file now)")
+    return text
+
+
 def build_decision_prompt(
     view: AgentView,
     *,
@@ -238,7 +249,7 @@ CONTROLLER NOTES:
 {notes_text}
 
 BUDGET: {view.steps_used} steps used, {view.commands_used} commands used,
-{view.recovery_attempts} recovery attempts, {view.elapsed_seconds:.0f}s elapsed.
+{view.recovery_attempts} recovery attempts, {view.elapsed_seconds:.0f}s elapsed{_remaining_text(view)}.
 
 Return exactly one JSON object in one of these forms.
 

@@ -216,7 +216,7 @@ class Controller:
                          s.workspace_revision, s.suite, s.plan, s.plan_version,
                          s.launch_command, s.last_result, s.last_failure,
                          s.steps_used, s.commands_used, s.recovery_attempts,
-                         self._elapsed())
+                         self._elapsed(), max(self._remaining(), 0.0))
 
     def _remaining(self, *, infrastructure: bool = False) -> float:
         reserve = 0.0 if infrastructure else self.config.finalization_reserve_seconds

@@ -52,8 +52,8 @@ class ScriptedClient:
         self.decisions = [
             _write("index.html", _PAGE),
             "```json\n" + _write("game.js", _BROKEN_JS) + "\n```",  # fenced on purpose
-            _VERIFY,   # planner guard writes README.md first
-            _VERIFY,   # verification runs and fails on interaction
+            _VERIFY,   # planner guard writes README.md first, then verifies by itself;
+                       # verification runs and fails on interaction
             _write("game.js", _FIXED_JS),
             _VERIFY,
         ]
