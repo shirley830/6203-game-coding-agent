@@ -37,6 +37,15 @@ defect), the controller reports the failure with category `test_script_error`. R
 and keeps the game and evidence; it never edits the game to satisfy a broken test. Other failed checks stay
 repairable.
 
+A check can also contradict the specification while looking valid (2026-10-27: a minesweeper check expected the
+game to keep running after a click whose flood reveal wins at once). Such a check is disputed (`test_conflict`)
+when the planner returns `dispute_check` with the specification rule as evidence, or when the same check fails in
+the same way before and after the game was changed. The acceptance model then re-examines that one check: `keep`
+sends the planner back to fixing the game; `replace` swaps in a check of the same rule (same id and category, at
+least one expectation), and the unchanged game is verified again. Each check is re-examined at most once, two per
+run; the old and new versions are in `events.jsonl` (`acceptance_revised`) and the result levels list them under
+`revised_checks`. Rules are never dropped or weakened to reach a pass.
+
 ## Configuration
 
 | Setting | Where | Default |

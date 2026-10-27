@@ -77,6 +77,12 @@ class RuleBasedRecovery:
             return choose(abort, f"Verifier infrastructure/acceptance preparation is defective ({failure.category}); "
                           "preserve evidence and game source. Do not repair the game to satisfy "
                           "a broken test or weaken frozen criteria; verifier integration needs correction.")
+        if error == ErrorClass.TEST_CONFLICT:
+            # The controller bounds this to one re-derivation per check. No game edit.
+            return choose(RecoveryKind.REVISE_ACCEPTANCE,
+                          "A failed spec-derived check is disputed; re-examine that one check against "
+                          "the specification, keep the old version in the trace, then verify the "
+                          "unchanged game again. Never drop or weaken the rule under test.")
         if error == ErrorClass.PERMANENT:
             return choose(abort, f"Permanent environment/input/contract failure ({failure.category}); "
                           "do not retry, weaken isolation, or request live human intervention.")

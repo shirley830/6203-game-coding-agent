@@ -32,8 +32,8 @@ from .criteria import build_acceptance_suite
 from .evidence import EvidenceLedger, evaluate_criteria
 from .spec_criteria import (
     MIN_REQUIREMENTS, SYSTEM_PROMPT, InsufficientRequirements, SpecAcceptance,
-    _field_error_text, build_prompt, criteria_from, harness_payload, is_non_browser_spec,
-    parse_spec_acceptance,
+    _field_error_text, build_prompt, build_revision_prompt, criteria_from, harness_payload,
+    is_non_browser_spec, parse_revision, parse_spec_acceptance,
 )
 
 # Preferred entry files to read after inspect (relative to game/).
@@ -78,6 +78,9 @@ class GameVerifier:
         # prepare_acceptance derives spec-specific executable scenarios.
         self._client = client
         self._spec_acceptance: SpecAcceptance | None = None
+        self._generic: AcceptanceSuite | None = None
+        # Every re-examined requirement, old and new, for the trace and the report.
+        self.revisions: list[dict[str, Any]] = []
         self.acceptance_note = "generic criteria (no model client)"
         self._action_seq = 0
         self._reset_cycle()
@@ -125,6 +128,7 @@ class GameVerifier:
                 generic.criteria + (self._incomplete_criterion(), self._note_criterion()),
             )
         self._spec_acceptance = acceptance
+        self._generic = generic
         self.acceptance_note = (f"{len(acceptance.requirements)} spec-derived requirements"
                                 + (f"; {'; '.join(acceptance.notes)}" if acceptance.notes else ""))
         return AcceptanceSuite(
@@ -163,6 +167,47 @@ class GameVerifier:
         else:
             self.acceptance_note = f"incomplete acceptance: spec derivation failed: {problem[:500]}"
         return None
+
+    async def revise_requirement(self, view: AgentView, criterion_id: str, evidence: str,
+                                 reason: str, limits: CallLimits) -> dict[str, Any]:
+        """Re-examine one disputed REQ-* check against the specification.
+
+        Returns {"verdict": "keep"|"replace"|"error", "reason": ..., "suite": new suite or None}.
+        A replacement keeps the id, category and the rule under test; the old
+        version stays in ``self.revisions``. The game is never consulted.
+        """
+        acceptance = self._spec_acceptance
+        requirement_id = criterion_id.removeprefix("REQ-")
+        if (self._client is None or acceptance is None or self._generic is None or view.suite is None
+                or not criterion_id.startswith("REQ-")
+                or all(r.id != requirement_id for r in acceptance.requirements)):
+            return {"verdict": "error", "reason": f"{criterion_id} is not a revisable spec-derived check",
+                    "suite": None}
+        try:
+            reply = await self._client.generate(
+                system_prompt=SYSTEM_PROMPT,
+                user_prompt=build_revision_prompt(view.spec_text, acceptance, requirement_id,
+                                                  evidence, reason),
+                timeout_seconds=limits.timeout_seconds,
+            )
+            verdict, why, replacement = parse_revision(reply, acceptance, requirement_id, view.spec_text)
+        except Exception as exc:  # noqa: BLE001 - one attempt; the controller decides what follows
+            verdict, why, replacement = "error", f"{type(exc).__name__}: {_field_error_text(exc)[:300]}", None
+        old = next(r for r in acceptance.requirements if r.id == requirement_id)
+        record = {"criterion_id": criterion_id, "verdict": verdict, "reason": why,
+                  "dispute": reason[:600], "old": old.model_dump(exclude_none=True)}
+        suite = None
+        if replacement is not None:
+            record["new"] = replacement.model_dump(exclude_none=True)
+            self._spec_acceptance = acceptance.model_copy(update={"requirements": [
+                replacement if r.id == requirement_id else r for r in acceptance.requirements]})
+            suite = AcceptanceSuite(
+                version=f"{view.suite.version}-rev{len(self.revisions) + 1}",
+                criteria=self._generic.criteria + criteria_from(self._spec_acceptance)
+                + (self._note_criterion(),),
+            )
+        self.revisions.append(record)
+        return {"verdict": verdict, "reason": why, "suite": suite, "record": record}
 
     def _note_criterion(self) -> Criterion:
         # Informational and non-mandatory: records in the trace how the suite

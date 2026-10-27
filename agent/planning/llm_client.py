@@ -87,8 +87,15 @@ class LiteLLMClient:
         if self.json_mode:
             request["response_format"] = {"type": "json_object"}
             request["drop_params"] = True
+        extra_body: dict[str, Any] = {}
         if self.reasoning_max_tokens:
-            request["extra_body"] = {"reasoning": {"max_tokens": self.reasoning_max_tokens}}
+            extra_body["reasoning"] = {"max_tokens": self.reasoning_max_tokens}
+        if self.model.startswith("openrouter/"):
+            # OpenRouter reports the billed cost itself; LiteLLM has no price for new
+            # models such as Kimi K3 (the 2026-10-27 runs logged cost_usd null).
+            extra_body["usage"] = {"include": True}
+        if extra_body:
+            request["extra_body"] = extra_body
 
         started = time.monotonic()
         try:
@@ -125,7 +132,25 @@ class LiteLLMClient:
                 cost = None
             if cost == 0.0 and (prompt_tokens or completion_tokens):
                 cost = None  # LiteLLM returns 0 for models it has no price for
+            if cost is None:
+                cost = _provider_cost(usage)
         self.usage.record(role=self.role, model=self.model, ok=ok,
                           latency_seconds=round(time.monotonic() - started, 3),
                           prompt_tokens=prompt_tokens, completion_tokens=completion_tokens,
                           cost_usd=cost, error=error)
+
+
+def _provider_cost(usage: Any) -> float | None:
+    """Cost the provider reported in the usage block (OpenRouter: usage.cost, in USD)."""
+    if usage is None:
+        return None
+    value = usage.get("cost") if isinstance(usage, dict) else getattr(usage, "cost", None)
+    if value is None:
+        extra = getattr(usage, "model_extra", None) or {}
+        value = extra.get("cost") if isinstance(extra, dict) else None
+    try:
+        cost = float(value)
+    except (TypeError, ValueError):
+        return None
+    return cost if cost >= 0 else None
+

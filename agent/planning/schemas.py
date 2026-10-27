@@ -57,9 +57,16 @@ class RevisePlanOutput(StrictModel):
     reason: str = Field(min_length=1)
 
 
+class DisputeCheckOutput(StrictModel):
+    decision: Literal["dispute_check"]
+    criterion_id: str = Field(min_length=1, max_length=60)
+    reason: str = Field(min_length=10, max_length=1500)
+
+
 DecisionOutput = Annotated[
     ToolActionOutput
     | RequestVerificationOutput
-    | RevisePlanOutput,
+    | RevisePlanOutput
+    | DisputeCheckOutput,
     Field(discriminator="decision"),
 ]

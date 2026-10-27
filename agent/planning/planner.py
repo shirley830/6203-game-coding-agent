@@ -4,6 +4,7 @@ from pathlib import PurePosixPath
 from agent.state import (
     AgentView,
     CallLimits,
+    DisputeCheck,
     Plan,
     RequestVerification,
     RevisePlan,
@@ -101,7 +102,7 @@ class LLMPlanner:
         self,
         view: AgentView,
         limits: CallLimits,
-    ) -> ToolAction | RequestVerification | RevisePlan:
+    ) -> ToolAction | RequestVerification | RevisePlan | DisputeCheck:
         if view.plan is None:
             return RevisePlan(
                 reason="No development plan exists"

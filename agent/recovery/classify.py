@@ -13,6 +13,7 @@ class ErrorClass(str, Enum):
     EXECUTION = "execution"
     VERIFICATION = "verification"
     VERIFIER_DEFECT = "verifier_defect"
+    TEST_CONFLICT = "test_conflict"
     TRANSIENT_MODULE = "transient_module"
     MALFORMED_PROPOSAL = "malformed_proposal"
     MODULE = "module"
@@ -69,6 +70,13 @@ def classify_failure(failure: FailureRecord) -> ErrorClass:
             and failure.operation_key == "verifier.next_check"
             and failure.action is None):
         return ErrorClass.VERIFIER_DEFECT
+    # Member 1: a failed spec-derived check is disputed (planner dispute_check, or
+    # the same failure after a game change). Only the controller emits this,
+    # without a tool action, from a decision or a verification report.
+    if (code == "test_conflict" and failure.action is None and not failure.side_effects_unknown
+            and failure.operation_key in {"planner.next_decision", "verifier.next_check"}
+            and failure.phase.value in {"deciding", "verifying"}):
+        return ErrorClass.TEST_CONFLICT
     if failure.side_effects_unknown or code in UNCERTAIN_CODES:
         return ErrorClass.UNCERTAIN
     # Explicit provenance only: game output may contain the same exception names.

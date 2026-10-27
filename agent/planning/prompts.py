@@ -266,6 +266,13 @@ Plan revision:
   "reason": "Why the existing plan must change"
 }}
 
+Check dispute (only after a verification failure, see the rules):
+{{
+  "decision": "dispute_check",
+  "criterion_id": "REQ-R1",
+  "reason": "Which rule of the specification the check contradicts, with the evidence"
+}}
+
 Allowed tool kinds and arguments:
 - inspect_workspace: {{}}
 - read_file: {{"path": "..."}}
@@ -305,6 +312,14 @@ Rules:
   scenario step and the state after it) and the page errors above, fix the real
   defect in the game logic, then request verification again. Never add
   behaviour the specification does not ask for to satisfy a check.
+- If a failed REQ-* check contradicts the specification itself (its setup or
+  expectation cannot hold for a correct game, for example it expects the game
+  to keep running after an input that the specification's own rules turn into
+  a win), do not bend the game to satisfy it: return dispute_check with that
+  criterion_id and quote the specification rule and the observed state. The
+  check is then re-derived once and the game is verified again unchanged.
+  Dispute only checks that failed; never dispute a check just because the game
+  is hard to fix, and fix real game defects instead.
 - Never return success, completed, or direct controller state changes.
 - After each substantial fix, request verification again to get fresh evidence
   instead of rewriting the same file repeatedly.
