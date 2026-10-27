@@ -13,6 +13,8 @@ falls back to the generic suite: verification never depends on this succeeding.
 Fewer than 3 valid requirements also falls back to the generic suite, plus an
 informational incomplete-acceptance result that is reported but does not block
 the gate. Assertions that use undefined names are dropped before freezing.
+Canvas clicks are dropped only when the specification explicitly requires the
+keyboard and does not describe pointer input.
 """
 
 from __future__ import annotations
@@ -115,6 +117,18 @@ class Contract(_Strict):
 
 MIN_REQUIREMENTS = 3
 _MOUSE_WORDS = re.compile(r"\b(mouse|click|clicks|clicking|tap|taps|pointer|touch|drag)\b", re.I)
+# A denial ("no mouse", "没有鼠标") is not a request for pointer input.
+_NEGATED_POINTER = re.compile(
+    r"\b(?:no|without|not)\s+(?:a\s+|any\s+)?(?:mouse|clicks?|clicking|taps?|pointer|touch|drag)\b|"
+    r"没有鼠标|不使用鼠标|不用鼠标|无鼠标|没有指针",
+    re.I,
+)
+# Explicit keyboard control. Absence of pointer words is not enough on its own.
+_KEYBOARD_EXPLICIT = re.compile(
+    r"keyboard[-\s]?only|only\s+(?:the\s+)?keyboard|\bkeyboard\b|\barrow\s+keys?\b|\bwasd\b|"
+    r"只能(?:使用|用)?键盘|仅(?:限|使用|用)?键盘|只(?:能|用|使用)键盘|用键盘|键盘操作",
+    re.I,
+)
 
 
 class InsufficientRequirements(ValueError):
@@ -128,6 +142,30 @@ class InsufficientRequirements(ValueError):
         self.kept = kept
         self.notes = list(notes)
         super().__init__(f"only {kept} valid requirements; " + "; ".join(notes)[:400])
+
+
+def _field_error_text(exc: BaseException) -> str:
+    """Field paths and messages, not the bare ``1 validation error`` summary."""
+    if isinstance(exc, InsufficientRequirements):
+        return "; ".join(exc.notes)[:500]
+    errors = getattr(exc, "errors", None)
+    if callable(errors):
+        parts: list[str] = []
+        for err in errors():
+            if not isinstance(err, dict):
+                continue
+            loc = ".".join(str(part) for part in err.get("loc", ())
+                           if str(part) not in {"__root__"})
+            msg = str(err.get("msg", "")).strip()
+            if loc and msg:
+                parts.append(f"{loc}: {msg}")
+            elif msg:
+                parts.append(msg)
+        if parts:
+            return "; ".join(parts)[:500]
+    lines = [line.strip() for line in str(exc).splitlines() if line.strip()]
+    useful = [line for line in lines if not re.match(r"^\d+ validation errors?\b", line, re.I)]
+    return " ".join(useful or lines)[:500]
 
 
 class SpecAcceptance(_Strict):
@@ -295,13 +333,26 @@ def _unbound_names(requirement: Requirement) -> list[str]:
     return names
 
 
+def _keyboard_only_without_pointer(spec_text: str | None) -> bool:
+    """True only when the task says keyboard and never describes pointer input.
+
+    A flip-card line such as "可以翻开两张" does not name a pointer device and
+    does not name the keyboard, so its ``click_cell`` steps stay. Canvas clicks
+    are removed only for an explicit keyboard task with no mouse, click, tap,
+    pointer, touch, or drag.
+    """
+    if not spec_text or not _KEYBOARD_EXPLICIT.search(spec_text):
+        return False
+    return _MOUSE_WORDS.search(_NEGATED_POINTER.sub(" ", spec_text)) is None
+
+
 def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAcceptance:
     """Validate each requirement on its own and keep the valid ones.
 
     One malformed requirement must not discard the whole suite. A requirement is
     dropped (with a recorded reason) when it is invalid, calls an undeclared
-    hook, or uses canvas clicks although the specification never mentions a
-    mouse: a test a correct game cannot pass would make the agent loop.
+    hook, or uses canvas clicks in a specification that explicitly requires the
+    keyboard and does not describe pointer input.
     """
     from agent.planning.parser import extract_json_object
 
@@ -310,7 +361,7 @@ def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAccep
         raise ValueError("acceptance document must be a JSON object")
     contract = Contract.model_validate(document.get("state_contract"))
     hooks = set(contract.test_hooks)
-    mouse_game = spec_text is None or bool(_MOUSE_WORDS.search(spec_text))
+    keyboard_only = _keyboard_only_without_pointer(spec_text)
     kept: list[Requirement] = []
     notes: list[str] = []
     seen: set[str] = set()
@@ -319,14 +370,14 @@ def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAccep
         try:
             requirement = Requirement.model_validate(_normalize_hook_calls(raw, hooks))
         except Exception as exc:  # noqa: BLE001 - drop just this requirement
-            notes.append(f"dropped {label}: invalid ({str(exc).splitlines()[0][:120]})")
+            notes.append(f"dropped {label}: invalid ({_field_error_text(exc)[:240]})")
             continue
         undeclared = {step.call for step in requirement.steps if step.call and step.call not in hooks}
         if undeclared:
             notes.append(f"dropped {label}: undeclared hooks {sorted(undeclared)}")
             continue
-        if not mouse_game and any(step.click_at or step.click_cell for step in requirement.steps):
-            notes.append(f"dropped {label}: canvas clicks in a specification without mouse input")
+        if keyboard_only and any(step.click_at or step.click_cell for step in requirement.steps):
+            notes.append(f"dropped {label}: canvas clicks in a keyboard-only specification without mouse input")
             continue
         unbound = _unbound_names(requirement)
         if unbound:

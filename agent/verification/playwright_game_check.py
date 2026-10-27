@@ -15,8 +15,10 @@ Exit codes:
 
 Member 5 (recovery): a requirement with status "unknown" and detail containing
 ``test_script_error`` is a broken assertion script (a bare name such as
-``before`` was used instead of ``s`` / ``saved.*``). Do not REPAIR the game for
-that result. It is not a game FAIL, and it is not a game PASS.
+``before`` was used instead of ``s`` / ``saved.*``, or the clicks and the
+``cards[i].matched === true`` expectations cannot be true of the same deck).
+Do not REPAIR the game for that result. It is not a game FAIL, and it is not
+a game PASS.
 """
 
 from __future__ import annotations
@@ -732,6 +734,126 @@ def _describe_step(step: dict[str, Any]) -> str:
     return json.dumps(step, ensure_ascii=False)[:160]
 
 
+# cards[i].matched === true. `!==` and `=== false` do not match (they use a different operator).
+_MATCHED_TRUE = re.compile(r"cards\[(\d+)\]\.matched\s*===\s*true\b")
+
+
+def _positive_int(value: Any) -> int | None:
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return None
+    if isinstance(value, float) and not value.is_integer():
+        return None
+    number = int(value)
+    return number if number > 0 else None
+
+
+def _grid_cols(state: Any) -> int | None:
+    """``s.grid.cols`` from the reloaded page, before any scenario step runs."""
+    if not isinstance(state, dict):
+        return None
+    grid = state.get("grid")
+    if not isinstance(grid, dict):
+        return None
+    return _positive_int(grid.get("cols"))
+
+
+def _deck_from_steps(steps: list[Any]) -> list[Any] | None:
+    """A call whose args is one array is the deck that call installs."""
+    deck = None
+    for step in steps:
+        if not isinstance(step, dict) or "call" not in step:
+            continue
+        args = step.get("args")
+        if isinstance(args, list) and len(args) == 1 and isinstance(args[0], list):
+            deck = args[0]
+    return deck
+
+
+def _click_cells(steps: list[Any]) -> list[tuple[int, int]]:
+    clicks: list[tuple[int, int]] = []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        cell = step.get("click_cell")
+        if (isinstance(cell, list) and len(cell) == 2
+                and all(isinstance(value, int) and not isinstance(value, bool) and value >= 0
+                        for value in cell)):
+            clicks.append((cell[0], cell[1]))
+    return clicks
+
+
+def _matched_true_indices(steps: list[Any]) -> list[int]:
+    found: list[int] = []
+    for step in steps:
+        if not isinstance(step, dict):
+            continue
+        expr = step.get("expect")
+        if isinstance(expr, str):
+            found.extend(int(index) for index in _MATCHED_TRUE.findall(expr))
+    return found
+
+
+def _click_indices(clicks: list[tuple[int, int]], cols: int, deck_len: int) -> list[int] | None:
+    indices: list[int] = []
+    for col, row in clicks:
+        index = row * cols + col
+        if index >= deck_len:
+            return None
+        indices.append(index)
+    return indices
+
+
+def _unique_cols(clicks: list[tuple[int, int]], matched: set[int], deck_len: int) -> int | None:
+    """The one positive cols that makes click indices exactly ``matched``, inside the deck.
+
+    Row 0 clicks do not depend on cols, so they never identify a single width.
+    """
+    if deck_len < 1 or all(row == 0 for _, row in clicks):
+        return None
+    found: list[int] = []
+    for cols in range(1, deck_len + 1):
+        indices = _click_indices(clicks, cols, deck_len)
+        if indices is not None and set(indices) == matched:
+            found.append(cols)
+            if len(found) > 1:
+                return None
+    return found[0] if len(found) == 1 else None
+
+
+def _contradictory_matched_cards(steps: list[Any], state: Any) -> str | None:
+    """Script error when the clicked cards cannot all be ``matched === true``.
+
+    Checked before the scenario steps run. The same pattern is not an error:
+    a later false expectation is still a game failure. No column count is
+    hardcoded; if ``s.grid.cols`` is missing and more than one width fits, the
+    scenario is left to run.
+    """
+    if not isinstance(steps, list):
+        return None
+    deck = _deck_from_steps(steps)
+    clicks = _click_cells(steps)
+    matched = set(_matched_true_indices(steps))
+    if deck is None or len(clicks) < 2 or len(matched) < 2:
+        return None
+    cols = _grid_cols(state)
+    if cols is None:
+        cols = _unique_cols(clicks, matched, len(deck))
+    if cols is None:
+        return None
+    indices = _click_indices(clicks, cols, len(deck))
+    if indices is None or set(indices) != matched:
+        return None
+    patterns = [deck[index] for index in sorted(matched)]
+    if all(pattern == patterns[0] for pattern in patterns):
+        return None
+    shown = ", ".join(str(index) for index in sorted(matched))
+    preview = ", ".join(repr(pattern) for pattern in patterns)
+    if len(preview) > 120:
+        preview = preview[:117] + "..."
+    return (f"test_script_error: cards [{shown}] are required matched===true "
+            f"but deck patterns [{preview}] are not all the same")
+
+
 def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | None:
     """Run one scenario step. Returns an error message, or None on success."""
     if "key" in step:
@@ -827,7 +949,12 @@ def _run_spec_scenarios(page: Any, spec: dict[str, Any], evidence_dir: Path,
         try:
             page.reload(wait_until="domcontentloaded")
             page.wait_for_timeout(250)
-            if page.evaluate(_STATE_JS) is None:
+            state = page.evaluate(_STATE_JS)
+            # Before any step: a self-contradictory script is not a game failure.
+            script_error = _contradictory_matched_cards(scenario.get("steps") or [], state)
+            if script_error:
+                failure = script_error
+            elif state is None:
                 failure = "window.__gameState is not defined"
             for number, step in enumerate(scenario.get("steps", []), 1):
                 if failure or time.monotonic() > deadline:

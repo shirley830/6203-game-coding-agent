@@ -139,6 +139,12 @@ python -m unittest discover -s "member4_ZHOU SIHAN/tests" -v
 
 These tests mock tool results and **do not** require a real browser. Live harness rehearsal needs Playwright + Chromium as above.
 
+## Acceptance signals
+
+- A scenario that sets a deck, clicks at least two cells, and expects `cards[i].matched === true` for indices whose patterns are not all the same is a `test_script_error`. The harness status stays `unknown`, so `evaluate_criteria` stays UNKNOWN. The same pattern is still a normal game pass or fail. `!==` and `=== false` do not count. Column count comes from `s.grid.cols` when the reloaded page already has it, otherwise from the single width that lines the clicks up with those indices.
+- Canvas `click_cell` / `click_at` steps are dropped only when the specification explicitly requires keyboard input and does not describe pointer input (`mouse`, `click`, `tap`, `pointer`, `touch`, `drag`). A flip-card spec that says a player can turn two cards, and never says "mouse", keeps `click_cell`.
+- `prepare_acceptance` generates the acceptance JSON once more when the first reply is unusable. Field-level validation errors are kept in the acceptance note. If three valid requirements are still not available, the suite stays at incomplete acceptance (`C-ACCEPTANCE-INCOMPLETE`, reported, not a mandatory gate). Requirements are not deleted in order to report a full pass.
+
 ## Coordination notes
 
 | Partner | Need |

@@ -18,6 +18,7 @@ from agent.verification.evidence import EvidenceLedger, evaluate_criteria
 from agent.verification.playwright_game_check import (
     _EVAL_JS, _run_spec_scenarios, unbound_assertion_names,
 )
+from agent.verification.spec_criteria import parse_spec_acceptance
 
 LIMITS = CallLimits(30, 100, 100)
 CANVAS_SPEC = (
@@ -294,6 +295,232 @@ class BallDropWaitTests(unittest.TestCase):
         self.assertNotEqual(block["status"], "pass", block)
         self.assertIsNotNone(game.armed_at)
         self.assertLessEqual(game.elapsed - game.armed_at, 2500)
+
+
+DECK = [0, 1, 0, 1, 2, 2, 3, 3, 4, 4, 5, 5]
+
+
+def _memory_spec(clicks: list[list[int]], expect: str) -> dict:
+    return {
+        "contract": {
+            "state_fields": {"cards": "face values"},
+            "test_hooks": {"setDeck": "replace the deck"},
+        },
+        "scenarios": [{
+            "criterion_id": "REQ-MATCH",
+            "description": "Two flipped cards stay matched",
+            "steps": [
+                {"call": "setDeck", "args": [DECK]},
+                *[{"click_cell": cell} for cell in clicks],
+                {"expect": expect},
+            ],
+        }],
+    }
+
+
+class _MemoryPage:
+    """Page double. Step actions are recorded and are not required to succeed."""
+
+    def __init__(self, *, cols: int | None = None, expect_holds: bool = False) -> None:
+        self.expect_holds = expect_holds
+        self.actions: list[str] = []
+        self.mouse = self._Mouse(self.actions)
+        self.state: dict = {"cards": list(DECK)}
+        if cols is not None:
+            self.state["grid"] = {"cols": cols, "rows": 2}
+
+    class _Mouse:
+        def __init__(self, actions: list[str]) -> None:
+            self.actions = actions
+
+        def click(self, x: float, y: float) -> None:
+            self.actions.append("mouse")
+
+    def reload(self, **kwargs):
+        return None
+
+    def wait_for_timeout(self, ms: int) -> None:
+        return None
+
+    def screenshot(self, path: str) -> None:
+        return None
+
+    def evaluate(self, script, arg=None):
+        text = script if isinstance(script, str) else ""
+        if "JSON.parse" in text:
+            return json.loads(json.dumps(self.state))
+        if "Object.keys(window.__gameTest" in text:
+            return ["setDeck"]
+        if text.startswith("(fields)"):
+            return [name for name in arg if name not in self.state]
+        if "typeof window.__gameTest[fn]" in text:
+            self.actions.append("call-check")
+            return True
+        if "window.__gameTest[fn]" in text:
+            self.actions.append("call")
+            return None
+        if text.startswith("([col, row])"):
+            self.actions.append("click_cell")
+            return [1, 1]
+        if text == _EVAL_JS or "new Function" in text:
+            self.actions.append("expect")
+            return self.expect_holds
+        raise AssertionError("unexpected script " + text[:160])
+
+
+class MatchedCardScriptTests(unittest.TestCase):
+    def test_different_patterns_are_a_test_script_error(self):
+        page = _MemoryPage()
+        spec = _memory_spec(
+            [[0, 0], [0, 1]],
+            "s.cards[0].matched === true && s.cards[3].matched === true",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            _contract, blocks = _run_spec_scenarios(page, spec, Path(directory), 30.0)
+        block = blocks["REQ-MATCH"]
+        self.assertIn("test_script_error:", block["detail"])
+        self.assertEqual(block["status"], "unknown", block)
+        self.assertNotEqual(block["status"], "fail")
+        self.assertNotEqual(block["status"], "pass")
+        self.assertEqual(page.actions, [])
+
+        ledger = EvidenceLedger()
+        ledger.harness = {"checks": {}, "requirements": {"REQ-MATCH": block}, "page_errors": []}
+        ledger.tool_ops.append("tool:run_command:x")
+        result = evaluate_criteria((Criterion("REQ-MATCH", "match", "functional"),), ledger)[0]
+        self.assertEqual(result.status, CheckStatus.UNKNOWN)
+        self.assertIn("test_script_error:", result.detail)
+        self.assertNotEqual(result.status, CheckStatus.FAIL)
+        self.assertNotEqual(result.status, CheckStatus.PASS)
+
+    def test_same_pattern_is_not_a_test_script_error(self):
+        # [0,0] and [2,0] are both pattern 0. grid.cols is known, so the check
+        # compares those patterns and then lets a real miss fail as the game.
+        page = _MemoryPage(cols=4, expect_holds=False)
+        spec = _memory_spec(
+            [[0, 0], [2, 0]],
+            "s.cards[0].matched === true && s.cards[2].matched === true",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            _contract, blocks = _run_spec_scenarios(page, spec, Path(directory), 30.0)
+        block = blocks["REQ-MATCH"]
+        self.assertNotIn("test_script_error", block["detail"])
+        self.assertEqual(block["status"], "fail", block)
+        self.assertIn("expectation false", block["detail"])
+        self.assertIn("expect", page.actions)
+
+    def test_negated_match_assertions_do_not_count(self):
+        page = _MemoryPage(expect_holds=False)
+        spec = _memory_spec(
+            [[0, 0], [0, 1]],
+            "s.cards[0].matched !== true && s.cards[3].matched === false",
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            _contract, blocks = _run_spec_scenarios(page, spec, Path(directory), 30.0)
+        block = blocks["REQ-MATCH"]
+        self.assertNotIn("test_script_error", block["detail"])
+        self.assertEqual(block["status"], "fail", block)
+
+
+def _score_requirement(req_id: str, description: str) -> dict:
+    return {
+        "id": req_id, "category": "functional", "description": description,
+        "steps": [{"key": "ArrowRight"}, {"expect": "s.score >= 0"}],
+    }
+
+
+def _acceptance_document(*extra: dict) -> dict:
+    requirements = [
+        _score_requirement("R1", "score stays non-negative"),
+        _score_requirement("R2", "score stays numeric"),
+        _score_requirement("R3", "score is still present"),
+    ]
+    requirements.extend(extra)
+    return {
+        "state_contract": {"state_fields": {"score": "number"}, "test_hooks": {}},
+        "requirements": requirements,
+    }
+
+
+class CanvasClickFilterTests(unittest.TestCase):
+    def test_flip_spec_without_pointer_words_keeps_click_cell(self):
+        document = _acceptance_document({
+            "id": "FLIP", "category": "interaction",
+            "description": "Two cards can be turned face up",
+            "steps": [{"click_cell": [0, 0]}, {"click_cell": [1, 0]},
+                      {"expect": "s.cards[0].faceUp === true"}],
+        })
+        spec = "记忆翻牌。玩家可以翻开两张牌，点击牌面即可。图案相同就保持匹配。"
+        acceptance = parse_spec_acceptance(json.dumps(document), spec)
+        self.assertIn("FLIP", [item.id for item in acceptance.requirements])
+        self.assertFalse(any("FLIP" in note and "canvas clicks" in note for note in acceptance.notes))
+
+    def test_keyboard_only_without_pointer_drops_canvas_clicks(self):
+        document = _acceptance_document({
+            "id": "FLIP", "category": "interaction",
+            "description": "Clicking the canvas moves the piece",
+            "steps": [{"click_cell": [0, 0]}, {"expect": "s.score === 0"}],
+        })
+        acceptance = parse_spec_acceptance(
+            json.dumps(document), "Keyboard-only. No mouse. Move with arrow keys.")
+        self.assertNotIn("FLIP", [item.id for item in acceptance.requirements])
+        self.assertTrue(any("FLIP" in note and "canvas clicks" in note for note in acceptance.notes))
+
+
+class _ScriptedReply:
+    def __init__(self, replies: list[str]) -> None:
+        self.replies = list(replies)
+        self.calls = 0
+        self.prompts: list[str] = []
+
+    async def generate(self, *, system_prompt, user_prompt, timeout_seconds):
+        self.calls += 1
+        self.prompts.append(user_prompt)
+        if not self.replies:
+            raise AssertionError("generate called too many times")
+        return self.replies.pop(0)
+
+
+class IncompleteAcceptanceTests(unittest.IsolatedAsyncioTestCase):
+    def test_validation_note_names_the_field(self):
+        document = _acceptance_document({
+            "id": "Rbad", "category": "functional", "description": "broken cell click",
+            "steps": [{"click_cell": [1]}, {"expect": "s.score === 1"}],
+        })
+        acceptance = parse_spec_acceptance(json.dumps(document), "flip two cards")
+        note = next(item for item in acceptance.notes if "Rbad" in item)
+        self.assertIn("click_cell", note)
+        self.assertNotIn("1 validation error", note)
+
+    async def test_parse_failure_retries_once_and_stays_incomplete(self):
+        bad = json.dumps({"state_contract": {"test_hooks": {}}, "requirements": []})
+        client = _ScriptedReply([bad, bad])
+        verifier = GameVerifier(client=client)
+        suite = await verifier.prepare_acceptance(_view(), LIMITS)
+        self.assertEqual(client.calls, 2)
+        self.assertIn("state_fields", verifier.acceptance_note)
+        self.assertIn("state_fields", client.prompts[1])
+        self.assertNotIn("1 validation error", verifier.acceptance_note)
+        incomplete = next(c for c in suite.criteria if c.criterion_id == "C-ACCEPTANCE-INCOMPLETE")
+        self.assertFalse(incomplete.mandatory)
+        self.assertIn("incomplete acceptance", incomplete.description.lower())
+        self.assertFalse(any(c.criterion_id.startswith("REQ-") for c in suite.criteria))
+
+    async def test_one_retry_can_recover_a_valid_suite(self):
+        bad = json.dumps({"state_contract": {"test_hooks": {}}, "requirements": []})
+        client = _ScriptedReply([bad, json.dumps(_acceptance_document())])
+        verifier = GameVerifier(client=client)
+        suite = await verifier.prepare_acceptance(_view(), LIMITS)
+        self.assertEqual(client.calls, 2)
+        self.assertIn("REQ-R1", [c.criterion_id for c in suite.criteria])
+        self.assertFalse(any(c.criterion_id == "C-ACCEPTANCE-INCOMPLETE" for c in suite.criteria))
+
+    async def test_valid_reply_is_not_generated_twice(self):
+        client = _ScriptedReply([json.dumps(_acceptance_document())])
+        verifier = GameVerifier(client=client)
+        suite = await verifier.prepare_acceptance(_view(), LIMITS)
+        self.assertEqual(client.calls, 1)
+        self.assertIn("REQ-R1", [c.criterion_id for c in suite.criteria])
 
 
 if __name__ == "__main__":
