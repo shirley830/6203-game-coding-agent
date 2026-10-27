@@ -301,6 +301,23 @@ decision prompt shows the remaining work time (with under 150 s left: smallest p
 - Both replacements keep the expectations and change only the mine layout (reviewed by hand). The tester still writes
   flood-winning setups despite the prompt rule; the bounded re-derivation is what keeps these runs passing.
 
+## 5h. Real-time check (2026-10-27, `a3fc8fb`)
+
+Real-time games keep moving or counting while a check runs, which made them the weakest case in earlier rounds.
+Same agent, Kimi K3, 7-minute limit, fresh folders.
+
+| Specification | Result | Specific rules | Time | Recoveries | Disputed check | Cost |
+|---|---|---|---|---|---|---|
+| Grid snake | fully accepted | 9/9 | 179 s | 3 | REQ-R3 replaced (snake moved during the setup, saved length out of date) | $0.17 |
+| Dodge (`dev_02_dodge`) | fully accepted | 7/7 | 188 s | 5 | REQ-R4 replaced (new obstacles changed which one is last) | $0.17 |
+| Collection (`dev_01_collect`) | fully accepted | 9/9 | 82 s | 0 | none | $0.07 |
+
+- 3 of 3 fully accepted; $0.42 in total. Every first verification started without a model call; no model call took
+  more than 60 s.
+- Reviewed by hand: the snake replacement keeps the expectations (score 1, length + 1) and only saves the length after
+  the setup. The dodge replacement still requires obstacles to fall, but checks that some obstacle passes the earlier
+  lowest position instead of tracking the last one, which is slightly looser.
+
 ## 6. Limitations of this evaluation
 
 * One run per cell; model output is nondeterministic, so single failures or

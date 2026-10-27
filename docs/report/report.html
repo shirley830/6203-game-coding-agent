@@ -84,7 +84,7 @@ specification <i>before</i> any code exists and checked by actually playing the 
 
 <div class="kpis">
   <div class="kpi"><b>9 / 10</b><span>runs fully accepted in the latest Kimi K3 retest (course model, 6 specifications)</span></div>
-  <div class="kpi"><b>66</b><span>autonomous runs with five real models</span></div>
+  <div class="kpi"><b>69</b><span>autonomous runs with five real models</span></div>
   <div class="kpi"><b>319</b><span>automated tests, all passing</span></div>
   <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
 </div>
@@ -308,14 +308,14 @@ disputed checks and their bounded re-derivation, and the time budget of a decisi
 code.</p>
 
 <h3>7.2 Live runs with real models</h3>
-<p>We ran the agent autonomously 66 times with five models: 48 runs on nine specifications during development
+<p>We ran the agent autonomously 69 times with five models: 48 runs on nine specifications during development
 (collection, dodge, memory cards, maze, terminal hangman, light switches, turn-based keys, grid snake and minesweeper)
-and 18 Kimi K3 runs on six specifications (Member 5's four, which include our minesweeper, and two never seen before), changing the
+21 Kimi K3 runs: 18 on six specifications (Member 5's four, which include our minesweeper, and two never seen before) plus three real-time development games, changing the
 agent between rounds based on what the traces showed.</p>
 <table>
   <tr><th>Model</th><th>Runs</th><th>Succeeded</th><th>Observations</th></tr>
-  <tr><td><b>Kimi K3 (course model)</b></td><td>27</td><td>22</td><td>Three rehearsal rounds, two retests of the shared
-  acceptance fixes (9 of 10 fully accepted) and a speed check (4 of 4) with the 7-minute limit (Section 7.4)</td></tr>
+  <tr><td><b>Kimi K3 (course model)</b></td><td>30</td><td>25</td><td>Three rehearsal rounds, two retests of the shared
+  acceptance fixes (9 of 10 fully accepted), a speed check (4 of 4) and a real-time check (3 of 3) with the 7-minute limit (Section 7.4)</td></tr>
   <tr><td>GLM-5.3 (course model until October 2026)</td><td>16</td><td>14</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
   <tr><td>Claude Sonnet 5.5</td><td>11</td><td>11</td><td>Valid scenarios and spec-faithful games in every run</td></tr>
   <tr><td>GPT-4.1-mini</td><td>8</td><td>5</td><td>Missed rule details; some generated scenarios could not be passed by a correct game</td></tr>
@@ -420,6 +420,19 @@ specifications, again with the 7-minute limit:</p>
 without a model call, and no step decision took more than 60 s (planning once took 111 s). The two replaced minesweeper checks keep their
 expectations and change only the mine layout. They also show that the tester still writes such setups despite the
 prompt rule, so the bounded re-derivation, not the prompt, is what keeps these runs from failing.</p>
+<p><b>Real-time check.</b> Real-time games had been the weakest case (Section 8), so we ran three of them with the same
+agent and limit: grid snake, dodge and collection, which keep moving or counting while a check runs.</p>
+<table>
+  <tr><th>Specification</th><th>Result</th><th>Specific rules</th><th>Time</th><th>Recoveries</th><th>Disputed check</th><th>Cost</th></tr>
+  <tr><td>Grid snake</td><td>fully accepted</td><td>9/9</td><td>179&nbsp;s</td><td>3</td><td>REQ-R3 replaced: the snake kept moving during the setup, so the saved length was out of date</td><td>US$0.17</td></tr>
+  <tr><td>Dodge</td><td>fully accepted</td><td>7/7</td><td>188&nbsp;s</td><td>5</td><td>REQ-R4 replaced: new obstacles changed which one was last in the list</td><td>US$0.17</td></tr>
+  <tr><td>Collection</td><td>fully accepted</td><td>9/9</td><td>82&nbsp;s</td><td>0</td><td>none</td><td>US$0.07</td></tr>
+</table>
+<p>All three were fully accepted in under 190 s, for US$0.42 in total; every first verification again started without
+a model call, and no model call took more than 60 s. Both disputes came from the game loop running during a check.
+Reviewed by hand, the snake replacement keeps its expectations (one point and one more segment) and only saves the
+length after the setup; the dodge replacement still requires obstacles to move down, but checks that some obstacle
+passes the lowest earlier position instead of following one obstacle, which is slightly looser.</p>
 
 <h3>7.5 Live run at the presentation</h3>
 <div class="pending">
@@ -438,9 +451,11 @@ prompt rule, so the bounded re-derivation, not the prompt, is what keeps these r
   <li><b>Model speed decides many runs.</b> Waiting for the model is most of a run, and its speed varies: the same
   minesweeper specification took 368 s, ran out of time, and took 165 s in three Kimi K3 rounds, and in the last retest
   a single decision took 204 s of a 400 s run; requesting the first verification without a model call and showing
-  the time left brought the next four runs to 76-360 s.</li>
+  the time left brought the next seven runs to 76-360 s.</li>
   <li><b>Real-time games are the weakest case.</b> Scenarios assert on wall-clock behaviour, so timers and continuous
-  scoring needed up to eight repair cycles, and the dodge and snake games exhausted their budget in several rehearsals.</li>
+  scoring needed up to eight repair cycles, and the dodge and snake games exhausted their budget in several rehearsals.
+  In the latest check all three passed, but two of their checks had to be re-derived because the game loop changed the
+  state during the check.</li>
   <li><b>Non-browser games are verified less deeply.</b> Terminal games are played through standard input, but spec-derived
   scenarios apply to browser games only, and pygame input is checked statically.</li>
   <li><b>Evaluation key and demo machine.</b> All runs used team keys for the same models and provider; the evaluation
@@ -487,7 +502,7 @@ that the agent package ships no game files.</p>
     <li><b>Verification and model support:</b> spec-derived acceptance scenarios and the state contract, process-mode checks for terminal and pygame games, the GLM-5.3 reasoning cap, and empty-reply handling.</li>
     <li><b>Kimi K3:</b> switched the agent to the new course model and shortened repair cycles (patch-based repairs, current file texts in decisions, a lower reasoning cap for steps).</li>
     <li><b>Acceptance integration:</b> three result levels (launch, specific rules, delivery), the structured <code>test_script_error</code> signal, disputed checks with a bounded re-derivation, the out-of-credit stop, provider-reported cost, and the first verification without a model call.</li>
-    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, two retests of the shared acceptance fixes, and a speed check.</li>
+    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, two retests of the shared acceptance fixes, a speed check and a real-time check.</li>
     <li><b>Integration:</b> merged the six members' branches into <code>main</code>, built the production dependency factory, fixed cross-module defects, and reviewed and merged the final handoff.</li>
     <li><b>Documentation:</b> README and illustrations, testing guides, and this report.</li>
     <li><b>Presentation:</b> prepared the presentation slides.</li>
