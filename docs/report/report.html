@@ -83,9 +83,9 @@ mandatory acceptance criterion passes on the current code, with evidence, and th
 specification <i>before</i> any code exists and checked by actually playing the game in a headless browser.</p>
 
 <div class="kpis">
-  <div class="kpi"><b>3 / 3</b><span>specifications passed in the final Kimi K3 rehearsal (course model)</span></div>
-  <div class="kpi"><b>48</b><span>autonomous runs with five real models</span></div>
-  <div class="kpi"><b>274</b><span>automated tests, all passing</span></div>
+  <div class="kpi"><b>9 / 10</b><span>runs fully accepted in the latest Kimi K3 retest (course model, 6 specifications)</span></div>
+  <div class="kpi"><b>62</b><span>autonomous runs with five real models</span></div>
+  <div class="kpi"><b>314</b><span>automated tests, all passing</span></div>
   <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
 </div>
 
@@ -196,10 +196,21 @@ collectible next to the player). A scenario is a list of real inputs (key presse
 grid cells) and JavaScript assertions over the state. These criteria are frozen with the generic launch, functional,
 interaction and technical criteria; neither planning nor repair can change them.</p>
 <p>Model-written tests can be wrong, so each requirement is validated on its own: invalid steps, undeclared hooks,
-canvas clicks in a specification without mouse input, or assertions that use undefined names (Member 4) drop that
-requirement only. If the call fails, the verifier falls back to the generic criteria and records why; if fewer than
-three requirements survive, the generic criteria decide the run and an informational
-<code>C-ACCEPTANCE-INCOMPLETE</code> result keeps the gap visible in the report.</p>
+canvas clicks in a specification that explicitly requires the keyboard, or assertions that use undefined names
+(Member 4) drop that requirement only. The tester prompt also requires that a setup must not end the game before the
+expectation unless the ending is what is tested. If the reply is unusable, the verifier asks once more with the field
+errors; if fewer than three requirements survive, the generic criteria decide the run and an informational
+<code>C-ACCEPTANCE-INCOMPLETE</code> result keeps the gap visible. Such a run is never reported as full success
+(Section 4.3).</p>
+<p><b>Disputed checks.</b> A check can also look valid and still contradict the specification. In a Kimi K3 retest a
+minesweeper check placed the mines so that the first click flood-revealed the whole board and won, but expected the
+game to be still playing; the correct game failed it twice and the run spent its budget "repairing" it. A check is now
+disputed (<code>test_conflict</code>) when the planner returns <code>dispute_check</code> with the specification rule as
+evidence, or when the same check fails in exactly the same way before and after a game change. The acceptance model
+re-examines that one check: <i>keep</i> sends the planner back to fixing the game; <i>replace</i> substitutes a check of
+the same rule (same id and category, at least one expectation), and the unchanged game is verified again. Each check
+is re-examined at most once and at most two per run, the old and new versions are kept in the event log, and the
+original acceptance and specification are never edited.</p>
 
 <h3>4.2 The game is actually played</h3>
 <p>The harness starts the documented launch command, loads the page in headless Chromium and records JavaScript errors.
@@ -215,6 +226,11 @@ running, react to typed moves (pygame input can only be checked statically and i
 specification digest, workspace revision and acceptance-suite version are current, every criterion has a result,
 every mandatory result is PASS with non-empty evidence, at least one verification tool operation succeeded in this
 cycle, a launch command exists, and the trace is durably preserved.</p>
+<p>The final output separates three <b>result levels</b> (Member 1), also stored in <code>summary.json</code> and
+<code>run_report.md</code>: launch (the page loaded), specific rules (how many spec-derived checks passed, and which
+were re-derived after a dispute) and delivery (<code>game/</code> with README and launch command). Only when all
+three are complete is the run shown as <i>fully accepted</i>; a run that passed the generic checks alone is shown as
+<i>acceptance incomplete</i>. The levels do not change the outcome or the exit code.</p>
 
 <h3>4.4 Why this matters: evidence from live runs</h3>
 <table>
@@ -226,12 +242,20 @@ cycle, a launch command exists, and the trace is durably preserved.</p>
   <tr><td>When the harness could only press keys, the agent added keyboard controls and click-anywhere behaviour to a
   mouse-only memory game to make the probe pass.</td>
   <td>Mouse-aware scenarios and the fidelity rule removed this: later runs passed by real clicks with no extra controls.</td></tr>
+  <tr><td>A memory-card specification that says "turn over two cards" but never says "mouse" lost all its scenarios to
+  the mouse filter, and the run "succeeded" on generic checks with 0 specific rules.</td>
+  <td>The filter now drops clicks only in explicitly keyboard-only specifications; the same specification then passed
+  with 9/9 and 5/5 specific rules, and the result levels show such a gap instead of full success.</td></tr>
+  <tr><td>A minesweeper check whose setup made the first click win led the agent to cap the flood reveal at three cells
+  to satisfy it (a Member 5 retest).</td>
+  <td>With disputed checks the replacement placed the mines so that the flood stops before a win; the unchanged,
+  standard flood reveal then passed 9/9.</td></tr>
 </table>
 
 <!-- ============================== RECOVERY ============================== -->
 <h2><span class="n">5</span>How the agent recovers from failure</h2>
 <p>Every failure is recorded with its phase and category and goes to the recovery module, which classifies it and
-recommends one of four decisions. The controller enforces the decision and all limits; modules cannot reset counters.</p>
+recommends one of five decisions. The controller enforces the decision and all limits; modules cannot reset counters.</p>
 <table>
   <tr><th style="width:26%">Failure class</th><th style="width:16%">Decision</th><th>Reasoning</th></tr>
   <tr><td>Transient model error (timeout, connection, rate limit, 5xx)</td><td>RETRY</td><td>Proposal-only calls are safe to repeat; waits 5 s, 15 s, 45 s, 60 s before each retry, within the deadline</td></tr>
@@ -239,7 +263,9 @@ recommends one of four decisions. The controller enforces the decision and all l
   <tr><td>Command failed, file missing</td><td>REPAIR</td><td>Inspect output and fix; never replay the unchanged command</td></tr>
   <tr><td>Timeout or unknown side effects</td><td>REPAIR</td><td><b>Never retried blindly</b>; earlier verification is invalidated and the workspace re-inspected</td></tr>
   <tr><td>Failed verification</td><td>REPAIR, periodically REPLAN</td><td>The failing steps go to the planner; repeated failure rebuilds the plan</td></tr>
-  <tr><td>Permission, sandbox or credential error; process cleanup failure</td><td>ABORT</td><td>Retrying cannot help; preserve artifacts and finalize honestly</td></tr>
+  <tr><td>Broken test script (<code>test_script_error</code> on a mandatory check)</td><td>ABORT</td><td>The test, not the game, is at fault; the game is never edited to satisfy it</td></tr>
+  <tr><td>Disputed check (<code>test_conflict</code>)</td><td>REVISE_ACCEPTANCE</td><td>Re-examine that one check against the specification, then verify the unchanged game (Section 4.1)</td></tr>
+  <tr><td>Permission, sandbox or credential error; API key out of credit; process cleanup failure</td><td>ABORT</td><td>Retrying cannot help; preserve artifacts and finalize honestly with a clear reason</td></tr>
 </table>
 <p>Stopping conditions bound every run: total time (including a finalization reserve), steps, commands, retries per
 operation, global recovery attempts, and repeated no-progress cycles. Any stop still finalizes the trace and keeps
@@ -274,21 +300,22 @@ including <code>run_report.md</code> and every runtime output an action referenc
 <h2><span class="n">7</span>Evaluation</h2>
 
 <h3>7.1 Automated tests</h3>
-<p>274 tests (plus 58 subtests) cover the controller (36), configuration and model settings (12), planner (9),
-runtime and sandbox (23), verifier and harness (32, including real Playwright runs against fixture pages), recovery and
-evaluation (75), tracing and delivery audit (29), integration (39, including an offline end-to-end rehearsal with a
-scripted model and the real sandbox, browser, recovery and tracing), and the Member 5 hand-off (19: model probe, source
-snapshots and best-version restore, rehearsal archiving). A guard test ensures that the agent package contains no game
+<p>314 tests cover the controller, configuration and model settings, planner, runtime and sandbox, verifier and harness
+(including real Playwright runs against fixture pages), recovery and evaluation, tracing and delivery audit, integration
+(including an offline end-to-end rehearsal with a scripted model and the real sandbox, browser, recovery and tracing),
+the Member 5 hand-off, and the acceptance signals added after the Kimi K3 retests: result levels, broken test scripts,
+disputed checks and their bounded re-derivation. A guard test ensures that the agent package contains no game
 code.</p>
 
 <h3>7.2 Live runs with real models</h3>
-<p>We ran the agent autonomously 48 times on nine specifications (collection, dodge, memory cards, maze, terminal
-hangman, light switches, turn-based keys, and two written for the Kimi K3 rehearsals: grid snake and minesweeper) with
-five models, changing the agent between rounds based on what the traces showed.</p>
+<p>We ran the agent autonomously 62 times with five models: 48 runs on nine specifications during development
+(collection, dodge, memory cards, maze, terminal hangman, light switches, turn-based keys, grid snake and minesweeper)
+and 14 Kimi K3 runs on six specifications (Member 5's four, which include our minesweeper, and two never seen before), changing the
+agent between rounds based on what the traces showed.</p>
 <table>
   <tr><th>Model</th><th>Runs</th><th>Succeeded</th><th>Observations</th></tr>
-  <tr><td><b>Kimi K3 (course model)</b></td><td>9</td><td>6</td><td>Three rounds of three specifications with the
-  7-minute limit; after two repair-cycle fixes all three passed (Section 7.4)</td></tr>
+  <tr><td><b>Kimi K3 (course model)</b></td><td>23</td><td>18</td><td>Three rehearsal rounds, then two retests of the
+  shared acceptance fixes with the 7-minute limit; 9 of 10 runs fully accepted in the last one (Section 7.4)</td></tr>
   <tr><td>GLM-5.3 (course model until October 2026)</td><td>16</td><td>14</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
   <tr><td>Claude Sonnet 5.5</td><td>11</td><td>11</td><td>Valid scenarios and spec-faithful games in every run</td></tr>
   <tr><td>GPT-4.1-mini</td><td>8</td><td>5</td><td>Missed rule details; some generated scenarios could not be passed by a correct game</td></tr>
@@ -349,6 +376,33 @@ whole-file rewrites of 10 000-12 000 tokens (about 100 s each) and, after a fail
 patches, and model time fell to 141-290 s. Grid snake, a real-time game, had never passed within 7 minutes before
 round 2. Results vary with model speed from run to run, so these figures indicate the effect of each change rather than
 a success rate.</p>
+<p><b>Retest of the shared acceptance fixes.</b> Member 5 then ran four specifications of their own on the demo machine
+(detailed memory cards, minesweeper, detailed whack-a-mole, simple memory cards). Two problems were in the tests, not
+the games: the simple memory specification lost all its scenarios to the mouse filter, and the minesweeper and
+whack-a-mole checks allowed or demanded behaviour the specification forbids. After the fixes of Sections 4.1, 4.3 and
+5 we ran the four specifications twice each and two unseen ones (Lights Out and tic-tac-toe against the computer) once,
+all with the 7-minute limit:</p>
+<table>
+  <tr><th>Specification</th><th>Run</th><th>Result</th><th>Specific rules</th><th>Time</th><th>Recoveries</th><th>Disputed check</th><th>Cost</th></tr>
+  <tr><td rowspan="2">Detailed memory cards</td><td>1</td><td>fully accepted</td><td>9/9</td><td>213&nbsp;s</td><td>2</td><td>REQ-R7 replaced: clicked a row that does not exist</td><td>US$0.19</td></tr>
+  <tr><td>2</td><td>fully accepted</td><td>7/7</td><td>304&nbsp;s</td><td>2</td><td>REQ-R6 replaced: same coordinate error</td><td>US$0.34</td></tr>
+  <tr><td rowspan="2">Minesweeper</td><td>1</td><td>exhausted</td><td>7/10</td><td>400&nbsp;s</td><td>1</td><td>none; one 23 000-token rewrite took 204 s</td><td>US$0.48</td></tr>
+  <tr><td>2</td><td>fully accepted</td><td>9/9</td><td>280&nbsp;s</td><td>3</td><td>REQ-R3 replaced: setup flood-revealed the board and won</td><td>US$0.36</td></tr>
+  <tr><td rowspan="2">Detailed whack-a-mole</td><td>1</td><td>fully accepted</td><td>10/10</td><td>230&nbsp;s</td><td>1</td><td>none</td><td>US$0.28</td></tr>
+  <tr><td>2</td><td>fully accepted</td><td>10/10</td><td>262&nbsp;s</td><td>2</td><td>REQ-R3 replaced: expected no mole after the 300&nbsp;ms respawn</td><td>US$0.21</td></tr>
+  <tr><td rowspan="2">Simple memory cards</td><td>1</td><td>fully accepted</td><td>9/9</td><td>87&nbsp;s</td><td>0</td><td>none</td><td>US$0.22</td></tr>
+  <tr><td>2</td><td>fully accepted</td><td>5/5</td><td>246&nbsp;s</td><td>3</td><td>REQ-R1 kept: the game was at fault and was fixed</td><td>US$0.55</td></tr>
+  <tr><td>Lights Out (unseen)</td><td>1</td><td>fully accepted</td><td>8/8</td><td>102&nbsp;s</td><td>0</td><td>none</td><td>US$0.17</td></tr>
+  <tr><td>Tic-tac-toe (unseen)</td><td>1</td><td>fully accepted</td><td>9/9</td><td>59&nbsp;s</td><td>0</td><td>none</td><td>US$0.09</td></tr>
+</table>
+<p>Nine of ten runs were fully accepted, in 218 s on average, for US$2.89 in total. Each of the five disputes was
+reviewed by hand: the four replacements test the same rule with the same expectations and fix only an impossible
+coordinate, setup or timing, and the one <i>keep</i> was right, because the game did not reveal the clicked card. The
+generated games use a standard flood reveal and count a missed mole in the last second, the two violations found in
+the earlier retest. Four further runs and the end of one more stopped at once because the team key reached its spending
+limit (HTTP 402); they are excluded and were re-run with a new key, and the agent now reports this case as
+"out of credit". A retest earlier the same day, before disputed checks existed, fully accepted three of the four
+Member 5 specifications; its minesweeper run spent the whole budget on the flood-reveal check.</p>
 
 <h3>7.5 Live run at the presentation</h3>
 <div class="pending">
@@ -361,10 +415,12 @@ a success rate.</p>
 <h2><span class="n">8</span>Current limitations</h2>
 <ul>
   <li><b>Model-written tests can be wrong.</b> The scenarios come from the same model that writes the game. Filtering
-  removes known bad patterns, but a scenario that a correct game cannot pass still leads to repeated repairs until a budget
-  runs out. Stronger models write far fewer such tests.</li>
+  removes known bad patterns and a disputed check is re-examined once, but the re-examination is made by the same model,
+  and a wrong test that a game happens to pass is not detected at all. Disputes therefore stay bounded and recorded,
+  and every replacement must test the same rule.</li>
   <li><b>Model speed decides many runs.</b> Waiting for the model is most of a run, and its speed varies: the same
-  minesweeper specification took 368 s, ran out of time, and took 165 s in three Kimi K3 rounds.</li>
+  minesweeper specification took 368 s, ran out of time, and took 165 s in three Kimi K3 rounds, and in the last retest
+  a single 23 000-token rewrite took 204 s of a 400 s run.</li>
   <li><b>Real-time games are the weakest case.</b> Scenarios assert on wall-clock behaviour, so timers and continuous
   scoring needed up to eight repair cycles, and the dodge and snake games exhausted their budget in several rehearsals.</li>
   <li><b>Non-browser games are verified less deeply.</b> Terminal games are played through standard input, but spec-derived
@@ -372,8 +428,8 @@ a success rate.</p>
   <li><b>Evaluation key and demo machine.</b> All runs used team keys for the same models and provider; the evaluation
   key is issued before the presentation and checked with <code>--probe-model</code>, and the presentation machine still
   needs a full rehearsal.</li>
-  <li><b>Small evaluation.</b> Nine specifications and at most three Kimi K3 runs per specification; results are
-  indicative.</li>
+  <li><b>Small evaluation.</b> Fourteen specifications and at most three Kimi K3 runs per specification and agent
+  version; results are indicative.</li>
   <li><b>Platform.</b> The command sandbox requires macOS or Linux with bubblewrap; there is no resume after a hard
   interruption.</li>
 </ul>
@@ -412,7 +468,8 @@ that the agent package ships no game files.</p>
     <li><b>Hardening:</b> start-up self-check, <code>agent.env</code> with credential isolation, retry backoff, and configurable run limits.</li>
     <li><b>Verification and model support:</b> spec-derived acceptance scenarios and the state contract, process-mode checks for terminal and pygame games, the GLM-5.3 reasoning cap, and empty-reply handling.</li>
     <li><b>Kimi K3:</b> switched the agent to the new course model and shortened repair cycles (patch-based repairs, current file texts in decisions, a lower reasoning cap for steps).</li>
-    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, and three Kimi K3 rehearsal rounds.</li>
+    <li><b>Acceptance integration:</b> three result levels (launch, specific rules, delivery), the structured <code>test_script_error</code> signal, disputed checks with a bounded re-derivation, the out-of-credit stop, and provider-reported cost.</li>
+    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, and two retests of the shared acceptance fixes.</li>
     <li><b>Integration:</b> merged the six members' branches into <code>main</code>, built the production dependency factory, fixed cross-module defects, and reviewed and merged the final handoff.</li>
     <li><b>Documentation:</b> README and illustrations, testing guides, and this report.</li>
     <li><b>Presentation:</b> prepared the presentation slides.</li>
@@ -435,7 +492,7 @@ that the agent package ships no game files.</p>
   <ul>
     <li><b>Evidence and evaluation:</b> implemented the evidence ledger and criterion evaluation.</li>
     <li><b>Game testing:</b> implemented the Playwright game harness.</li>
-    <li><b>Acceptance reliability:</b> detection of broken test scripts and incomplete acceptance.</li>
+    <li><b>Acceptance reliability:</b> detection of broken test scripts and incomplete acceptance, contradictory card-pair assertions, a pointer filter limited to keyboard-only specifications, and one regeneration of an unusable acceptance reply.</li>
     <li><b>Testing:</b> implemented verifier tests.</li>
     <li><b>Documentation:</b> prepared verification design notes.</li>
   </ul></td></tr>
@@ -445,7 +502,8 @@ that the agent package ships no game files.</p>
     <li><b>Testing:</b> recovery tests and recovery-verifier integration tests.</li>
     <li><b>Evaluation:</b> offline evaluation specifications and the run-record report, and the final GLM-5.3 rehearsal.</li>
     <li><b>Handoff:</b> audited the historical run archive.</li>
-    <li><b>No-progress control:</b> stops repeating unchanged failures and aborts on verifier faults.</li>
+    <li><b>No-progress control:</b> stops repeating unchanged failures and aborts on verifier faults, including the structured <code>test_script_error</code> signal.</li>
+    <li><b>Kimi K3 retest:</b> ran four specifications on the demo machine, reviewed them by playing, and wrote the shared-fix handoff that assigned the work above.</li>
   </ul></td></tr>
   <tr><td><b>6 · LI JIAKUN</b></td><td>Tracing and delivery: durable execution records and delivery auditing.
   <ul>

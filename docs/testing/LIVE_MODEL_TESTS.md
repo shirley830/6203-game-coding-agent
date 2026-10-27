@@ -248,6 +248,40 @@ Findings from the traces:
 - Model speed varies between runs (minesweeper: 368 s, exhausted, 165 s), so these are the effects of each change, not
   a success rate. Minesweeper and grid snake are new specifications written for these rehearsals.
 
+## 5f. Kimi K3 retest of the shared acceptance fixes (2026-10-27)
+
+Member 5 retested four specifications of their own on the demo machine (source `a924db5`). The problems were in the
+tests, not the games: simple memory cards lost every scenario to the mouse filter (succeeded on generic checks with
+0 specific rules), a minesweeper check made the first click win and still expected "playing" (the game capped its
+flood reveal to satisfy it), and a whack-a-mole check allowed a missed mole in the last second to go uncounted.
+
+**Morning retest** (`2f4c472`: Member 4 pointer filter and contradictory-pair check, Member 5 structured
+`test_script_error`, result levels): detailed memory 9/9, whack-a-mole 10/10, simple memory 8/8 fully accepted;
+minesweeper exhausted at 8/9 on the same flood-reveal contradiction.
+
+**Afternoon retest** (`fc42a0e`, last five runs on `6809e80`): disputed checks with one bounded re-derivation, the
+tester rule that a setup must not end the game early, and provider-reported cost. 7-minute limit, fresh folders:
+
+| Specification | Run | Result | Specific rules | Time | Recoveries | Disputed check | Cost |
+|---|---|---|---|---|---|---|---|
+| Detailed memory cards | 1 | fully accepted | 9/9 | 213 s | 2 | REQ-R7 replaced (clicked row 3 of a 3-row grid) | $0.19 |
+| Detailed memory cards | 2 | fully accepted | 7/7 | 304 s | 2 | REQ-R6 replaced (same coordinate error) | $0.34 |
+| Minesweeper | 1 | exhausted | 7/10 | 400 s | 1 | none; one 23 000-token rewrite took 204 s | $0.48 |
+| Minesweeper | 2 | fully accepted | 9/9 | 280 s | 3 | REQ-R3 replaced (setup flood-revealed the board and won) | $0.36 |
+| Detailed whack-a-mole | 1 | fully accepted | 10/10 | 230 s | 1 | none | $0.28 |
+| Detailed whack-a-mole | 2 | fully accepted | 10/10 | 262 s | 2 | REQ-R3 replaced (expected no mole after the 300 ms respawn) | $0.21 |
+| Simple memory cards | 1 | fully accepted | 9/9 | 87 s | 0 | none | $0.22 |
+| Simple memory cards | 2 | fully accepted | 5/5 | 246 s | 3 | REQ-R1 kept (the game did not reveal the clicked card; fixed) | $0.55 |
+| Lights Out (unseen) | 1 | fully accepted | 8/8 | 102 s | 0 | none | $0.17 |
+| Tic-tac-toe vs computer (unseen) | 1 | fully accepted | 9/9 | 59 s | 0 | none | $0.09 |
+
+- 9 of 10 fully accepted; 218 s on average; $2.89 in total.
+- Every dispute was reviewed by hand. The four replacements keep the rule and its expectations and change only an
+  impossible coordinate, setup or timing; the one *keep* was correct.
+- The generated games use a standard flood reveal and count a missed mole in the last second.
+- Four more runs, and the end of the first whack-a-mole run 2, stopped at once on HTTP 402 (the key's spending limit).
+  They are excluded and were re-run with a new key; the agent now stops such runs with an "out of credit" reason.
+
 ## 6. Limitations of this evaluation
 
 * One run per cell; model output is nondeterministic, so single failures or
