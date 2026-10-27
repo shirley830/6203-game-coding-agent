@@ -419,7 +419,8 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             "Never remove, weaken, or reinterpret",
             decision_prompt,
         )
-        
+
+
 class FileContentMemoryTests(unittest.IsolatedAsyncioTestCase):
     """Decisions see current file texts, kept up to date across patches."""
 
