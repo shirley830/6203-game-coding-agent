@@ -318,6 +318,35 @@ Same agent, Kimi K3, 7-minute limit, fresh folders.
   the setup. The dodge replacement still requires obstacles to fall, but checks that some obstacle passes the earlier
   lowest position instead of tracking the last one, which is slightly looser.
 
+## 5i. Checks of the latest changes (2026-10-28)
+
+Three changes, each checked with Kimi K3, 7-minute limit, fresh folders: Member 2's spec-priority prompt rules
+(`847b8c2`), same-state checks re-derived together (`50125bc`), and right-click steps (`b6b8bce`).
+
+| Agent (main) | Specification | Result | Specific rules | Time | Recoveries | Disputed checks | Cost |
+|---|---|---|---|---|---|---|---|
+| 847b8c2: specification outranks tests (Member 2) | Minesweeper | exhausted | 6/8 | 400 s | 11 | REQ-R1, REQ-R3 replaced; REQ-R4, REQ-R6 used the same winning layout but no dispute was left | $0.39 |
+|  | Detailed whack-a-mole | fully accepted | 10/10 | 125 s | 1 | none | $0.11 |
+|  | Grid snake | fully accepted | 9/9 | 316 s | 6 | REQ-R3 replaced | $0.26 |
+|  | Dodge | fully accepted | 7/7 | 99 s | 0 | none | $0.10 |
+| 50125bc: same-state checks re-derived together | Minesweeper | exhausted | 8/9 | 400 s | 5 | REQ-R3 replaced, but the flag check could only left-click | $0.33 |
+|  | Minesweeper | fully accepted | 8/8 | 95 s | 0 | none | $0.11 |
+|  | Detailed whack-a-mole | fully accepted | 9/9 | 90 s | 0 | none | $0.09 |
+| b6b8bce: right-click steps | Minesweeper | exhausted | 8/10 | 400 s | 3 | REQ-R1, R4, R6, R7 replaced in one group; the new REQ-R4 placed 11 mines | $0.18 |
+|  | Minesweeper | fully accepted | 10/10 | 193 s | 2 | REQ-R1 and REQ-R4 replaced together | $0.14 |
+|  | Minesweeper | failed | 5/9 | 400 s | 2 | REQ-R2, R5, R7 replaced; the new REQ-R5 again wins on the first click | $0.27 |
+
+- 6 of 10 fully accepted; $1.97 in total. All four non-minesweeper runs passed; minesweeper passed 2 of 6.
+- Member 2's rules caused no failure: in every minesweeper run the agent kept the game faithful and disputed the checks.
+- Run 1: four checks shared one mine layout that a correct flood reveal wins at once; after two disputes the planner
+  raised five rejected disputes. Fix: failed checks with an identical state after the failing step are re-derived
+  together (at most 2 disputes and 4 checks per run); the prompt shows the disputes left and, at zero, forbids more.
+- Round 2, minesweeper 1: the flag check used `click_cell` (a left click) and the harness had no right-click, so no
+  replacement could express it. Fix: `"button": "right"` on click / click_at / click_cell.
+- Still open: the tester writes winning layouts in almost every minesweeper scenario, and the same model writes the
+  replacements; 2 of 9 replacements in round 3 were wrong again (11 mines; another first-click win), and four
+  re-derivations in a row take 60-90 s.
+
 ## 6. Limitations of this evaluation
 
 * One run per cell; model output is nondeterministic, so single failures or

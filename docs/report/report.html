@@ -84,8 +84,8 @@ specification <i>before</i> any code exists and checked by actually playing the 
 
 <div class="kpis">
   <div class="kpi"><b>9 / 10</b><span>runs fully accepted in the latest Kimi K3 retest (course model, 6 specifications)</span></div>
-  <div class="kpi"><b>69</b><span>autonomous runs with five real models</span></div>
-  <div class="kpi"><b>319</b><span>automated tests, all passing</span></div>
+  <div class="kpi"><b>79</b><span>autonomous runs with five real models</span></div>
+  <div class="kpi"><b>324</b><span>automated tests, all passing</span></div>
   <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
 </div>
 
@@ -301,22 +301,22 @@ including <code>run_report.md</code> and every runtime output an action referenc
 <h2><span class="n">7</span>Evaluation</h2>
 
 <h3>7.1 Automated tests</h3>
-<p>319 tests cover the controller, configuration and model settings, planner, runtime and sandbox, verifier and harness
+<p>324 tests cover the controller, configuration and model settings, planner, runtime and sandbox, verifier and harness
 (including real Playwright runs against fixture pages), recovery and evaluation, tracing and delivery audit, integration
 (including an offline end-to-end rehearsal with a scripted model and the real sandbox, browser, recovery and tracing),
 the Member 5 hand-off, and the acceptance signals added after the Kimi K3 retests: result levels, broken test scripts,
-disputed checks and their bounded re-derivation, and the time budget of a decision. A guard test ensures that the agent package contains no game
+disputed checks and their bounded re-derivation (including checks that fail into the same state), right-click steps, and the time budget of a decision. A guard test ensures that the agent package contains no game
 code.</p>
 
 <h3>7.2 Live runs with real models</h3>
-<p>We ran the agent autonomously 69 times with five models: 48 runs on nine specifications during development
+<p>We ran the agent autonomously 79 times with five models: 48 runs on nine specifications during development
 (collection, dodge, memory cards, maze, terminal hangman, light switches, turn-based keys, grid snake and minesweeper)
-21 Kimi K3 runs: 18 on six specifications (Member 5's four, which include our minesweeper, and two never seen before) plus three real-time development games, changing the
+31 Kimi K3 runs: 18 on six specifications (Member 5's four, which include our minesweeper, and two never seen before), three on real-time development games and ten checks of the latest changes, changing the
 agent between rounds based on what the traces showed.</p>
 <table>
   <tr><th>Model</th><th>Runs</th><th>Succeeded</th><th>Observations</th></tr>
-  <tr><td><b>Kimi K3 (course model)</b></td><td>30</td><td>25</td><td>Three rehearsal rounds, two retests of the shared
-  acceptance fixes (9 of 10 fully accepted), a speed check (4 of 4) and a real-time check (3 of 3) with the 7-minute limit (Section 7.4)</td></tr>
+  <tr><td><b>Kimi K3 (course model)</b></td><td>40</td><td>31</td><td>Three rehearsal rounds, two retests of the shared
+  acceptance fixes (9 of 10 fully accepted), a speed check (4 of 4), a real-time check (3 of 3) and ten checks of the latest changes (6 of 10) with the 7-minute limit (Section 7.4)</td></tr>
   <tr><td>GLM-5.3 (course model until October 2026)</td><td>16</td><td>14</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
   <tr><td>Claude Sonnet 5.5</td><td>11</td><td>11</td><td>Valid scenarios and spec-faithful games in every run</td></tr>
   <tr><td>GPT-4.1-mini</td><td>8</td><td>5</td><td>Missed rule details; some generated scenarios could not be passed by a correct game</td></tr>
@@ -434,6 +434,33 @@ a model call, and no model call took more than 60 s. Both disputes came from the
 Reviewed by hand, the snake replacement keeps its expectations (one point and one more segment) and only saves the
 length after the setup; the dodge replacement still requires obstacles to move down, but checks that some obstacle
 passes the lowest earlier position instead of following one obstacle, which is slightly looser.</p>
+<p><b>Latest changes (2026-10-28).</b> We checked three changes in turn, each with Kimi K3 and the 7-minute limit:
+Member 2's prompt rules that make the specification outrank the tests, re-deriving failed checks that end in the same
+state together, and right-click steps in the harness.</p>
+<table>
+  <tr><th>Agent (main)</th><th>Specification</th><th>Result</th><th>Specific rules</th><th>Time</th><th>Recoveries</th><th>Disputed checks</th><th>Cost</th></tr>
+  <tr><td rowspan="4">847b8c2: specification outranks tests (Member 2)</td><td>Minesweeper</td><td>exhausted</td><td>6/8</td><td>400&nbsp;s</td><td>11</td><td>REQ-R1, REQ-R3 replaced; REQ-R4, REQ-R6 used the same winning layout but no dispute was left</td><td>US$0.39</td></tr>
+  <tr><td>Detailed whack-a-mole</td><td>fully accepted</td><td>10/10</td><td>125&nbsp;s</td><td>1</td><td>none</td><td>US$0.11</td></tr>
+  <tr><td>Grid snake</td><td>fully accepted</td><td>9/9</td><td>316&nbsp;s</td><td>6</td><td>REQ-R3 replaced</td><td>US$0.26</td></tr>
+  <tr><td>Dodge</td><td>fully accepted</td><td>7/7</td><td>99&nbsp;s</td><td>0</td><td>none</td><td>US$0.10</td></tr>
+  <tr><td rowspan="3">50125bc: same-state checks re-derived together</td><td>Minesweeper</td><td>exhausted</td><td>8/9</td><td>400&nbsp;s</td><td>5</td><td>REQ-R3 replaced, but the flag check could only left-click</td><td>US$0.33</td></tr>
+  <tr><td>Minesweeper</td><td>fully accepted</td><td>8/8</td><td>95&nbsp;s</td><td>0</td><td>none</td><td>US$0.11</td></tr>
+  <tr><td>Detailed whack-a-mole</td><td>fully accepted</td><td>9/9</td><td>90&nbsp;s</td><td>0</td><td>none</td><td>US$0.09</td></tr>
+  <tr><td rowspan="3">b6b8bce: right-click steps</td><td>Minesweeper</td><td>exhausted</td><td>8/10</td><td>400&nbsp;s</td><td>3</td><td>REQ-R1, R4, R6, R7 replaced in one group; the new REQ-R4 placed 11 mines</td><td>US$0.18</td></tr>
+  <tr><td>Minesweeper</td><td>fully accepted</td><td>10/10</td><td>193&nbsp;s</td><td>2</td><td>REQ-R1 and REQ-R4 replaced together</td><td>US$0.14</td></tr>
+  <tr><td>Minesweeper</td><td>failed</td><td>5/9</td><td>400&nbsp;s</td><td>2</td><td>REQ-R2, R5, R7 replaced; the new REQ-R5 again wins on the first click</td><td>US$0.27</td></tr>
+</table>
+<p>Six of ten runs were fully accepted, for US$1.97 in total; all four non-minesweeper runs passed, and minesweeper passed
+two of six. Member 2's rules did not cause a failure: in every minesweeper run the agent kept the game faithful to the
+specification and disputed the checks instead of changing the game. The minesweeper failures had three causes, each
+fixed or bounded in turn. First, four checks shared one mine layout that a correct flood reveal wins at once, but only
+two disputes were allowed; the planner then raised five rejected disputes. Failed checks that end in the same state
+are now re-derived together (at most four per run), and the prompt says when no dispute is left. Second, the harness
+could only left-click, so a flag check could not be written correctly; steps now accept <code>"button": "right"</code>.
+Third, and still open, the tester writes such layouts in almost every minesweeper scenario, and the re-derived
+checks are written by the same model: two of the nine replacements in the last round were wrong again (11 mines,
+and another layout that wins on the first click), and re-deriving four checks one after another takes 60-90 s of the
+7 minutes.</p>
 
 <h3>7.5 Live run at the presentation</h3>
 <div class="pending">
@@ -448,7 +475,9 @@ passes the lowest earlier position instead of following one obstacle, which is s
   <li><b>Model-written tests can be wrong.</b> The scenarios come from the same model that writes the game. Filtering
   removes known bad patterns and a disputed check is re-examined once, but the re-examination is made by the same model,
   and a wrong test that a game happens to pass is not detected at all. Disputes therefore stay bounded and recorded,
-  and every replacement must test the same rule.</li>
+  and every replacement must test the same rule. Minesweeper is the clearest case: Kimi K3 places mines so that the
+  first click flood-reveals the board in almost every scenario, some replacements repeat the mistake, and only two of
+  the last six minesweeper runs passed within 7 minutes, while all four other runs of that day passed.</li>
   <li><b>Model speed decides many runs.</b> Waiting for the model is most of a run, and its speed varies: the same
   minesweeper specification took 368 s, ran out of time, and took 165 s in three Kimi K3 rounds, and in the last retest
   a single decision took 204 s of a 400 s run; requesting the first verification without a model call and showing
@@ -502,8 +531,8 @@ that the agent package ships no game files.</p>
     <li><b>Hardening:</b> start-up self-check, <code>agent.env</code> with credential isolation, retry backoff, and configurable run limits.</li>
     <li><b>Verification and model support:</b> spec-derived acceptance scenarios and the state contract, process-mode checks for terminal and pygame games, the GLM-5.3 reasoning cap, and empty-reply handling.</li>
     <li><b>Kimi K3:</b> switched the agent to the new course model and shortened repair cycles (patch-based repairs, current file texts in decisions, a lower reasoning cap for steps).</li>
-    <li><b>Acceptance integration:</b> three result levels (launch, specific rules, delivery), the structured <code>test_script_error</code> signal, disputed checks with a bounded re-derivation, the out-of-credit stop, provider-reported cost, and the first verification without a model call.</li>
-    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, two retests of the shared acceptance fixes, a speed check and a real-time check.</li>
+    <li><b>Acceptance integration:</b> three result levels (launch, specific rules, delivery), the structured <code>test_script_error</code> signal, disputed checks with a bounded re-derivation (same-state checks together), right-click steps, the out-of-credit stop, provider-reported cost, and the first verification without a model call.</li>
+    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, two retests of the shared acceptance fixes, a speed check, a real-time check and checks of the latest changes.</li>
     <li><b>Integration:</b> merged the six members' branches into <code>main</code>, built the production dependency factory, fixed cross-module defects, and reviewed and merged the final handoff.</li>
     <li><b>Documentation:</b> README and illustrations, testing guides, and this report.</li>
     <li><b>Presentation:</b> prepared the presentation slides.</li>
