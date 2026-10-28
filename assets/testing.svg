@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="348" viewBox="0 0 1280 348" role="img" aria-labelledby="t d">
 <title id="t">Testing</title>
-<desc id="d">324 tests; 79 live runs with 5 models. Succeeded: Kimi K3 (the course model) 31 of 40, GLM-5.3 14 of 16, Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.</desc>
+<desc id="d">324 tests; 81 live runs with 5 models. Succeeded: Kimi K3 (the course model) 33 of 42, GLM-5.3 14 of 16, Claude Sonnet 5.5 11 of 11, GPT-4.1-mini 5 of 8, Qwen3-Coder 1 of 4.</desc>
 <defs>
   <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="#0f2a33"/><stop offset="0.55" stop-color="#0a1d24"/><stop offset="1" stop-color="#06141a"/>
@@ -44,7 +44,7 @@
 <text x="64" y="140" font-size="15" fill="#a9c2c9" font-weight="400" text-anchor="start" >tests passing</text>
 <rect x="290" y="34" width="230" height="130" rx="14" fill="#10262e" stroke="#33545e" />
 <rect x="290" y="34" width="230" height="3" fill="#38b6e8"/>
-<text x="314" y="108" font-size="52" fill="#38b6e8" font-weight="800" text-anchor="start" >79</text>
+<text x="314" y="108" font-size="52" fill="#38b6e8" font-weight="800" text-anchor="start" >81</text>
 <text x="314" y="140" font-size="15" fill="#a9c2c9" font-weight="400" text-anchor="start" >live model runs</text>
 <rect x="40" y="184" width="230" height="130" rx="14" fill="#10262e" stroke="#33545e" />
 <rect x="40" y="184" width="230" height="3" fill="#4fd18b"/>
@@ -56,11 +56,11 @@
 <text x="314" y="290" font-size="15" fill="#a9c2c9" font-weight="400" text-anchor="start" >rounds of fixes</text>
 <rect x="560" y="34" width="680" height="280" rx="14" fill="#10262e" stroke="#33545e" />
 <text x="588" y="74" font-size="19" fill="#f2f8f9" font-weight="700" text-anchor="start" >Live runs that succeeded, by model</text>
-<text x="588" y="98" font-size="13" fill="#7fa3ad" font-weight="400" text-anchor="start" >all 79 runs · round 1 used generic checks only · details in LIVE_MODEL_TESTS.md</text>
+<text x="588" y="98" font-size="13" fill="#7fa3ad" font-weight="400" text-anchor="start" >all 81 runs · round 1 used generic checks only · details in LIVE_MODEL_TESTS.md</text>
 <text x="588" y="134" font-size="15" fill="#f2f8f9" font-weight="600" text-anchor="start" >Kimi K3 (course)</text>
 <rect x="760" y="116" width="380" height="26" rx="13" fill="#133039"/>
-<rect x="760" y="116" width="294" height="26" rx="13" fill="#6ff0cf" class="bar" style="animation-delay:0.3s"/>
-<text x="1156" y="135" font-size="16" fill="#6ff0cf" font-weight="800" text-anchor="start" >31/40</text>
+<rect x="760" y="116" width="299" height="26" rx="13" fill="#6ff0cf" class="bar" style="animation-delay:0.3s"/>
+<text x="1156" y="135" font-size="16" fill="#6ff0cf" font-weight="800" text-anchor="start" >33/42</text>
 <text x="588" y="172" font-size="15" fill="#f2f8f9" font-weight="600" text-anchor="start" >GLM-5.3 (earlier)</text>
 <rect x="760" y="154" width="380" height="26" rx="13" fill="#133039"/>
 <rect x="760" y="154" width="332" height="26" rx="13" fill="#38b6e8" class="bar" style="animation-delay:0.55s"/>

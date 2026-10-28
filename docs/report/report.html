@@ -84,7 +84,7 @@ specification <i>before</i> any code exists and checked by actually playing the 
 
 <div class="kpis">
   <div class="kpi"><b>9 / 10</b><span>runs fully accepted in the latest Kimi K3 retest (course model, 6 specifications)</span></div>
-  <div class="kpi"><b>79</b><span>autonomous runs with five real models</span></div>
+  <div class="kpi"><b>81</b><span>autonomous runs with five real models</span></div>
   <div class="kpi"><b>324</b><span>automated tests, all passing</span></div>
   <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
 </div>
@@ -309,14 +309,14 @@ disputed checks and their bounded re-derivation (including checks that fail into
 code.</p>
 
 <h3>7.2 Live runs with real models</h3>
-<p>We ran the agent autonomously 79 times with five models: 48 runs on nine specifications during development
+<p>We ran the agent autonomously 81 times with five models: 48 runs on nine specifications during development
 (collection, dodge, memory cards, maze, terminal hangman, light switches, turn-based keys, grid snake and minesweeper)
-31 Kimi K3 runs: 18 on six specifications (Member 5's four, which include our minesweeper, and two never seen before), three on real-time development games and ten checks of the latest changes, changing the
+33 Kimi K3 runs: 18 on six specifications (Member 5's four, which include our minesweeper, and two never seen before), three on real-time development games, ten checks of the latest changes and a two-run demo rehearsal, changing the
 agent between rounds based on what the traces showed.</p>
 <table>
   <tr><th>Model</th><th>Runs</th><th>Succeeded</th><th>Observations</th></tr>
-  <tr><td><b>Kimi K3 (course model)</b></td><td>40</td><td>31</td><td>Three rehearsal rounds, two retests of the shared
-  acceptance fixes (9 of 10 fully accepted), a speed check (4 of 4), a real-time check (3 of 3) and ten checks of the latest changes (6 of 10) with the 7-minute limit (Section 7.4)</td></tr>
+  <tr><td><b>Kimi K3 (course model)</b></td><td>42</td><td>33</td><td>Three rehearsal rounds, two retests of the shared
+  acceptance fixes (9 of 10 fully accepted), a speed check (4 of 4), a real-time check (3 of 3) ten checks of the latest changes (6 of 10) and a demo rehearsal (2 of 2) with the 7-minute limit (Section 7.4)</td></tr>
   <tr><td>GLM-5.3 (course model until October 2026)</td><td>16</td><td>14</td><td>Quality close to Claude Sonnet 5.5; more repair cycles on timing-heavy rules; one failure caused by a harness defect, fixed and re-run successfully</td></tr>
   <tr><td>Claude Sonnet 5.5</td><td>11</td><td>11</td><td>Valid scenarios and spec-faithful games in every run</td></tr>
   <tr><td>GPT-4.1-mini</td><td>8</td><td>5</td><td>Missed rule details; some generated scenarios could not be passed by a correct game</td></tr>
@@ -461,6 +461,12 @@ Third, and still open, the tester writes such layouts in almost every minesweepe
 checks are written by the same model: two of the nine replacements in the last round were wrong again (11 mines,
 and another layout that wins on the first click), and re-deriving four checks one after another takes 60-90 s of the
 7 minutes.</p>
+<p><b>Demo rehearsal.</b> We then updated the clean checkout used for the demo to the final <code>main</code>
+(<code>0ee43dd</code>, where the run time defaults to 420&nbsp;s), ran the self-check (ready) and the full test suite
+(324 passed), checked the key with <code>--probe-model</code>, and ran two held-out specifications exactly as on
+presentation day, each in a fresh folder with only the specification and <code>agent.env</code>. Light switches was
+fully accepted with 8/8 specific rules in 82&nbsp;s and turn-based keys with 9/9 in 93&nbsp;s, both without a repair
+or a disputed check, for US$0.36 in total.</p>
 
 <h3>7.5 Live run at the presentation</h3>
 <div class="pending">
@@ -489,8 +495,8 @@ and another layout that wins on the first click), and re-deriving four checks on
   <li><b>Non-browser games are verified less deeply.</b> Terminal games are played through standard input, but spec-derived
   scenarios apply to browser games only, and pygame input is checked statically.</li>
   <li><b>Evaluation key and demo machine.</b> All runs used team keys for the same models and provider; the evaluation
-  key is issued before the presentation and checked with <code>--probe-model</code>, and the presentation machine still
-  needs a full rehearsal.</li>
+  key is issued before the presentation and checked with <code>--probe-model</code>. The demo checkout passed a
+  rehearsal on the final version; a different presentation computer would need the same rehearsal.</li>
   <li><b>Small evaluation.</b> Fourteen specifications and at most three Kimi K3 runs per specification and agent
   version; results are indicative.</li>
   <li><b>Platform.</b> The command sandbox requires macOS or Linux with bubblewrap; there is no resume after a hard
@@ -532,7 +538,7 @@ that the agent package ships no game files.</p>
     <li><b>Verification and model support:</b> spec-derived acceptance scenarios and the state contract, process-mode checks for terminal and pygame games, the GLM-5.3 reasoning cap, and empty-reply handling.</li>
     <li><b>Kimi K3:</b> switched the agent to the new course model and shortened repair cycles (patch-based repairs, current file texts in decisions, a lower reasoning cap for steps).</li>
     <li><b>Acceptance integration:</b> three result levels (launch, specific rules, delivery), the structured <code>test_script_error</code> signal, disputed checks with a bounded re-derivation (same-state checks together), right-click steps, the out-of-credit stop, provider-reported cost, and the first verification without a model call.</li>
-    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, two retests of the shared acceptance fixes, a speed check, a real-time check and checks of the latest changes.</li>
+    <li><b>Evaluation:</b> completed and analysed 32 live runs with four models over five rounds, three Kimi K3 rehearsal rounds, two retests of the shared acceptance fixes, a speed check, a real-time check, checks of the latest changes and the demo rehearsal.</li>
     <li><b>Integration:</b> merged the six members' branches into <code>main</code>, built the production dependency factory, fixed cross-module defects, and reviewed and merged the final handoff.</li>
     <li><b>Documentation:</b> README and illustrations, testing guides, and this report.</li>
     <li><b>Presentation:</b> prepared the presentation slides.</li>

@@ -347,6 +347,21 @@ Three changes, each checked with Kimi K3, 7-minute limit, fresh folders: Member 
   replacements; 2 of 9 replacements in round 3 were wrong again (11 mines; another first-click win), and four
   re-derivations in a row take 60-90 s.
 
+## 5j. Demo rehearsal (2026-10-28, `0ee43dd`)
+
+The clean demo checkout was updated to the final `main` (run time defaults to 420 s). Self-check: ready (sandbox,
+Chromium, port 8000); test suite: 324 passed; `python -m agent.preflight --probe-model`: usable JSON from Kimi K3.
+Then two held-out specifications, run as on presentation day: a fresh folder with only `game_design_prompt.md` and
+`agent.env`, then `python -m agent game_design_prompt.md`.
+
+| Specification | Result | Specific rules | Time | Recoveries | Disputed check | Cost |
+|---|---|---|---|---|---|---|
+| `holdout_01_switches` (light switches) | fully accepted | 8/8 | 82 s | 0 | none | $0.17 |
+| `holdout_02_turns` (turn-based keys) | fully accepted | 9/9 | 93 s | 0 | none | $0.19 |
+
+- 2 of 2 fully accepted, $0.36 in total; the console announced the 7-minute stop time at the start of each run.
+- If the presentation uses a different computer, repeat this rehearsal there.
+
 ## 6. Limitations of this evaluation
 
 * One run per cell; model output is nondeterministic, so single failures or
