@@ -208,8 +208,9 @@ game to be still playing; the correct game failed it twice and the run spent its
 disputed (<code>test_conflict</code>) when the planner returns <code>dispute_check</code> with the specification rule as
 evidence, or when the same check fails in exactly the same way before and after a game change. The acceptance model
 re-examines that one check: <i>keep</i> sends the planner back to fixing the game; <i>replace</i> substitutes a check of
-the same rule (same id and category, at least one expectation), and the unchanged game is verified again. Each check
-is re-examined at most once and at most two per run, the old and new versions are kept in the event log, and the
+the same rule (same id and category, at least one expectation), and the unchanged game is verified again. Failed
+checks that end in exactly the same state, usually because they share one setup, are re-examined with it. Each check
+is re-examined at most once, with at most two disputes and four re-examined checks per run, the old and new versions are kept in the event log, and the
 original acceptance and specification are never edited.</p>
 
 <h3>4.2 The game is actually played</h3>

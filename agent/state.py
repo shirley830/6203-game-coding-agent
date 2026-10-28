@@ -256,6 +256,8 @@ class AgentView:
     elapsed_seconds: float
     # Work time left before the deadline (None when the caller does not know).
     remaining_seconds: float | None = None
+    # Check disputes the planner may still raise (None when the caller does not know).
+    disputes_left: int | None = None
 
 
 @dataclass(frozen=True)

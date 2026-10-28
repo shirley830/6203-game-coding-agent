@@ -196,6 +196,16 @@ def _remaining_text(view: AgentView) -> str:
     return text
 
 
+def _dispute_text(view: AgentView) -> str:
+    left = getattr(view, "disputes_left", None)
+    if left is None:
+        return ""
+    if left <= 0:
+        return ("\n- No check disputes are left in this run: never return dispute_check. Fix the\n"
+                "  real game defects; leave a check that contradicts the specification failing.")
+    return f" Disputes left in this run: {left}."
+
+
 def build_decision_prompt(
     view: AgentView,
     *,
@@ -342,9 +352,10 @@ Rules:
   to keep running after an input that the specification's own rules turn into
   a win), do not bend the game to satisfy it: return dispute_check with that
   criterion_id and quote the specification rule and the observed state. The
-  check is then re-derived once and the game is verified again unchanged.
+  check is then re-derived once and the game is verified again unchanged;
+  other failed checks that end in the same state are re-derived with it.
   Dispute only checks that failed; never dispute a check just because the game
-  is hard to fix, and fix real game defects instead.
+  is hard to fix, and fix real game defects instead.{_dispute_text(view)}
 - Never return success, completed, or direct controller state changes.
 - After each substantial fix, request verification again to get fresh evidence
   instead of rewriting the same file repeatedly.

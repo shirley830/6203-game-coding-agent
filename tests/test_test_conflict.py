@@ -16,6 +16,7 @@ from agent.config import AgentConfig
 from agent.controller import Controller
 from agent.planning.llm_client import _provider_cost
 from agent.planning.parser import parse_decision
+from agent.planning.prompts import build_decision_prompt
 from agent.recovery import RuleBasedRecovery
 from agent.result_levels import render_levels
 from agent.state import (
@@ -158,21 +159,22 @@ class VerifierRevisionTests(unittest.IsolatedAsyncioTestCase):
 class ControllerConflictTests(unittest.IsolatedAsyncioTestCase):
     """Real Controller + RuleBasedRecovery with the fake ports from test_controller."""
 
-    async def run_flow(self, *, decisions, fails, revision):
+    async def run_flow(self, *, decisions, fails, revision, others=None):
         temp = tempfile.TemporaryDirectory()
         self.addCleanup(temp.cleanup)
         root = Path(temp.name)
         spec = root / "game_design_prompt.md"
         spec.write_text(SPEC, encoding="utf-8")
         scenario = Scenario()
-        scenario.suite = AcceptanceSuite("v1", scenario.suite.criteria + (
-            Criterion("REQ-R1", "Clicking a safe cell keeps playing", "interaction"),))
+        details = {"REQ-R1": FAIL_DETAIL, **(others or {})}
+        scenario.suite = AcceptanceSuite("v1", scenario.suite.criteria + tuple(
+            Criterion(cid, f"{cid}: clicking a safe cell keeps playing", "interaction") for cid in details))
         scenario.decisions = list(decisions)
         calls = []
 
         def failing(report):
-            results = tuple(replace(r, status=CheckStatus.FAIL, detail=FAIL_DETAIL)
-                            if r.criterion_id == "REQ-R1" else r for r in report.results)
+            results = tuple(replace(r, status=CheckStatus.FAIL, detail=details[r.criterion_id])
+                            if r.criterion_id in details else r for r in report.results)
             return replace(report, results=results)
 
         scenario.reports = [failing] * fails
@@ -181,9 +183,9 @@ class ControllerConflictTests(unittest.IsolatedAsyncioTestCase):
             calls.append((criterion_id, reason, view.suite.version))
             scenario.check_requested = False  # the real verifier starts a new cycle for a new suite
             if revision == "replace":
-                new = AcceptanceSuite(view.suite.version + "-rev1", tuple(
+                new = AcceptanceSuite(view.suite.version + "-rev", tuple(
                     replace(c, description="Clicking a numbered cell keeps playing")
-                    if c.criterion_id == "REQ-R1" else c for c in view.suite.criteria))
+                    if c.criterion_id == criterion_id else c for c in view.suite.criteria))
                 return {"verdict": "replace", "reason": "flood reveal wins at once", "suite": new}
             return {"verdict": "keep", "reason": "a correct game passes", "suite": None}
 
@@ -205,7 +207,7 @@ class ControllerConflictTests(unittest.IsolatedAsyncioTestCase):
         failures = [e["payload"]["category"] for e in events if e["kind"] == "failure"]
         self.assertEqual(failures, ["verification", "test_conflict"])
         revised = [e for e in events if e["kind"] == "acceptance_revised"]
-        self.assertEqual(revised[0]["payload"]["old"], "Clicking a safe cell keeps playing")
+        self.assertEqual(revised[0]["payload"]["old"], "REQ-R1: clicking a safe cell keeps playing")
         writes = [a for a in scenario.actions if a.kind == ToolKind.WRITE_FILE]
         self.assertEqual(len(writes), 2)  # no game edit after the conflict
         self.assertEqual(summary.levels["revised_checks"][0]["verdict"], "replace")
@@ -235,6 +237,35 @@ class ControllerConflictTests(unittest.IsolatedAsyncioTestCase):
             decisions=[self.write("a"), VERIFY, dispute, self.write("b")], fails=1, revision="replace")
         self.assertEqual(calls, [])
         self.assertFalse(any(e["kind"] == "acceptance_revised" for e in events))
+
+    async def test_dispute_rederives_failed_checks_with_the_same_end_state(self):
+        dispute = DisputeCheck("REQ-R1", "The flood reveal wins the game on the first click.")
+        other = FAIL_DETAIL.replace("step 4", "step 6")
+        summary, _scenario, calls, events = await self.run_flow(
+            decisions=[self.write("a"), VERIFY, dispute], fails=1, revision="replace",
+            others={"REQ-R2": other, "REQ-R3": "step 2: expectation false; state after: {\"status\": \"lost\"}"})
+        self.assertEqual(summary.outcome, Phase.SUCCEEDED)
+        self.assertEqual([c[0] for c in calls], ["REQ-R1", "REQ-R2"])  # REQ-R3 ended differently
+        self.assertIn("same state as REQ-R1", calls[1][1])
+        self.assertEqual(calls[1][2], "v1-rev")  # built on the suite with REQ-R1 already replaced
+        self.assertEqual(len([e for e in events if e["kind"] == "acceptance_revised"]), 2)
+
+    async def test_no_dispute_is_offered_after_the_budget_is_used(self):
+        dispute1 = DisputeCheck("REQ-R1", "The flood reveal wins the game on the first click.")
+        dispute2 = DisputeCheck("REQ-R2", "The flood reveal wins the game on the first click.")
+        _summary, _scenario, calls, events = await self.run_flow(
+            decisions=[self.write("a"), VERIFY, dispute1, dispute2, dispute2], fails=3, revision="keep",
+            others={"REQ-R2": "step 1: expectation false; state after: {\"status\": \"lost\"}"})
+        self.assertEqual([c[0] for c in calls], ["REQ-R1", "REQ-R2"])
+        messages = [e["payload"]["message"] for e in events if e["kind"] == "failure"]
+        self.assertTrue(any("Dispute of REQ-R2 rejected" in m for m in messages))
+
+    def test_prompt_says_when_no_dispute_is_left(self):
+        view = AgentView("run", Phase.DECIDING, SPEC, "d", None, None, None, 0, (), None, None, 0, 0, 0, 0.0)
+        self.assertIn("Disputes left in this run: 2.", build_decision_prompt(replace(view, disputes_left=2)))
+        exhausted = build_decision_prompt(replace(view, disputes_left=0))
+        self.assertIn("No check disputes are left in this run: never return dispute_check", exhausted)
+        self.assertNotIn("Disputes left in this run", exhausted)
 
 
 if __name__ == "__main__":
