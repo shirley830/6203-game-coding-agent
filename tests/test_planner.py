@@ -394,7 +394,7 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             "prefer\n  patch_file",
             decision_prompt,
         )
-        
+
         self.assertIn(
             "original specification as the source of truth",
             plan_prompt,
@@ -404,11 +404,11 @@ class PlannerTests(unittest.IsolatedAsyncioTestCase):
             plan_prompt,
         )
         self.assertIn(
-            "test-only behaviour",
+            "do not plan test-only",
             plan_prompt,
         )
         self.assertIn(
-            "Verification results are diagnostic evidence",
+            "results are diagnostic evidence",
             decision_prompt,
         )
         self.assertIn(
