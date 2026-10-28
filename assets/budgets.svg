@@ -1,6 +1,6 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1280" height="340" viewBox="0 0 1280 340" role="img" aria-labelledby="t d">
 <title id="t">Budgets and outcomes</title>
-<desc id="d">Defaults: 1800 s runtime, 200 steps, 80 commands, 20 recoveries, 5 retries with 5, 15, 45 and 60 second backoff. Outcomes: succeeded 0, failed 1, startup error 2, exhausted 3, cancelled 130.</desc>
+<desc id="d">Defaults: 420 s runtime, 200 steps, 80 commands, 20 recoveries, 5 retries with 5, 15, 45 and 60 second backoff. Outcomes: succeeded 0, failed 1, startup error 2, exhausted 3, cancelled 130.</desc>
 <defs>
   <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
     <stop offset="0" stop-color="#0f2a33"/><stop offset="0.55" stop-color="#0a1d24"/><stop offset="1" stop-color="#06141a"/>
@@ -38,7 +38,7 @@
   <rect width="1280" height="340" fill="url(#grid)"/>
   <rect width="1280" height="340" fill="url(#glow)"/>
 <rect x="40" y="30" width="224" height="120" rx="14" fill="#10262e" stroke="#33545e" />
-<text x="62" y="82" font-size="36" fill="#6ff0cf" font-weight="800" text-anchor="start" >1800 s</text>
+<text x="62" y="82" font-size="36" fill="#6ff0cf" font-weight="800" text-anchor="start" >420 s</text>
 <text x="62" y="108" font-size="15" fill="#f2f8f9" font-weight="600" text-anchor="start" >total runtime</text>
 <text x="62" y="132" font-size="12" fill="#7fa3ad" font-weight="400" text-anchor="start" class="mono" >AGENT_MAX_RUNTIME</text>
 <rect x="284" y="30" width="224" height="120" rx="14" fill="#10262e" stroke="#33545e" />

@@ -4,7 +4,7 @@
 
 ## 1 模型平台与试调用
 
-用户已确认当前 Key 由老师提供，已通过 OpenRouter 调用 GLM-5.3。若现场换发 Key 或更换平台，仍需用最终配置重新试调用。
+课程模型已改为 Kimi K3（`openrouter/moonshotai/kimi-k3`），通过 OpenRouter 调用。若现场换发 Key 或更换平台，仍需用最终配置重新试调用。
 
 在最终演示机上，用最终平台、模型标识及 Key 配置本机 agent.env 后运行：
 
@@ -30,14 +30,14 @@ python -m agent.preflight --probe-model
 
 macOS 需要 sandbox-exec。Linux 需要可用的 bwrap。当前没有严格 Windows 适配。不要通过关闭沙箱来把演示机标记为通过。
 
-用正式机器跑一轮真实 GLM-5.3 游戏，保存 game/、traces/、源码提交号、Python/依赖版本、自检输出与启动命令。当前电脑的成功不能替代这轮验收。
+用正式机器跑一轮真实 Kimi K3 游戏，保存 game/、traces/、源码提交号、Python/依赖版本、自检输出与启动命令。当前电脑的成功不能替代这轮验收。
 
 ## 3 正式运行时间
 
-需要老师给出允许 Agent 运行的时长，而不只是整组展示时长。现在未知。
+没有设置时，默认运行 420 秒（7 分钟，含最终化），对应讲稿：0:30 开始运行，7:00 讲结果页。老师允许其他时长时再改：
 
 ```text
-AGENT_MAX_RUNTIME=老师允许的秒数
+AGENT_MAX_RUNTIME=420
 ```
 
 该值包含程序自己的 finalization reserve；不要再重复扣除这部分。若要给人工试玩另留时间，应根据正式安排另行预留。不要把测试时使用的 1200 秒当成正式获批时间。

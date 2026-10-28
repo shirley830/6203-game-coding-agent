@@ -10,7 +10,7 @@ from pathlib import Path
 import sys
 from collections.abc import Sequence
 
-from .config import AgentConfig
+from .config import DEFAULT_MAX_RUNTIME_SECONDS, AgentConfig
 from .controller import Controller, Dependencies
 from .envfile import load_env_file
 from .result_levels import render_levels
@@ -31,7 +31,7 @@ def build_parser() -> argparse.ArgumentParser:
         help="Team dependency factory in module:function format")
     parser.add_argument("--max-runtime", type=float, default=None,
                         help="Total seconds including finalization (default: AGENT_MAX_RUNTIME "
-                             "from the environment or agent.env, else 1800)")
+                             f"from the environment or agent.env, else {DEFAULT_MAX_RUNTIME_SECONDS:.0f})")
     parser.add_argument("--max-steps", type=int, default=200)
     parser.add_argument("--max-commands", type=int, default=80)
     parser.add_argument("--max-retries", type=int, default=5)
@@ -85,7 +85,7 @@ def main(argv: Sequence[str] | None = None) -> int:
         if loaded:
             print(f"Loaded {', '.join(loaded)} from {env_file}", file=sys.stderr)
         max_runtime = (args.max_runtime if args.max_runtime is not None
-                       else float(os.environ.get("AGENT_MAX_RUNTIME", "1800")))
+                       else float(os.environ.get("AGENT_MAX_RUNTIME", DEFAULT_MAX_RUNTIME_SECONDS)))
         config = AgentConfig(
             run_root=args.run_root, max_runtime_seconds=max_runtime,
             max_steps=args.max_steps, max_commands=args.max_commands,

@@ -219,14 +219,14 @@ A rejected proposal costs a step but never reaches the runtime. A timeout or unc
 <a name="budgets"></a>
 <img src="assets/sections/07-budgets.svg" width="100%" alt="07 · Budgets and outcomes">
 
-<img src="assets/budgets.svg" width="100%" alt="Budgets: 1800 s runtime, 200 steps, 80 commands, 20 recoveries, 5 retries with backoff. Outcomes and exit codes: succeeded 0, failed 1, startup error 2, exhausted 3, cancelled 130.">
+<img src="assets/budgets.svg" width="100%" alt="Budgets: 420 s runtime, 200 steps, 80 commands, 20 recoveries, 5 retries with backoff. Outcomes and exit codes: succeeded 0, failed 1, startup error 2, exhausted 3, cancelled 130.">
 
 <details>
 <summary><b>All limits and their options</b></summary>
 
 | Limit | Default | Option |
 |---|---:|---|
-| Total runtime, including finalization | 1800 s | `AGENT_MAX_RUNTIME` or `--max-runtime` |
+| Total runtime, including finalization | 420 s | `AGENT_MAX_RUNTIME` or `--max-runtime` |
 | Work steps | 200 | `--max-steps` |
 | Commands and dependency installs | 80 | `--max-commands` |
 | Additional retries per operation | 5 | `--max-retries` |

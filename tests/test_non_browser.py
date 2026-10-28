@@ -11,6 +11,7 @@ import unittest
 from unittest.mock import patch
 
 from agent.__main__ import main
+from agent.config import DEFAULT_MAX_RUNTIME_SECONDS, AgentConfig
 from agent.planning.planner import LLMPlanner
 from agent.state import Phase
 from agent.verification import GameVerifier
@@ -101,10 +102,15 @@ class RuntimeConfigTests(unittest.TestCase):
     def test_runtime_from_agent_env(self):
         self.assertIn("captured max_runtime=1200.0", self.run_main("AGENT_MAX_RUNTIME=1200\n"))
 
-    def test_cli_flag_wins_and_default_is_1800(self):
+    def test_cli_flag_wins_and_default_is_420(self):
         self.assertIn("captured max_runtime=600.0",
                       self.run_main("AGENT_MAX_RUNTIME=1200\n", ("--max-runtime", "600")))
-        self.assertIn("captured max_runtime=1800.0", self.run_main("# nothing\n"))
+        self.assertIn("captured max_runtime=420.0", self.run_main("# nothing\n"))
+        # A missing or copied agent.env must never give a run longer than the 7-minute slot.
+        self.assertEqual(AgentConfig(Path(".")).max_runtime_seconds, DEFAULT_MAX_RUNTIME_SECONDS)
+        template = (Path(__file__).resolve().parents[1] / "agent.env.example").read_text(encoding="utf-8")
+        self.assertIn(f"\nAGENT_MAX_RUNTIME={DEFAULT_MAX_RUNTIME_SECONDS:.0f}\n", template)
+        self.assertIn(f"captured max_runtime={DEFAULT_MAX_RUNTIME_SECONDS}", self.run_main(template))
 
 
 if __name__ == "__main__":

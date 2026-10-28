@@ -53,7 +53,7 @@ re-examined checks per run, and the decision prompt says how many disputes are l
 |---|---|---|
 | Model | `AGENT_MODEL` in `agent.env` | course model `openrouter/moonshotai/kimi-k3` |
 | API key | `OPENROUTER_API_KEY` in `agent.env` | none (required) |
-| Total run time | `AGENT_MAX_RUNTIME` or `--max-runtime` (seconds) | 1800 |
+| Total run time | `AGENT_MAX_RUNTIME` or `--max-runtime` (seconds) | 420 (7 minutes) |
 | Reasoning cap | `AGENT_REASONING_MAX_TOKENS` | 8000 for GLM and Kimi models |
 | Other budgets | `--max-steps`, `--max-commands`, `--max-retries`, `--max-recovery-attempts`, `--command-timeout` | 200, 80, 5, 20, 90 s |
 

@@ -599,7 +599,7 @@ def run_output() -> None:
 # ---------------------------------------------------------------- budgets
 
 def budgets() -> None:
-    limits = [("1800 s", "total runtime", "AGENT_MAX_RUNTIME"), ("200", "work steps", "--max-steps"),
+    limits = [("420 s", "total runtime", "AGENT_MAX_RUNTIME"), ("200", "work steps", "--max-steps"),
               ("80", "commands", "--max-commands"), ("20", "recoveries", "--max-recovery-attempts"),
               ("5", "retries / op", "--max-retries")]
     body = []
@@ -625,7 +625,7 @@ def budgets() -> None:
         body.append(t(x + 22, 294, name, 14, colour, 800, extra='letter-spacing="1"'))
         body.append(t(x + 200, 294, code, 15, colour, 800, "end", cls="mono"))
     write("budgets.svg", page(1280, 340, "Budgets and outcomes",
-          "Defaults: 1800 s runtime, 200 steps, 80 commands, 20 recoveries, 5 retries with 5, 15, 45 and 60 second "
+          "Defaults: 420 s runtime, 200 steps, 80 commands, 20 recoveries, 5 retries with 5, 15, 45 and 60 second "
           "backoff. Outcomes: succeeded 0, failed 1, startup error 2, exhausted 3, cancelled 130.",
           "\n".join(body), radius=18))
 

@@ -4,11 +4,14 @@ from dataclasses import dataclass
 import math
 from pathlib import Path
 
+# Total run time when nothing else is set: 7 minutes fits the 10-minute presentation slot.
+DEFAULT_MAX_RUNTIME_SECONDS = 420.0
+
 
 @dataclass(frozen=True)
 class AgentConfig:
     run_root: Path
-    max_runtime_seconds: float = 900.0
+    max_runtime_seconds: float = DEFAULT_MAX_RUNTIME_SECONDS
     max_steps: int = 200
     max_commands: int = 60
     max_retries_per_operation: int = 2

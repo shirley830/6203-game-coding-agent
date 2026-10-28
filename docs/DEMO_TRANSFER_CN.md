@@ -31,11 +31,11 @@ cd ../demo-run
 将老师给的规格保存为 game_design_prompt.md。使用本机编辑器打开 agent.env，填写老师提供的 Key，并设置：
 
 ```text
-AGENT_MODEL=openrouter/z-ai/glm-5.3
+AGENT_MODEL=openrouter/moonshotai/kimi-k3
 OPENROUTER_API_KEY=在本机填写老师提供的Key
 AGENT_MAX_TOKENS=32000
 AGENT_REASONING_MAX_TOKENS=8000
-AGENT_MAX_RUNTIME=填写老师允许的秒数
+AGENT_MAX_RUNTIME=420  # 默认 7 分钟；老师允许其他时长时再改
 ```
 
 最后一项必须填有效数字；正式时长尚未确认。历史测试的 1200 秒是测试预算，不是老师的正式安排。不要把 Key 发群、放进截图、提交 GitHub 或打入交付包。
