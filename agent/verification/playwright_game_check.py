@@ -854,6 +854,11 @@ def _contradictory_matched_cards(steps: list[Any], state: Any) -> str | None:
             f"but deck patterns [{preview}] are not all the same")
 
 
+def _button(step: dict[str, Any]) -> dict[str, str]:
+    """Click options: a right-click only when the step asks for one."""
+    return {"button": "right"} if step.get("button") == "right" else {}
+
+
 def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | None:
     """Run one scenario step. Returns an error message, or None on success."""
     if "key" in step:
@@ -867,16 +872,16 @@ def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | N
         page.wait_for_timeout(int(step.get("ms", 300)))
         page.keyboard.up(step["hold"])
     elif "click" in step:
-        page.locator(step["click"]).first.click(timeout=1500)
+        page.locator(step["click"]).first.click(timeout=1500, **_button(step))
     elif "click_at" in step:
         box = page.locator("canvas").first.bounding_box()
         if not box:
             return "click_at needs a visible canvas"
         fx, fy = step["click_at"]
-        page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy)
+        page.mouse.click(box["x"] + box["width"] * fx, box["y"] + box["height"] * fy, **_button(step))
     elif "click_cell" in step:
         x, y = page.evaluate(_CELL_JS, step["click_cell"])
-        page.mouse.click(x, y)
+        page.mouse.click(x, y, **_button(step))
     elif "call" in step:
         exists = page.evaluate("(fn) => !!(window.__gameTest && typeof window.__gameTest[fn] === 'function')",
                                step["call"])

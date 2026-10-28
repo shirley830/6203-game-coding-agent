@@ -21,7 +21,7 @@ from __future__ import annotations
 
 import json
 import re
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
@@ -44,6 +44,7 @@ class Step(_Strict):
     click: str | None = None          # CSS selector of a DOM element to click
     click_at: list[float] | None = None    # [fx, fy] fractions of the first canvas
     click_cell: list[int] | None = None    # [col, row] using state.grid {cols, rows}
+    button: Literal["left", "right"] | None = None  # mouse button for the click steps
     call: str | None = None           # window.__gameTest[call](...args): setup only
     args: list[Any] = Field(default_factory=list)
     wait: int | None = Field(None, ge=0, le=5000)
@@ -63,6 +64,8 @@ class Step(_Strict):
             raise ValueError("click_at needs two fractions in [0, 1]")
         if self.click_cell is not None and len(self.click_cell) != 2:
             raise ValueError("click_cell needs [col, row]")
+        if self.button is not None and chosen[0] not in ("click", "click_at", "click_cell"):
+            raise ValueError("button only applies to click, click_at and click_cell")
         if self.call is not None and not _HOOK.match(self.call):
             raise ValueError("invalid hook name")
         return self
@@ -229,6 +232,8 @@ Scenario steps (exactly one action per step):
 - {{"click": "#restart"}}                   click a DOM element by CSS selector (buttons by id or text)
 - {{"click_cell": [col, row]}}              click a grid cell on the canvas (needs state.grid)
 - {{"click_at": [0.5, 0.5]}}                click a point of the canvas as fractions of its size
+- add "button": "right" to click/click_cell/click_at for a right-click, e.g.
+  {{"click_cell": [3, 3], "button": "right"}}  (when the specification uses the right button)
 - {{"call": "setScore", "args": [9]}}       call a declared test hook (always this exact form)
 - {{"wait": 300}}                          wait milliseconds (timers, delays)
 - {{"save": "x0", "expr": "s.player.x"}}     remember a value as saved.x0
@@ -291,6 +296,8 @@ def _render_steps(steps: list[Step]) -> str:
                 parts.append(f"key {value} x{step.repeat}")
             elif name == "hold":
                 parts.append(f"hold {value} {step.ms}ms")
+            elif step.button == "right":
+                parts.append(f"right-{name} {value}")
             else:
                 parts.append(f"{name} {value}")
     return "; ".join(parts)
@@ -470,7 +477,8 @@ ending the game). Then return one JSON object:
   the SAME rule with the same strength (same behaviour, no weaker expectation,
   no removed check of that rule); change only the setup, input or timing that
   made it inconsistent. Do not describe or depend on the current game's code.
-- Same step keys as before; at least one expect step; JSON only.
+- Same step keys as before; at least one expect step; JSON only. A plain
+  click/click_cell/click_at is a LEFT click; add "button": "right" for a right-click.
 """.strip()
 
 

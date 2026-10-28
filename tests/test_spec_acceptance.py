@@ -65,6 +65,33 @@ LIGHTS_SPEC = {
 LIGHTS_GAME = (FIXTURES / "contract_lights_out.html").read_text(encoding="utf-8")
 
 
+# Minimal canvas board: left-click reveals, right-click (contextmenu) toggles a flag.
+FLAG_GAME = """<!DOCTYPE html><html><body><canvas width="90" height="90"></canvas><p>Flags: 0</p><script>
+const st = {grid: {cols: 3, rows: 3}, revealed: Array(9).fill(false), flagged: Array(9).fill(false)};
+window.__gameState = st;
+const c = document.querySelector('canvas');
+const cell = (e) => { const r = c.getBoundingClientRect();
+  return Math.floor((e.clientY - r.top) / 30) * 3 + Math.floor((e.clientX - r.left) / 30); };
+c.addEventListener('click', (e) => { const i = cell(e); if (!st.flagged[i]) st.revealed[i] = true; });
+c.addEventListener('contextmenu', (e) => { e.preventDefault(); const i = cell(e);
+  if (!st.revealed[i]) st.flagged[i] = !st.flagged[i]; });
+</script></body></html>"""
+FLAG_SPEC = {
+    "state_contract": {"state_fields": {"grid": "{cols, rows}", "revealed": "9 booleans",
+                                        "flagged": "9 booleans"}, "test_hooks": {}},
+    "requirements": [
+        {"id": "F1", "category": "interaction", "description": "Right-click flags a hidden cell",
+         "steps": [{"click_cell": [1, 1], "button": "right"},
+                   {"expect": "s.flagged[4] && !s.revealed[4]"}]},
+        {"id": "F2", "category": "functional", "description": "Left-click reveals a cell",
+         "steps": [{"click_cell": [2, 0]}, {"expect": "s.revealed[2] && !s.flagged[2]"}]},
+        {"id": "F3", "category": "functional", "description": "A flagged cell is not revealed by a click",
+         "steps": [{"click_at": [0.1, 0.1], "button": "right"}, {"click_cell": [0, 0]},
+                   {"expect": "s.flagged[0] && !s.revealed[0]"}]},
+    ],
+}
+
+
 def _free_port():
     with socket.socket() as sock:
         sock.bind(("127.0.0.1", 0))
@@ -138,6 +165,18 @@ class ParsingTests(unittest.TestCase):
         self.assertEqual(len(acceptance.requirements), 4, acceptance.notes)
         self.assertEqual(acceptance.requirements[2].steps[0].call, "setScore")
         self.assertEqual(acceptance.requirements[2].steps[0].args, [9])
+
+    def test_right_button_is_a_click_option(self):
+        acceptance = parse_spec_acceptance(json.dumps(FLAG_SPEC))
+        self.assertEqual(len(acceptance.requirements), 3)
+        f1 = next(c for c in criteria_from(acceptance) if c.criterion_id == "REQ-F1")
+        self.assertIn("right-click_cell [1, 1]", f1.description)
+        payload = harness_payload(acceptance)
+        self.assertIn({"click_cell": [1, 1], "button": "right"}, payload["scenarios"][0]["steps"])
+        bad = dict(FLAG_SPEC, requirements=FLAG_SPEC["requirements"] + [
+            {"id": "F4", "category": "functional", "description": "Button on a key press",
+             "steps": [{"key": "KeyF", "button": "right"}, {"expect": "true"}]}])
+        self.assertNotIn("F4", [r.id for r in parse_spec_acceptance(json.dumps(bad)).requirements])
 
     def test_canvas_clicks_dropped_for_keyboard_specs(self):
         document = json.loads(json.dumps(COLLECT_SPEC))
@@ -283,6 +322,11 @@ class HarnessScenarioTests(unittest.TestCase):
         statuses = {k: v["status"] for k, v in result["requirements"].items()}
         self.assertEqual(statuses, {"REQ-L1": "pass", "REQ-L2": "pass", "REQ-L3": "pass"},
                          result["requirements"])
+
+    def test_right_click_reaches_the_contextmenu_handler(self):
+        result = run_harness(FLAG_GAME, FLAG_SPEC)
+        self.assertEqual({k: v["status"] for k, v in result["requirements"].items()},
+                         {"REQ-F1": "pass", "REQ-F2": "pass", "REQ-F3": "pass"}, result["requirements"])
 
 
 if __name__ == "__main__":
