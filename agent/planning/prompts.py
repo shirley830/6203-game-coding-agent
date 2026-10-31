@@ -39,13 +39,16 @@ example pygame, a terminal/console/command-line game, or curses):
 - If the acceptance suite contains C-CONTRACT, implement that test contract
   exactly: window.__gameState must reflect the REAL live game state (update it
   whenever the state changes, or define it as a getter), and window.__gameTest
-  hooks only set preconditions through the real game logic.
+  hooks only set preconditions through the real game logic. A hook that installs
+  a layout stays in force: generating the layout later (for example on the first
+  click) must not replace it.
 
 Specification fidelity (mandatory):
 - Implement what the specification asks for, with the input methods it names.
 - NEVER add controls, shortcuts, input methods, behaviours or UI that the
   specification does not ask for in order to make a check pass (for example,
-  keyboard controls in a mouse-only game, or clicks anywhere counting as a move).
+  keyboard controls in a mouse-only game, clicks anywhere counting as a move,
+  or click-to-pick-up and click-to-drop in a game the specification drags).
 - Never special-case the verifier, fake state, or hard-code expected values.
 - When a check fails, find and fix the real defect in the game logic. If a check
   seems to demand behaviour outside the specification, keep the game faithful

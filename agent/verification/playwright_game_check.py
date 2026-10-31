@@ -730,6 +730,9 @@ _CELL_JS = """([col, row]) => { const g = window.__gameState;
   throw new Error('click_cell needs state.grid {cols, rows} and a canvas board or a DOM grid of cells'); }"""
 
 
+_DRAG_MOVES = 10
+
+
 def _describe_step(step: dict[str, Any]) -> str:
     return json.dumps(step, ensure_ascii=False)[:160]
 
@@ -854,9 +857,34 @@ def _contradictory_matched_cards(steps: list[Any], state: Any) -> str | None:
             f"but deck patterns [{preview}] are not all the same")
 
 
-def _button(step: dict[str, Any]) -> dict[str, str]:
-    """Click options: a right-click only when the step asks for one."""
-    return {"button": "right"} if step.get("button") == "right" else {}
+def _button(step: dict[str, Any]) -> dict[str, Any]:
+    """Click options: a right-click or double-click only when the step asks for one."""
+    options: dict[str, Any] = {"button": "right"} if step.get("button") == "right" else {}
+    return options | ({"click_count": 2} if step.get("clicks") == 2 else {})
+
+
+def _canvas_point(page: Any, fx: float, fy: float) -> tuple[float, float] | None:
+    box = page.locator("canvas").first.bounding_box()
+    if not box:
+        return None
+    return box["x"] + box["width"] * fx, box["y"] + box["height"] * fy
+
+
+def _element_centre(page: Any, selector: str) -> tuple[float, float]:
+    box = page.locator(selector).first.bounding_box(timeout=1500)
+    if not box:
+        raise ValueError(f"{selector} is not visible")
+    return box["x"] + box["width"] / 2, box["y"] + box["height"] / 2
+
+
+def _drag(page: Any, start: tuple[float, float], end: tuple[float, float]) -> None:
+    """A real mouse drag: press, move in small steps, release."""
+    page.mouse.move(*start)
+    page.mouse.down()
+    page.wait_for_timeout(50)
+    page.mouse.move(*end, steps=_DRAG_MOVES)
+    page.wait_for_timeout(50)
+    page.mouse.up()
 
 
 def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | None:
@@ -882,6 +910,31 @@ def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | N
     elif "click_cell" in step:
         x, y = page.evaluate(_CELL_JS, step["click_cell"])
         page.mouse.click(x, y, **_button(step))
+    elif "drag" in step:
+        _drag(page, _element_centre(page, step["drag"]), _element_centre(page, step["to"]))
+    elif "drag_at" in step:
+        fx0, fy0, fx1, fy1 = step["drag_at"]
+        start, end = _canvas_point(page, fx0, fy0), _canvas_point(page, fx1, fy1)
+        if start is None or end is None:
+            return "drag_at needs a visible canvas"
+        _drag(page, start, end)
+    elif "drag_cell" in step:
+        col0, row0, col1, row1 = step["drag_cell"]
+        _drag(page, tuple(page.evaluate(_CELL_JS, [col0, row0])),
+              tuple(page.evaluate(_CELL_JS, [col1, row1])))
+    elif "hover_at" in step:
+        point = _canvas_point(page, *step["hover_at"])
+        if point is None:
+            return "hover_at needs a visible canvas"
+        page.mouse.move(*point, steps=_DRAG_MOVES)
+    elif "press_at" in step:
+        point = _canvas_point(page, *step["press_at"])
+        if point is None:
+            return "press_at needs a visible canvas"
+        page.mouse.move(*point)
+        page.mouse.down()
+        page.wait_for_timeout(int(step.get("ms", 300)))
+        page.mouse.up()
     elif "call" in step:
         exists = page.evaluate("(fn) => !!(window.__gameTest && typeof window.__gameTest[fn] === 'function')",
                                step["call"])
@@ -907,7 +960,8 @@ def _run_step(page: Any, step: dict[str, Any], saved: dict[str, Any]) -> str | N
             return str(exc)
         if not held:
             return f"expectation false: {step['expect']}"
-    if any(name in step for name in ("key", "hold", "click", "click_at", "click_cell", "call")):
+    if any(name in step for name in ("key", "hold", "click", "click_at", "click_cell", "drag",
+                                     "drag_at", "drag_cell", "hover_at", "press_at", "call")):
         page.wait_for_timeout(120)  # let animation frames apply the input
     return None
 

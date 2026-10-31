@@ -31,7 +31,7 @@ from agent.state import (
 from .criteria import build_acceptance_suite
 from .evidence import EvidenceLedger, evaluate_criteria
 from .spec_criteria import (
-    MIN_REQUIREMENTS, SYSTEM_PROMPT, InsufficientRequirements, SpecAcceptance,
+    MIN_REQUIREMENTS, SYSTEM_PROMPT, AcceptanceGaps, InsufficientRequirements, SpecAcceptance,
     _field_error_text, build_prompt, build_revision_prompt, criteria_from, harness_payload,
     is_non_browser_spec, parse_revision, parse_spec_acceptance,
 )
@@ -141,6 +141,7 @@ class GameVerifier:
         prompt = build_prompt(spec_text)
         problem = ""
         insufficient: InsufficientRequirements | None = None
+        usable: SpecAcceptance | None = None
         for _attempt in range(2):
             user_prompt = prompt
             if problem:
@@ -151,13 +152,19 @@ class GameVerifier:
                     system_prompt=SYSTEM_PROMPT, user_prompt=user_prompt,
                     timeout_seconds=limits.timeout_seconds,
                 )
-                return parse_spec_acceptance(reply, spec_text)
+                return parse_spec_acceptance(reply, spec_text, strict=True)
+            except AcceptanceGaps as exc:
+                # Usable as it is: keep it, recorded as unverified, if a retry does no better.
+                usable = parse_spec_acceptance(reply, spec_text)
+                insufficient, problem = None, str(exc)
             except InsufficientRequirements as exc:
                 insufficient = exc
                 problem = _field_error_text(exc) or str(exc)
             except Exception as exc:  # noqa: BLE001 - bounded retry, then incomplete acceptance
                 insufficient = None
                 problem = f"{type(exc).__name__}: {_field_error_text(exc) or str(exc)}"
+        if usable is not None:
+            return usable
         if insufficient is not None:
             self.acceptance_note = (
                 "incomplete acceptance: "

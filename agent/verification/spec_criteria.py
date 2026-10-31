@@ -29,7 +29,11 @@ from agent.state import Criterion
 
 _ID = re.compile(r"^[A-Za-z0-9_-]{1,40}$")
 _HOOK = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,40}$")
-_ACTIONS = ("key", "hold", "click", "click_at", "click_cell", "call", "wait", "save", "expect")
+_ACTIONS = ("key", "hold", "click", "click_at", "click_cell", "drag", "drag_at", "drag_cell",
+            "hover_at", "press_at", "call", "wait", "save", "expect")
+_CLICK_ACTIONS = ("click", "click_at", "click_cell")
+_POINTER_ACTIONS = (*_CLICK_ACTIONS, "drag", "drag_at", "drag_cell", "hover_at", "press_at")
+_REAL_INPUT = ("key", "hold", *_POINTER_ACTIONS, "wait")
 
 
 class _Strict(BaseModel):
@@ -45,6 +49,13 @@ class Step(_Strict):
     click_at: list[float] | None = None    # [fx, fy] fractions of the first canvas
     click_cell: list[int] | None = None    # [col, row] using state.grid {cols, rows}
     button: Literal["left", "right"] | None = None  # mouse button for the click steps
+    clicks: Literal[2] | None = None  # 2 = a double-click, for the click steps
+    drag: str | None = None           # CSS selector of the element to drag ...
+    to: str | None = None             # ... and of the element to drop it on
+    drag_at: list[float] | None = None     # [fx0, fy0, fx1, fy1] fractions of the first canvas
+    drag_cell: list[int] | None = None     # [col0, row0, col1, row1] using state.grid
+    hover_at: list[float] | None = None    # [fx, fy]: move the mouse there, no button
+    press_at: list[float] | None = None    # [fx, fy]: long press for `ms` milliseconds
     call: str | None = None           # window.__gameTest[call](...args): setup only
     args: list[Any] = Field(default_factory=list)
     wait: int | None = Field(None, ge=0, le=5000)
@@ -64,8 +75,21 @@ class Step(_Strict):
             raise ValueError("click_at needs two fractions in [0, 1]")
         if self.click_cell is not None and len(self.click_cell) != 2:
             raise ValueError("click_cell needs [col, row]")
-        if self.button is not None and chosen[0] not in ("click", "click_at", "click_cell"):
+        if self.button is not None and chosen[0] not in _CLICK_ACTIONS:
             raise ValueError("button only applies to click, click_at and click_cell")
+        if self.clicks is not None and chosen[0] not in _CLICK_ACTIONS:
+            raise ValueError("clicks only applies to click, click_at and click_cell")
+        if (self.drag is None) != (self.to is None):
+            raise ValueError("drag needs to, and to needs drag")
+        if self.drag_at is not None and (len(self.drag_at) != 4
+                                         or not all(0 <= v <= 1 for v in self.drag_at)):
+            raise ValueError("drag_at needs four fractions in [0, 1]")
+        if self.drag_cell is not None and len(self.drag_cell) != 4:
+            raise ValueError("drag_cell needs [col0, row0, col1, row1]")
+        for name in ("hover_at", "press_at"):
+            value = getattr(self, name)
+            if value is not None and (len(value) != 2 or not all(0 <= v <= 1 for v in value)):
+                raise ValueError(f"{name} needs two fractions in [0, 1]")
         if self.call is not None and not _HOOK.match(self.call):
             raise ValueError("invalid hook name")
         return self
@@ -119,6 +143,16 @@ class Contract(_Strict):
 
 
 MIN_REQUIREMENTS = 3
+# Gestures the harness can perform. A spec or scenario that names one must use
+# it: a click never stands in for a drag, or the game gets bent to fit the test.
+_GESTURES = {
+    "drag": (re.compile(r"\bdrag(?:s|ged|ging)?\b|拖", re.I), ("drag", "drag_at", "drag_cell")),
+    "double-click": (re.compile(r"\bdouble[- ]?click|双击", re.I), ("clicks",)),
+    "hover": (re.compile(r"\bmouse[- ]?over\b|\bhover(?:s|ing)?\s+(?:over|on|above|the)\b|悬停", re.I),
+              ("hover_at",)),
+    "long press": (re.compile(r"\blong[- ]press|长按", re.I), ("press_at",)),
+}
+_RANDOM_WORDS = re.compile(r"\b(?:random\w*|shuffl\w*|mines?)\b|随机|洗牌|地雷", re.I)
 _MOUSE_WORDS = re.compile(r"\b(mouse|click|clicks|clicking|tap|taps|pointer|touch|drag)\b", re.I)
 # A denial ("no mouse", "没有鼠标") is not a request for pointer input.
 _NEGATED_POINTER = re.compile(
@@ -145,6 +179,10 @@ class InsufficientRequirements(ValueError):
         self.kept = kept
         self.notes = list(notes)
         super().__init__(f"only {kept} valid requirements; " + "; ".join(notes)[:400])
+
+
+class AcceptanceGaps(ValueError):
+    """The suite is usable but leaves part of the specification untestable."""
 
 
 def _field_error_text(exc: BaseException) -> str:
@@ -175,6 +213,7 @@ class SpecAcceptance(_Strict):
     state_contract: Contract
     requirements: list[Requirement] = Field(min_length=MIN_REQUIREMENTS, max_length=10)
     notes: list[str] = Field(default_factory=list)  # filled by the parser, not the model
+    unverified: list[str] = Field(default_factory=list)  # behaviour no step can perform
 
     @model_validator(mode="after")
     def _consistent(self) -> "SpecAcceptance":
@@ -234,6 +273,12 @@ Scenario steps (exactly one action per step):
 - {{"click_at": [0.5, 0.5]}}                click a point of the canvas as fractions of its size
 - add "button": "right" to click/click_cell/click_at for a right-click, e.g.
   {{"click_cell": [3, 3], "button": "right"}}  (when the specification uses the right button)
+- add "clicks": 2 to the same steps for a double-click
+- {{"drag": "#crate", "to": "#truck"}}       real mouse drag from one DOM element to another
+- {{"drag_at": [0.1, 0.5, 0.8, 0.5]}}        real mouse drag on the canvas: [fromX, fromY, toX, toY] fractions
+- {{"drag_cell": [0, 0, 3, 2]}}              real mouse drag between grid cells: [col0, row0, col1, row1]
+- {{"hover_at": [0.5, 0.5]}}                 move the mouse there with no button pressed
+- {{"press_at": [0.5, 0.5], "ms": 800}}      long press at a canvas point
 - {{"call": "setScore", "args": [9]}}       call a declared test hook (always this exact form)
 - {{"wait": 300}}                          wait milliseconds (timers, delays)
 - {{"save": "x0", "expr": "s.player.x"}}     remember a value as saved.x0
@@ -243,8 +288,31 @@ Rules:
 - 4 to 10 requirements covering the specification's main rules, win/lose
   conditions, counters, restart/reset, and constraints such as boundaries or
   spawning away from the player. Test only behaviour the specification states.
-- Use real input (key/hold/click/click_cell/click_at) for the behaviour under test,
-  with the input type the specification names (mouse games are clicked, never keyed).
+- Use real input for the behaviour under test, with the exact input type the
+  specification names (mouse games are clicked, never keyed; a drag is a drag step).
+- Never replace a gesture with a different one: two clicks are not a drag, and
+  the game must not need extra controls just to be testable. If no step can
+  perform something the specification requires (multi-touch, drawing a free
+  path, sound), do not test a stand-in: add a top-level "unverified" list of
+  short strings naming it.
+- Every s.<field> in save and expect must be declared in state_fields, and
+  saved.<name> needs an earlier save step. Hooks only prepare: every scenario
+  with a call step also has real input or a wait before its checks.
+- Test patterns by game type (use whichever fit, adapted to this specification):
+  * Random layout (mines, shuffled cards, spawns): declare a hook that installs a
+    complete known layout, and call it first. The layout must stay in force for
+    the next input: a game that builds its layout on the first click must keep
+    the installed one. Pick input whose effect you can work out from that layout.
+  * Grid or flood rules: a flood spreads through every connected empty cell, so
+    packing all hazards in one row or corner leaves one region and a single click
+    reveals the whole board and ends the game. To keep the game running, click a
+    numbered cell next to a hazard (it reveals only itself), or scatter the hazards
+    so a closed line of them splits the board and work out the flooded region.
+  * Turn-based: assert the turn or move counter, then one illegal move changing nothing.
+  * Real-time: save a value, act, wait a short fixed time, and compare with > or <,
+    never with an exact value that depends on frame timing.
+  * Timers: a hook shortens the remaining time, then wait past it and assert the ending.
+  * Drag: assert the drop result, plus a drag released on an invalid target.
 - Every requirement ends with at least one expect. Each scenario starts from a
   freshly loaded page. Add short waits after input for animation-frame games.
 - At least one requirement has category "interaction"; the rest "functional".
@@ -296,6 +364,12 @@ def _render_steps(steps: list[Step]) -> str:
                 parts.append(f"key {value} x{step.repeat}")
             elif name == "hold":
                 parts.append(f"hold {value} {step.ms}ms")
+            elif name == "press_at":
+                parts.append(f"press_at {value} {step.ms}ms")
+            elif name == "drag":
+                parts.append(f"drag {value} to {step.to}")
+            elif step.clicks == 2:
+                parts.append(f"double-{name} {value}")
             elif step.button == "right":
                 parts.append(f"right-{name} {value}")
             else:
@@ -347,6 +421,77 @@ def _unbound_names(requirement: Requirement) -> list[str]:
     return names
 
 
+def _uses_gesture(requirement: Requirement, fields: tuple[str, ...]) -> bool:
+    return any(getattr(step, name) is not None for step in requirement.steps for name in fields)
+
+
+def _literal_equalities(expr: str) -> dict[str, str]:
+    """``s.a.b === literal`` terms of a plain && expression; {} for anything else."""
+    from .playwright_game_check import _mask_js_literals
+
+    if "||" in _mask_js_literals(expr) or "?" in _mask_js_literals(expr):
+        return {}
+    found: dict[str, str] = {}
+    for term in expr.split("&&"):
+        match = re.fullmatch(r"\s*\(?\s*s\.([\w$.]+)\s*===\s*('[^']*'|\"[^\"]*\"|-?\d+(?:\.\d+)?|true|false)"
+                             r"\s*\)?\s*", term)
+        if match:
+            found[match.group(1)] = match.group(2).replace('"', "'")
+    return found
+
+
+def _state_fields_used(requirement: Requirement) -> set[str]:
+    from .playwright_game_check import _bound_names, _mask_js_literals
+
+    used: set[str] = set()
+    for step in requirement.steps:
+        for expr in (step.expect, step.expr):
+            masked = _mask_js_literals(expr or "")
+            if "s" not in _bound_names(masked):
+                used.update(re.findall(r"(?<![\w$.])s\s*\.\s*([A-Za-z_$][\w$]*)", masked))
+    return used
+
+
+def lint_requirement(requirement: Requirement, fields: set[str] | None = None) -> str:
+    """Why a correct game cannot pass this scenario as written, or "".
+
+    ``fields`` is the frozen state contract, given when it can no longer grow.
+    """
+    from .playwright_game_check import _mask_js_literals
+
+    unknown = sorted(_state_fields_used(requirement) - fields) if fields is not None else []
+    if unknown:
+        return f"uses state field(s) {unknown} missing from state_fields"
+
+    saved: set[str] = set()
+    expected: dict[str, str] = {}
+    has_call = has_input = False
+    for step in requirement.steps:
+        has_call = has_call or step.call is not None
+        has_input = has_input or any(getattr(step, name) is not None for name in _REAL_INPUT)
+        expr = step.expect or step.expr
+        if expr:
+            masked = _mask_js_literals(expr)
+            missing = sorted(set(re.findall(r"(?<![\w$.])saved\s*\.\s*([A-Za-z_$][\w$]*)", masked)) - saved)
+            if missing:
+                return f"uses saved value(s) {missing} before saving them"
+        if step.save:
+            saved.add(step.save)
+        if step.expect:
+            for name, value in _literal_equalities(step.expect).items():
+                if expected.get(name, value) != value:
+                    return f"expects s.{name} to be both {expected[name]} and {value} with no input between"
+                expected[name] = value
+        elif step.save is None:
+            expected = {}
+    if has_call and not has_input:
+        return "only calls hooks: the behaviour under test needs real input"
+    for gesture, (words, step_fields) in _GESTURES.items():
+        if words.search(requirement.description) and not _uses_gesture(requirement, step_fields):
+            return f"describes a {gesture} but its steps do not perform one"
+    return ""
+
+
 def _keyboard_only_without_pointer(spec_text: str | None) -> bool:
     """True only when the task says keyboard and never describes pointer input.
 
@@ -360,7 +505,8 @@ def _keyboard_only_without_pointer(spec_text: str | None) -> bool:
     return _MOUSE_WORDS.search(_NEGATED_POINTER.sub(" ", spec_text)) is None
 
 
-def check_requirement(raw: Any, hooks: set[str], keyboard_only: bool) -> tuple[Requirement | None, str]:
+def check_requirement(raw: Any, hooks: set[str], keyboard_only: bool,
+                      fields: set[str] | None = None) -> tuple[Requirement | None, str]:
     """Validate one requirement; returns (requirement, "") or (None, why it was dropped)."""
     try:
         requirement = Requirement.model_validate(_normalize_hook_calls(raw, hooks))
@@ -369,23 +515,52 @@ def check_requirement(raw: Any, hooks: set[str], keyboard_only: bool) -> tuple[R
     undeclared = {step.call for step in requirement.steps if step.call and step.call not in hooks}
     if undeclared:
         return None, f"undeclared hooks {sorted(undeclared)}"
-    if keyboard_only and any(step.click_at or step.click_cell for step in requirement.steps):
+    if keyboard_only and any(getattr(step, name) is not None for step in requirement.steps
+                             for name in _POINTER_ACTIONS if name != "click"):
         return None, "canvas clicks in a keyboard-only specification without mouse input"
     unbound = _unbound_names(requirement)
     if unbound:
         # Caught before freezing: a broken assertion would otherwise make the
         # whole run unpassable (the harness reports it as test_script_error).
         return None, f"assertion uses undefined name(s) {unbound}"
+    problem = lint_requirement(requirement, fields)
+    if problem:
+        return None, problem
     return requirement, ""
 
 
-def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAcceptance:
+def _uses_cells(raw_requirements: Any) -> bool:
+    """Whether any scenario needs state.grid to find its cells."""
+    return isinstance(raw_requirements, list) and any(
+        isinstance(step, dict) and ("click_cell" in step or "drag_cell" in step)
+        for raw in raw_requirements if isinstance(raw, dict)
+        for step in (raw.get("steps") if isinstance(raw.get("steps"), list) else []))
+
+
+def _gaps(acceptance: "SpecAcceptance", spec_text: str | None) -> list[str]:
+    """What the specification needs that the kept scenarios leave out."""
+    if not spec_text:
+        return []
+    text = _NEGATED_POINTER.sub(" ", spec_text)
+    gaps = [f"the specification uses a {gesture}, but no scenario performs one with its real step"
+            for gesture, (words, fields) in _GESTURES.items()
+            if words.search(text) and not any(_uses_gesture(r, fields) for r in acceptance.requirements)]
+    if _RANDOM_WORDS.search(text) and not acceptance.state_contract.test_hooks:
+        gaps.append("the specification has random content, but test_hooks declares no hook to fix it")
+    return gaps
+
+
+def parse_spec_acceptance(reply: str, spec_text: str | None = None,
+                          strict: bool = False) -> SpecAcceptance:
     """Validate each requirement on its own and keep the valid ones.
 
     One malformed requirement must not discard the whole suite. A requirement is
     dropped (with a recorded reason) when it is invalid, calls an undeclared
-    hook, or uses canvas clicks in a specification that explicitly requires the
-    keyboard and does not describe pointer input.
+    hook, uses canvas clicks in a specification that explicitly requires the
+    keyboard and does not describe pointer input, or fails ``lint_requirement``.
+    With ``strict``, a suite that leaves out a named gesture or a way to fix
+    random content raises AcceptanceGaps, so the model gets one more attempt;
+    otherwise the gap is recorded in ``unverified`` and reported.
     """
     from agent.planning.parser import extract_json_object
 
@@ -394,6 +569,8 @@ def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAccep
         raise ValueError("acceptance document must be a JSON object")
     contract = Contract.model_validate(document.get("state_contract"))
     hooks = set(contract.test_hooks)
+    if _uses_cells(document.get("requirements")) and "grid" not in contract.state_fields:
+        contract.state_fields["grid"] = "{cols, rows}: board size in cells"
     keyboard_only = _keyboard_only_without_pointer(spec_text)
     kept: list[Requirement] = []
     notes: list[str] = []
@@ -408,11 +585,22 @@ def parse_spec_acceptance(reply: str, spec_text: str | None = None) -> SpecAccep
             continue
         seen.add(requirement.id)
         kept.append(requirement)
+        # A field a scenario reads belongs in the contract the game is built from.
+        for name in sorted(_state_fields_used(requirement) - set(contract.state_fields)):
+            contract.state_fields[name] = "read by the acceptance scenarios"
         if len(kept) == 10:
             break
     if len(kept) < MIN_REQUIREMENTS:
         raise InsufficientRequirements(len(kept), notes)
-    return SpecAcceptance(state_contract=contract, requirements=kept, notes=notes)
+    unverified = [str(item)[:200] for item in document.get("unverified") or []][:8]
+    acceptance = SpecAcceptance(state_contract=contract, requirements=kept, notes=notes,
+                                unverified=unverified)
+    gaps = _gaps(acceptance, spec_text)
+    if gaps and strict:
+        raise AcceptanceGaps("; ".join(gaps))
+    acceptance.unverified.extend(gaps)
+    acceptance.notes.extend(f"unverified: {item}" for item in acceptance.unverified)
+    return acceptance
 
 
 def criteria_from(acceptance: SpecAcceptance) -> tuple[Criterion, ...]:
@@ -432,7 +620,7 @@ def harness_payload(acceptance: SpecAcceptance) -> dict[str, Any]:
             {"criterion_id": f"REQ-{r.id}", "description": r.description,
              "steps": [s.model_dump(exclude_none=True, exclude_defaults=True)
                        | ({"repeat": s.repeat} if s.key and s.repeat != 1 else {})
-                       | ({"ms": s.ms} if s.hold else {})
+                       | ({"ms": s.ms} if s.hold or s.press_at else {})
                        | ({"args": s.args} if s.call else {})
                        for s in r.steps]}
             for r in acceptance.requirements
@@ -479,6 +667,11 @@ ending the game). Then return one JSON object:
   made it inconsistent. Do not describe or depend on the current game's code.
 - Same step keys as before; at least one expect step; JSON only. A plain
   click/click_cell/click_at is a LEFT click; add "button": "right" for a right-click.
+- A flood reveals every connected empty cell: if the layout makes one region,
+  move the hazards or click a numbered cell instead of keeping the same setup.
+- Keep the input type: a replacement never turns a drag into clicks, or any
+  gesture into a different one. Use only declared state fields; saved.<name>
+  needs an earlier save step.
 """.strip()
 
 
@@ -496,7 +689,7 @@ def parse_revision(reply: str, acceptance: SpecAcceptance, requirement_id: str,
     old = next(r for r in acceptance.requirements if r.id == requirement_id)
     replacement, problem = check_requirement(
         document.get("requirement"), set(acceptance.state_contract.test_hooks),
-        _keyboard_only_without_pointer(spec_text))
+        _keyboard_only_without_pointer(spec_text), set(acceptance.state_contract.state_fields))
     if replacement is None:
         raise ValueError(f"replacement requirement rejected: {problem}")
     if replacement.id != old.id or replacement.category != old.category:
