@@ -469,11 +469,17 @@ fully accepted with 8/8 specific rules in 82&nbsp;s and turn-based keys with 9/9
 or a disputed check, for US$0.36 in total.</p>
 
 <h3>7.5 Live run at the presentation</h3>
-<div class="pending">
-  <b>To be completed after the presentation.</b> Specification received, outcome and reason, elapsed time, number of
-  verification cycles and repairs, the most important failure and how the agent handled it, and where the evidence is in
-  <code>traces/&lt;run_id&gt;/</code>.
-</div>
+<p>At the presentation on 1 November the agent received an unseen specification, Treasure Grid: a 5&times;5 keyboard game
+with three treasures, three walls, a trap and an exit. The run used commit <code>3feba2e</code>, Kimi K3 through
+OpenRouter and the 420&nbsp;s limit, on a team member's computer. It produced a complete browser game
+(<code>index.html</code>, <code>game.js</code>) and a <code>README.md</code> with exact launch and play instructions.</p>
+<p>After the presentation we replayed the delivered game separately in a headless browser with real key presses. It
+behaved as specified: the initial layout and status were correct; the board edge and walls blocked movement; each treasure
+scored once; reaching the exit early did not end the game; the exit won after all three treasures; the trap lost at once;
+movement stopped after the game ended; and Restart restored the initial state. The page did not scroll and raised no
+JavaScript errors. This replay checks the delivered game only. It is not the agent's own verdict, and the run's summary
+and <code>traces/</code> folder were not kept in this repository, so its elapsed time and repair count are not reported
+here.</p>
 
 <!-- ============================== LIMITATIONS ============================== -->
 <h2><span class="n">8</span>Current limitations</h2>
