@@ -63,12 +63,12 @@
   <div class="credits">
     <p class="sub">Project report: architecture, planning and verification, failure recovery, evaluation, limitations and next steps</p>
     <div class="team">
-      <div><b>ZHOU YU</b><span>Controller, CLI, configuration, team contract, integration</span></div>
-      <div><b>JIN ZIYI</b><span>Planner: model client, prompts, plan and decision parsing</span></div>
       <div><b>DAI MINFEI</b><span>Tool runtime: files, commands, sandbox, processes, dependencies</span></div>
-      <div><b>ZHOU SIHAN</b><span>Verifier: acceptance criteria and the Playwright game harness</span></div>
-      <div><b>LIN SIYUAN</b><span>Failure recovery policy and offline evaluation</span></div>
+      <div><b>JIN ZIYI</b><span>Planner: model client, prompts, plan and decision parsing</span></div>
       <div><b>LI JIAKUN</b><span>Tracing, run report and delivery audit</span></div>
+      <div><b>LIN SIYUAN</b><span>Failure recovery policy and offline evaluation</span></div>
+      <div><b>ZHOU SIHAN</b><span>Verifier: acceptance criteria and the Playwright game harness</span></div>
+      <div><b>ZHOU YU</b><span>Controller, CLI, configuration, team contract, integration</span></div>
     </div>
     <div class="meta">
       Instructor: Prof. Bo An &nbsp;·&nbsp; Teaching assistant: Feng Lang &nbsp;·&nbsp; November 2026<br>
@@ -555,41 +555,48 @@ that the agent package ships no game files.</p>
   </ul></td></tr>
   <tr><td><b>2 · JIN ZIYI</b></td><td>Planning module: model access, planning, and decision generation.
   <ul>
-    <li><b>Model integration:</b> implemented the LiteLLM model client.</li>
-    <li><b>Structured output:</b> defined output schemas and implemented plan and decision parsing and validation.</li>
-    <li><b>Prompts and validation:</b> developed planning and decision prompts, launch-command validation, and plan-coverage validation.</li>
-    <li><b>Game quality:</b> added gameplay-completeness and presentation rules to the planner prompts.</li>
-    <li><b>Testing:</b> implemented planner tests.</li>
+    <li><b>Model integration:</b> implemented <code>LiteLLMClient</code> behind a small client interface.</li>
+    <li><b>Structured output:</b> defined strict schemas for plans, tool actions, verification requests and plan revisions; extracted the JSON object from raw model replies; and implemented plan and decision parsing, including checks on task dependencies.</li>
+    <li><b>Prompts and validation:</b> developed the planning and decision prompts, launch-command validation, and plan-coverage validation that requires the plan to cover every mandatory acceptance criterion.</li>
+    <li><b>Planner memory:</b> added working memory and browser-game guidance.</li>
+    <li><b>Game quality:</b> added default quality rules, rules for correct core gameplay and visible game elements, and clearer instructions for handling verification failures.</li>
+    <li><b>Testing:</b> implemented planner tests covering parsing, plan and decision prompts, and the quality rules.</li>
   </ul></td></tr>
-  <tr><td><b>3 · DAI MINFEI</b></td><td>Tool runtime: workspace operations and command execution.
+  <tr><td><b>3 · DAI MINFEI</b></td><td>Tool runtime: workspace operations and command execution, delivered as <code>LocalRuntime</code>.
   <ul>
-    <li><b>File operations:</b> implemented workspace file operations, unified-diff patches, and workspace revisions.</li>
-    <li><b>Hardening:</b> implemented the OS sandbox, process-group cleanup, and isolated dependency installation.</li>
-    <li><b>Testing:</b> implemented runtime tests and prepared test reports.</li>
+    <li><b>File operations:</b> restricted every file tool to <code>game/</code>, rejecting absolute paths, <code>..</code> and symbolic links; implemented atomic writes, all-or-nothing unified-diff patches, and deterministic workspace revisions.</li>
+    <li><b>Command execution:</b> ran commands as argument lists without an implicit shell, with separate results for non-zero exits and timeouts, and blocked dependency installs through <code>run_command</code>.</li>
+    <li><b>OS sandbox:</b> implemented isolation with <code>sandbox-exec</code> on macOS and <code>bwrap</code> on Linux, with strict sandboxing on by default.</li>
+    <li><b>Process cleanup:</b> cleaned up the process group after normal exit, non-zero exit, timeout and cancellation; if cleanup cannot be confirmed, the result is reported as unknown and no workspace revision is trusted.</li>
+    <li><b>Dependencies:</b> implemented isolated Python and Node installation, so game packages stay out of the agent's own environment.</li>
+    <li><b>Testing:</b> implemented real-process runtime tests, including seven process-cleanup tests, and prepared test reports and the decision notes.</li>
   </ul></td></tr>
   <tr><td><b>4 · ZHOU SIHAN</b></td><td>Verification module: <code>GameVerifier</code> and acceptance criteria.
   <ul>
-    <li><b>Evidence and evaluation:</b> implemented the evidence ledger and criterion evaluation.</li>
-    <li><b>Game testing:</b> implemented the Playwright game harness.</li>
+    <li><b>Acceptance criteria:</b> derived frozen criteria from the specification text only, never from planner claims, with mandatory launch, functional and interaction checks, plus a technical check when the specification calls for one.</li>
+    <li><b>Evidence and evaluation:</b> implemented the evidence ledger, which links tool results to each criterion, and criterion evaluation.</li>
+    <li><b>Game testing:</b> implemented the Playwright harness, which starts the game, checks it and shuts it down inside one bounded command; opening a page without an observable state change does not pass the interaction check.</li>
     <li><b>Acceptance reliability:</b> detection of broken test scripts and incomplete acceptance, contradictory card-pair assertions, a pointer filter limited to keyboard-only specifications, and one regeneration of an unusable acceptance reply.</li>
     <li><b>Testing:</b> implemented verifier tests.</li>
-    <li><b>Documentation:</b> prepared verification design notes.</li>
+    <li><b>Documentation:</b> prepared verification design notes and the integration guide.</li>
   </ul></td></tr>
-  <tr><td><b>5 · LIN SIYUAN</b></td><td>Recovery module: failure classification and recovery policy.
+  <tr><td><b>5 · LIN SIYUAN</b></td><td>Recovery module: failure classification and recovery policy, delivered as <code>RuleBasedRecovery</code>.
   <ul>
+    <li><b>Recovery policy:</b> mapped each failure type to one decision: ABORT for sandbox, cleanup, and authentication failures; REPLAN for invalid plans; REPAIR for execution and acceptance failures; and RETRY only for transient failures that are safe to repeat.</li>
+    <li><b>Malformed model output:</b> regenerates the reply instead of aborting the run.</li>
     <li><b>Hardening:</b> model probe in the self-check, source snapshots, and best-version restore.</li>
     <li><b>Testing:</b> recovery tests and recovery-verifier integration tests.</li>
-    <li><b>Evaluation:</b> offline evaluation specifications and the run-record report, and the final GLM-5.3 rehearsal.</li>
+    <li><b>Evaluation:</b> five development and two holdout specifications; a read-only run-record report that computes metrics from saved traces and handles incomplete or corrupt records; and the final GLM-5.3 rehearsal.</li>
     <li><b>Handoff:</b> audited the historical run archive.</li>
     <li><b>No-progress control:</b> stops repeating unchanged failures and aborts on verifier faults, including the structured <code>test_script_error</code> signal.</li>
     <li><b>Kimi K3 retest:</b> ran four specifications on the demo machine, reviewed them by playing, and wrote the shared-fix handoff that assigned the work above.</li>
   </ul></td></tr>
   <tr><td><b>6 · LI JIAKUN</b></td><td>Tracing and delivery: durable execution records and delivery auditing.
   <ul>
-    <li><b>Trace recording:</b> implemented the durable trace recorder and checkpoints.</li>
+    <li><b>Trace recording:</b> implemented <code>FileTraceRecorder</code>, which writes the event log, checkpoints and final summary for each run, and copies referenced command outputs into the trace with SHA-256 digests.</li>
     <li><b>Evidence preservation:</b> implemented verification screenshot archiving with integrity checks.</li>
-    <li><b>Delivery audit:</b> implemented delivery auditing, including missing-evidence detection, and extended it to the run report and archived runtime outputs.</li>
-    <li><b>Testing:</b> implemented tracing tests.</li>
+    <li><b>Delivery audit:</b> implemented <code>audit_delivery</code>, which detects missing evidence and changed files; extended it to the run report and archived runtime outputs; and made it report malformed event sequences without crashing.</li>
+    <li><b>Testing:</b> implemented tracing tests and regression tests for missing screenshots and for report and output preservation.</li>
   </ul></td></tr>
 </table>
 
