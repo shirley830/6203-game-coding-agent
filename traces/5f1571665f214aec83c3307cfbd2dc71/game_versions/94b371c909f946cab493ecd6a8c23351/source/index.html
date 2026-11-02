@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Treasure Grid</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #1b2432;
+    color: #eef2f7;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  h1 {
+    font-size: 2rem;
+    color: #ffd75e;
+    margin-bottom: 14px;
+    letter-spacing: 2px;
+    text-shadow: 0 2px 6px rgba(0,0,0,0.5);
+  }
+  #game-panel {
+    background: #242f42;
+    border: 2px solid #3a4a63;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 8px 24px rgba(0,0,0,0.45);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+  }
+  #hud {
+    display: flex;
+    gap: 24px;
+    width: 100%;
+    justify-content: space-between;
+    align-items: center;
+  }
+  #score { font-size: 1.15rem; font-weight: 600; color: #7fd68a; }
+  #status { font-size: 1.15rem; font-weight: 700; color: #ffd75e; }
+  #status.won { color: #6fe07f; }
+  #status.lost { color: #ff6b6b; }
+  canvas {
+    border: 3px solid #4a5c7a;
+    border-radius: 8px;
+    background: #10161f;
+  }
+  #controls-help {
+    font-size: 0.95rem;
+    color: #aab8cc;
+    text-align: center;
+  }
+  #controls-help kbd {
+    background: #33415c;
+    border: 1px solid #54688a;
+    border-bottom-width: 3px;
+    border-radius: 5px;
+    padding: 1px 7px;
+    font-family: inherit;
+    font-weight: 600;
+    color: #fff;
+  }
+  #legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    justify-content: center;
+    font-size: 0.85rem;
+    color: #c6d2e2;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; }
+  .swatch { width: 14px; height: 14px; border-radius: 3px; display: inline-block; border: 1px solid rgba(255,255,255,0.3); }
+  #restart {
+    background: #2e7d46;
+    color: #fff;
+    border: none;
+    border-radius: 8px;
+    padding: 10px 28px;
+    font-size: 1.05rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    box-shadow: 0 3px 10px rgba(0,0,0,0.4);
+  }
+  #restart:hover { background: #35985a; }
+  #restart:active { transform: translateY(1px); }
+</style>
+</head>
+<body>
+  <h1>Treasure Grid</h1>
+  <div id="game-panel">
+    <div id="hud">
+      <div id="score">Score: 0</div>
+      <div id="status">Playing</div>
+    </div>
+    <canvas id="board" width="400" height="400"></canvas>
+    <div id="legend">
+      <span class="legend-item"><span class="swatch" style="background:#4aa3ff"></span>Player</span>
+      <span class="legend-item"><span class="swatch" style="background:#ffd75e"></span>Treasure</span>
+      <span class="legend-item"><span class="swatch" style="background:#5a6675"></span>Wall</span>
+      <span class="legend-item"><span class="swatch" style="background:#e04545"></span>Trap</span>
+      <span class="legend-item"><span class="swatch" style="background:#3ecf6a"></span>Exit</span>
+    </div>
+    <div id="controls-help">
+      Use the arrow keys <kbd>&#8592;</kbd> <kbd>&#8593;</kbd> <kbd>&#8595;</kbd> <kbd>&#8594;</kbd> to move.<br>
+      Collect all 3 treasures, avoid the trap, then reach the exit!
+    </div>
+    <button id="restart" type="button">Restart</button>
+  </div>
+  <script src="game.js"></script>
+</body>
+</html>

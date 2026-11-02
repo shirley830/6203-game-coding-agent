@@ -1,0 +1,5 @@
+{"seq": 1, "role": "acceptance", "model": "openrouter/moonshotai/kimi-k3", "ok": true, "latency_seconds": 21.691, "prompt_tokens": 1740, "completion_tokens": 1832, "cost_usd": 0.0327, "error": null}
+{"seq": 2, "role": "planner", "model": "openrouter/moonshotai/kimi-k3", "ok": true, "latency_seconds": 13.752, "prompt_tokens": 3214, "completion_tokens": 649, "cost_usd": 0.01840815, "error": null}
+{"seq": 3, "role": "planner", "model": "openrouter/moonshotai/kimi-k3", "ok": true, "latency_seconds": 38.232, "prompt_tokens": 5247, "completion_tokens": 1397, "cost_usd": 0.0207845, "error": null}
+{"seq": 4, "role": "planner", "model": "openrouter/moonshotai/kimi-k3", "ok": true, "latency_seconds": 71.125, "prompt_tokens": 6084, "completion_tokens": 2266, "cost_usd": 0.0327824, "error": null}
+{"seq": 5, "role": "planner", "model": "openrouter/moonshotai/kimi-k3", "ok": true, "latency_seconds": 5.616, "prompt_tokens": 8012, "completion_tokens": 604, "cost_usd": 0.017487336, "error": null}
