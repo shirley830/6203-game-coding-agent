@@ -87,7 +87,7 @@ mandatory acceptance criterion passes on the current code, with evidence, and th
 specification <i>before</i> any code exists and checked by actually playing the game in a headless browser.</p>
 
 <div class="kpis">
-  <div class="kpi"><b>9 / 10</b><span>runs fully accepted in the Kimi K3 acceptance-fix retest (course model, 6 specifications)</span></div>
+  <div class="kpi"><b>9 / 10</b><span>runs fully accepted in the Kimi K3 post-fix retest (course model, 6 specifications)</span></div>
   <div class="kpi"><b>81</b><span>autonomous runs with five real models</span></div>
   <div class="kpi"><b>324</b><span>automated tests, all passing</span></div>
   <div class="kpi"><b>6</b><span>modules behind one controller and one contract</span></div>
@@ -477,14 +477,13 @@ or a disputed check, for US$0.36 in total.</p>
 with three treasures, three walls, a trap and an exit. The run used commit <code>3feba2e</code>, Kimi K3 through
 OpenRouter and the 420&nbsp;s limit, on a team member's computer. It produced a complete browser game
 (<code>index.html</code>, <code>game.js</code>) and a <code>README.md</code> with exact launch and play instructions.</p>
-<p><b>Technical implementation and replay.</b> In the generated <code>game.js</code>, arrow-key events call
-<code>tryMove(dcol, drow)</code>. It rejects moves after the game ends, outside the board or into a wall. Valid moves
-update the player position; collecting a treasure removes it and adds one point. Entering the trap sets the status to
-<code>lost</code>, while entering the exit sets <code>won</code> only after all three treasures are collected. The Restart
-button restores the initial state. After the presentation, a separate headless-browser replay with real key presses
-confirmed these behaviors, the initial layout, disabled movement after a terminal state, no page scrolling and no
-JavaScript errors. This replay checks the delivered game, not the agent's verdict. The presentation run's summary and
-<code>traces/</code> were not kept in this repository, so we do not report its elapsed time or repair count.</p>
+<p><b>Technical implementation and replay.</b> In <code>game.js</code>, <code>tryMove(dcol, drow)</code> blocks movement into walls or
+outside the grid and ignores input after win or loss. Each collected treasure is removed and raises the
+score. Reaching the trap loses; the exit wins only after all three treasures are collected. Restart resets the
+game. A post-presentation browser replay used real key presses to confirm the initial layout, boundary
+and wall checks, score, early exit, win/loss, Restart and the absence of JavaScript errors or page
+scrolling. The replay checks the delivered game only, not the agent's verdict. The run's summary and
+<code>traces/</code> were not stored here, so elapsed time and repair count are not reported.</p>
 
 <!-- ============================== LIMITATIONS ============================== -->
 <h2><span class="n">8</span>Current limitations</h2>
