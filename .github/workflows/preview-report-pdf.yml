@@ -1,0 +1,86 @@
+name: Preview current group report PDF
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/preview-report-pdf.yml
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  render-and-inspect:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install PDF build and inspection dependencies
+        run: |
+          python -m pip install playwright pypdf pymupdf pillow
+          python -m playwright install --with-deps chromium
+      - name: Build PDF from current main HTML
+        run: python docs/report/build_report.py
+      - name: Check page count, text and layout; make visual contact sheet
+        run: |
+          mkdir -p .report-preview
+          python - <<'PY'
+          import fitz, os, re, math, sys
+          from PIL import Image, ImageOps, ImageDraw
+          from pypdf import PdfReader
+          old = PdfReader("report.pdf")
+          new = fitz.open("report.pdf")
+          notes = ["Build script: python docs/report/build_report.py", f"Rendered pages: {len(new)}", f"PDF size bytes: {os.path.getsize('report.pdf')}"]
+          texts = [page.get_text("text") for page in new]
+          alltext = "\n".join(texts)
+          checks = {
+            "new-live-duration-165.3": "165.3" in alltext,
+            "new-zero-recoveries": "zero recovery" in alltext.lower(),
+            "ten-specific-checks": "ten specification-derived" in alltext.lower(),
+            "trace-record-present": "5f1571665f214aec83c3307cfbd2dc71" in alltext,
+            "old-missing-traces-removed": "were not stored here" not in alltext.lower(),
+            "technical-tryMove": "tryMove" in alltext,
+          }
+          notes += [f"Content {k}: {v}" for k,v in checks.items()]
+          problems = []
+          if len(new) != 18: problems.append(f"Expected 18 pages, got {len(new)}")
+          for ix, page in enumerate(new, 1):
+            spans = [s for block in page.get_text("dict")["blocks"] if "lines" in block for line in block["lines"] for s in line["spans"]]
+            overs = []
+            for s in spans:
+              x0,y0,x1,y1 = s["bbox"]
+              if x0 < -2 or x1 > page.rect.width+2 or y0 < -2 or y1 > page.rect.height+2: overs.append((s["text"][:40], tuple(round(v,1) for v in s["bbox"])))
+            notes.append(f"Page {ix:02d}: {len(page.get_text('text'))} text chars, {len(spans)} spans, out-of-page={len(overs)}")
+            if overs: problems.append(f"Page {ix} out-of-page text: {overs[:3]}")
+            pix = page.get_pixmap(matrix=fitz.Matrix(0.65,0.65), alpha=False)
+            pix.save(f".report-preview/page-{ix:02d}.png")
+          images=[]
+          for ix in range(len(new)):
+            im=Image.open(f".report-preview/page-{ix+1:02d}.png").convert("RGB")
+            im.thumbnail((385,545))
+            tile=Image.new("RGB",(405,580),"#edf1f3")
+            tile.paste(im,((405-im.width)//2,6))
+            ImageDraw.Draw(tile).text((14,554),f"PAGE {ix+1}",fill="#24343b")
+            images.append(tile)
+          cols=4
+          rows=math.ceil(len(images)/cols)
+          sheet=Image.new("RGB",(cols*405,rows*580),"white")
+          for ix, im in enumerate(images): sheet.paste(im,((ix%cols)*405,(ix//cols)*580))
+          sheet.save(".report-preview/contact-sheet.png")
+          if not all(checks.values()): problems.append("Not all content checks passed")
+          notes += ["", "Problems:"] + (problems or ["None"])
+          open(".report-preview/layout-check.txt","w").write("\n".join(notes)+"\n")
+          print("\n".join(notes))
+          if problems: sys.exit(1)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pe6203-group-report-preview
+          path: |
+            report.pdf
+            .report-preview/contact-sheet.png
+            .report-preview/layout-check.txt
+            .report-preview/page-*.png
+          retention-days: 3
