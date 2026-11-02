@@ -598,12 +598,14 @@ that the agent package ships no game files.</p>
     <li><b>No-progress control:</b> stops repeating unchanged failures and aborts on verifier faults, including the structured <code>test_script_error</code> signal.</li>
     <li><b>Kimi K3 retest:</b> ran four specifications on the demo machine, reviewed them by playing, and wrote the shared-fix handoff that assigned the work above.</li>
   </ul></td></tr>
-  <tr><td><b>6 · LI JIAKUN</b></td><td>Tracing and delivery: durable execution records and delivery auditing.
+  <tr><td><b>6 · LI JIAKUN</b></td><td>Tracing, evidence preservation and delivery integrity: made the agent's development record durable, auditable and independently inspectable.
   <ul>
-    <li><b>Trace recording:</b> implemented <code>FileTraceRecorder</code>, which writes the event log, checkpoints and final summary for each run, and copies referenced command outputs into the trace with SHA-256 digests.</li>
-    <li><b>Evidence preservation:</b> implemented verification screenshot archiving with integrity checks.</li>
-    <li><b>Delivery audit:</b> implemented <code>audit_delivery</code>, which detects missing evidence and changed files; extended it to the run report and archived runtime outputs; and made it report malformed event sequences without crashing.</li>
-    <li><b>Testing:</b> implemented tracing tests and regression tests for missing screenshots and for report and output preservation.</li>
+    <li><b>Durable tracing:</b> implemented <code>FileTraceRecorder</code> with <code>open_run</code>, <code>append_event</code>, <code>save_checkpoint</code> and <code>finalize</code>. Enforced ordered, durable events, atomic checkpoints and summaries, and separate directories per run.</li>
+    <li><b>Evidence and output preservation:</b> archived verifier screenshots by action sequence, along with referenced runtime stdout/stderr, verification reports and SHA-256 indexes, retaining evidence from distinct attempts.</li>
+    <li><b>Delivery audit:</b> implemented <code>audit_delivery</code> to check event order, run IDs, terminal outcomes, summary consistency, required run reports and the existence and integrity of referenced files.</li>
+    <li><b>Reliability fixes:</b> detected referenced-but-missing screenshots, prevented earlier verification screenshots from satisfying later checks, and handled malformed event and output records without crashing the audit.</li>
+    <li><b>Testing and integration:</b> developed and expanded <code>tests/test_tracing.py</code> (27 current test functions), including missing, altered and mismatched evidence cases; submitted the tracing module in merged PR #5 and supported integration with the controller and verifier contracts.</li>
+    <li><b>Live evidence and reporting:</b> preserved the original Treasure Grid presentation trace (70 events and 12 screenshots); completed the Section 7.5 technical and evidence update, aligned the README and report source, and verified the regenerated 18-page PDF.</li>
   </ul></td></tr>
 </table>
 
