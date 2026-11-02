@@ -30,6 +30,7 @@
 <tr><td><b>Success means</b></td><td>Every mandatory criterion passes on the current code, with evidence; nothing else counts</td></tr>
 <tr><td><b>Never</b></td><td>Mocks in the production path, edits to <code>agent/</code> or the spec during a run, deleting earlier <code>game/</code> or <code>traces/</code></td></tr>
 <tr><td><b>Submission</b></td><td><a href="agent/">agent/</a> (with <a href="agent/README.md">README</a>) · <code>game/</code> and <code>traces/</code> from the assessed run at the presentation · <a href="report.pdf">report.pdf</a></td></tr>
+<tr><td><b>Live evidence</b></td><td><a href="traces/5f1571665f214aec83c3307cfbd2dc71/run_report.md">Treasure Grid run report</a> · <a href="traces/5f1571665f214aec83c3307cfbd2dc71/summary.json">summary.json</a> · <a href="traces/5f1571665f214aec83c3307cfbd2dc71/evidence/">12 screenshots</a> (165.3 s; 10/10 specific rules; 0 recoveries)</td></tr>
 <tr><td><b>Report</b></td><td><a href="report.pdf">report.pdf</a> (Section 7.5: live Treasure Grid run and original trace) · source <code>docs/report/report.html</code></td></tr>
 </table>
 
