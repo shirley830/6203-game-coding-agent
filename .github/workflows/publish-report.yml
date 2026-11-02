@@ -1,0 +1,32 @@
+name: Publish refreshed PDF
+on:
+  push:
+    branches: [main]
+    paths: [.github/workflows/publish-report.yml]
+permissions:
+  contents: write
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m pip install playwright pypdf
+          python -m playwright install --with-deps chromium
+      - run: python docs/report/build_report.py
+      - run: |
+          python - <<'PY'
+          from pypdf import PdfReader
+          p=PdfReader("report.pdf")
+          assert len(p.pages)==18
+          print("Pages:",len(p.pages))
+          PY
+      - run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add report.pdf
+          git diff --cached --quiet || git commit -m "update report"
+          git push
