@@ -29,15 +29,21 @@
   .callout { border-left: 4px solid var(--teal); background: var(--soft); padding: 7pt 10pt; margin: 8pt 0 10pt; break-inside: avoid; }
   .callout.warn { border-color: var(--warn); background: #fdf6ea; }
   .callout b:first-child { color: var(--deep); }
-  .cover { height: 255mm; display: flex; flex-direction: column; break-after: page; }
-  .cover .band { background: var(--deep); color: #fff; border-radius: 14px; padding: 30pt 28pt 26pt; }
-  .cover .eyebrow { letter-spacing: 2.4px; font-size: 9pt; color: #9fc3cb; font-weight: 600; }
-  .cover h1 { color: #fff; font-size: 27pt; margin: 12pt 0 6pt; }
+  @page :first { margin: 0; }
+  .cover { position: relative; width: 210mm; height: 297mm; overflow: hidden; break-after: page; color: #fff;
+           background: var(--deep) url(figures/cover.svg) center / 100% 100% no-repeat;
+           -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .cover .eyebrow { position: absolute; top: 24mm; left: 22mm; right: 22mm; letter-spacing: 2.4px; font-size: 8.6pt;
+                    color: #9fc3cb; font-weight: 600; }
+  .cover h1 { position: absolute; top: 36mm; left: 22mm; margin: 0; color: #fff; font-size: 44pt; font-weight: 700;
+              line-height: 1.08; letter-spacing: -1px; }
   .cover h1 span { color: #6ff0cf; }
-  .cover .sub { color: #c7dbe0; font-size: 12pt; margin: 0; }
-  .cover img { width: 100%; margin-top: 18pt; border-radius: 12px; }
-  .cover table { margin-top: 18pt; }
-  .cover .meta { margin-top: auto; color: var(--muted); font-size: 9.5pt; }
+  .cover .credits { position: absolute; left: 22mm; right: 22mm; bottom: 20mm; }
+  .cover .sub { color: #c7dbe0; font-size: 11pt; line-height: 1.45; margin: 0 0 9mm; text-align: left; max-width: 136mm; }
+  .cover .team { display: grid; grid-template-columns: 1fr 1fr; column-gap: 12mm; row-gap: 3.2mm; }
+  .cover .team b { display: block; font-size: 10pt; font-weight: 600; letter-spacing: .6px; }
+  .cover .team span { display: block; color: #9fc3cb; font-size: 8.4pt; line-height: 1.35; }
+  .cover .meta { margin-top: 9mm; color: #9fc3cb; font-size: 8.4pt; line-height: 1.6; }
   .kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8pt; margin: 8pt 0 12pt; break-inside: avoid; }
   .kpi { border: 1px solid var(--line); border-top: 3px solid var(--teal); border-radius: 8px; padding: 7pt 9pt; }
   .kpi b { display: block; font-size: 17pt; color: var(--deep); }
@@ -52,24 +58,22 @@
 
 <!-- ============================== COVER ============================== -->
 <section class="cover">
-  <div class="band">
-    <div class="eyebrow">PE6203 · GENERATIVE AND AGENTIC AI · GROUP PROJECT 1</div>
-    <h1>A Coding Agent That<br><span>Builds a Game</span></h1>
+  <div class="eyebrow">PE6203 · GENERATIVE AND AGENTIC AI · GROUP PROJECT 1</div>
+  <h1>A Coding Agent<br>That <span>Builds a Game</span></h1>
+  <div class="credits">
     <p class="sub">Project report: architecture, planning and verification, failure recovery, evaluation, limitations and next steps</p>
-  </div>
-  <img src="figures/readme-banner.png" alt="Project banner">
-  <table>
-    <tr><th style="width:12%">Member</th><th style="width:22%">Name</th><th>Module owned</th></tr>
-    <tr><td>1</td><td>ZHOU YU</td><td>Controller, CLI, configuration, team contract, integration</td></tr>
-    <tr><td>2</td><td>JIN ZIYI</td><td>Planner: model client, prompts, plan and decision parsing</td></tr>
-    <tr><td>3</td><td>DAI MINFEI</td><td>Tool runtime: files, commands, sandbox, processes, dependencies</td></tr>
-    <tr><td>4</td><td>ZHOU SIHAN</td><td>Verifier: acceptance criteria and the Playwright game harness</td></tr>
-    <tr><td>5</td><td>LIN SIYUAN</td><td>Failure recovery policy and offline evaluation</td></tr>
-    <tr><td>6</td><td>LI JIAKUN</td><td>Tracing, run report and delivery audit</td></tr>
-  </table>
-  <div class="meta">
-    Repository: github.com/shirley830/6203-game-coding-agent &nbsp;·&nbsp; Entry point: <code>python -m agent game_design_prompt.md</code><br>
-    Instructor: Prof. Bo An &nbsp;·&nbsp; Teaching assistant: Feng Lang &nbsp;·&nbsp; October 2026
+    <div class="team">
+      <div><b>ZHOU YU</b><span>Controller, CLI, configuration, team contract, integration</span></div>
+      <div><b>JIN ZIYI</b><span>Planner: model client, prompts, plan and decision parsing</span></div>
+      <div><b>DAI MINFEI</b><span>Tool runtime: files, commands, sandbox, processes, dependencies</span></div>
+      <div><b>ZHOU SIHAN</b><span>Verifier: acceptance criteria and the Playwright game harness</span></div>
+      <div><b>LIN SIYUAN</b><span>Failure recovery policy and offline evaluation</span></div>
+      <div><b>LI JIAKUN</b><span>Tracing, run report and delivery audit</span></div>
+    </div>
+    <div class="meta">
+      Instructor: Prof. Bo An &nbsp;·&nbsp; Teaching assistant: Feng Lang &nbsp;·&nbsp; November 2026<br>
+      github.com/shirley830/6203-game-coding-agent
+    </div>
   </div>
 </section>
 

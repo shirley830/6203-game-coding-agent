@@ -1,12 +1,14 @@
 """Render docs/report/report.html to report.pdf at the repository root with headless Chromium.
 
 Run from the repository root:  python report/build_report.py
-Animated SVG figures render as their final frame (reduced motion).
+Animated SVG figures render as their final frame (reduced motion). Needs pypdf as well as Playwright.
 """
 
+from io import BytesIO
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
+from pypdf import PdfReader, PdfWriter
 
 HERE = Path(__file__).resolve().parent
 ROOT = HERE.parent.parent
@@ -14,8 +16,7 @@ ASSETS = ROOT / "assets"
 OUTPUT = ROOT / "report.pdf"
 FIGURES = HERE / "figures"
 # (svg, milliseconds into the animation when every element is shown)
-FIGURE_FRAMES = [("readme-banner.svg", 13000), ("architecture.svg", 1500),
-                 ("verification.svg", 10500), ("state-machine.svg", 13500)]
+FIGURE_FRAMES = [("architecture.svg", 1500), ("verification.svg", 10500), ("state-machine.svg", 13500)]
 
 FOOTER = ('<div style="width:100%;font-size:8px;color:#6b8790;padding:0 18mm;display:flex;'
           'justify-content:space-between;font-family:Helvetica,Arial,sans-serif">'
@@ -49,7 +50,16 @@ def main() -> None:
         page.pdf(path=str(OUTPUT), format="A4", print_background=True,
                  display_header_footer=True, header_template="<span></span>", footer_template=FOOTER,
                  margin={"top": "18mm", "bottom": "18mm", "left": "18mm", "right": "18mm"})
+        # Chromium draws the footer on every page, so swap in a footer-free cover.
+        page.add_style_tag(content="body > :not(.cover) { display: none; }")
+        cover = page.pdf(format="A4", print_background=True)
         browser.close()
+    report = PdfReader(OUTPUT)
+    writer = PdfWriter()
+    writer.append(PdfReader(BytesIO(cover)), pages=(0, 1))
+    writer.append(report, pages=(1, len(report.pages)))
+    writer.add_metadata(report.metadata)
+    writer.write(OUTPUT)
     print(f"wrote {OUTPUT}")
 
 
