@@ -7,7 +7,7 @@ on:
       - .github/workflows/preview-report-pdf.yml
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   render-and-inspect:
     runs-on: ubuntu-latest
@@ -84,3 +84,13 @@ jobs:
             .report-preview/layout-check.txt
             .report-preview/page-*.png
           retention-days: 3
+      - name: Commit validated PDF to main
+        if: success()
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add report.pdf
+          if ! git diff --cached --quiet; then
+            git commit -m "Regenerate final Group Report PDF with live Treasure Grid trace evidence"
+            git push
+          fi
