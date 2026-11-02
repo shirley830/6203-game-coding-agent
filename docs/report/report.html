@@ -605,7 +605,9 @@ that the agent package ships no game files.</p>
     <li><b>Delivery audit:</b> implemented <code>audit_delivery</code> to check event order, run IDs, terminal outcomes, summary consistency, required run reports and the existence and integrity of referenced files.</li>
     <li><b>Reliability fixes:</b> detected referenced-but-missing screenshots, prevented earlier verification screenshots from satisfying later checks, and handled malformed event and output records without crashing the audit.</li>
     <li><b>Testing and integration:</b> developed and expanded <code>tests/test_tracing.py</code> (27 current test functions), including missing, altered and mismatched evidence cases; submitted the tracing module in merged PR #5 and supported integration with the controller and verifier contracts.</li>
-    <li><b>Live evidence and reporting:</b> preserved the original Treasure Grid presentation trace (70 events and 12 screenshots); completed the Section 7.5 technical and evidence update, aligned the README and report source, and verified the regenerated 18-page PDF.</li>
+    <li><b>Live trace archive:</b> added the original Treasure Grid presentation trace of 1 November to <code>main</code> under <code>traces/5f1571665f214aec83c3307cfbd2dc71/</code>: 70 ordered events, checkpoints, the run summary, verification results, 12 screenshots, runtime outputs and the run report.</li>
+    <li><b>Section 7.5 update:</b> added the live result (165.3 s, 22 steps, ten of ten specific rules and zero recovery attempts), the trace evidence, and a technical explanation of <code>tryMove()</code> and the game rules.</li>
+    <li><b>Final materials:</b> corrected the README section reference and added links to the live trace; regenerated the PDF with the repository's build script and checked its length, layout and content; and reviewed the earlier test results, leaving them out of the totals where rounds were not comparable or the results were already counted.</li>
   </ul></td></tr>
 </table>
 
