@@ -1,0 +1,36 @@
+name: Build report PDF
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - .github/workflows/build-report-once.yml
+permissions:
+  contents: read
+jobs:
+  render:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: |
+          python -m pip install playwright pypdf pymupdf pillow
+          python -m playwright install --with-deps chromium
+      - run: python docs/report/build_report.py
+      - run: |
+          python - <<'PY'
+          import fitz
+          d=fitz.open("report.pdf")
+          text=" ".join(x.get_text() for x in d)
+          assert len(d)==18, len(d)
+          assert "27 current test functions" in text
+          assert "165.3 s" in text
+          print("18 pages and new evidence confirmed")
+          PY
+      - uses: actions/upload-artifact@v4
+        with:
+          name: pdf-for-review
+          path: report.pdf
+          retention-days: 3
