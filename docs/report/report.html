@@ -482,8 +482,15 @@ outside the grid and ignores input after win or loss. Each collected treasure is
 score. Reaching the trap loses; the exit wins only after all three treasures are collected. Restart resets the
 game. A post-presentation browser replay used real key presses to confirm the initial layout, boundary
 and wall checks, score, early exit, win/loss, Restart and the absence of JavaScript errors or page
-scrolling. The replay checks the delivered game only, not the agent's verdict. The run's summary and
-<code>traces/</code> were not stored here, so elapsed time and repair count are not reported.</p>
+scrolling. The replay independently checks the delivered game's behaviour, rather than relying on
+ the agent's verdict.</p>
+<p><b>Live outcome and trace evidence.</b> The agent reported <i>succeeded</i> and <i>fully accepted</i> in
+165.3 s, completing 22 steps with zero recovery attempts. All ten specification-derived checks and five mandatory
+baseline checks passed; the acceptance-information item was informational, not a test. The original run is preserved in
+<code>traces/5f1571665f214aec83c3307cfbd2dc71/</code>: 70 ordered events, checkpoints, the run summary,
+verification results, 12 screenshots, runtime outputs and <code>run_report.md</code>. The archived screenshots
+and referenced output copies passed SHA-256 integrity checks. This is the single presentation run, separate from the
+historical Kimi K3 retest results above.</p>
 
 <!-- ============================== LIMITATIONS ============================== -->
 <h2><span class="n">8</span>Current limitations</h2>
